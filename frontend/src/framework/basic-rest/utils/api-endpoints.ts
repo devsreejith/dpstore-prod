@@ -1,0 +1,23 @@
+export const API_ENDPOINTS = {
+  LOGIN: '/store/auth',
+  REGISTER: '/store/customers',
+  LOGOUT: '/store/auth',
+  FORGET_PASSWORD: '/store/customers/password-token',
+  CATEGORIES: '/store/product-categories',
+  CATEGORIES_2: '/store/product-categories',
+  FEATURED_CATEGORIES: '/store/product-categories',
+  COLLECTIONS: '/store/collections',
+  PRODUCTS: '/api/v1/products',
+  PRODUCTS_2: '/api/v1/products',
+  FEATURED_PRODUCTS: '/api/v1/products',
+  TOP_SELLER_PRODUCTS: '/api/v1/products',
+  ON_SELLING_PRODUCTS: '/api/v1/products',
+  PRODUCT: '/api/v1/products',
+  RELATED_PRODUCTS: '/api/v1/products',
+  BEST_SELLER_PRODUCTS: '/api/v1/products',
+  NEW_ARRIVAL_PRODUCTS: '/api/v1/products',
+  POPULAR_PRODUCTS: '/api/v1/products',
+  FLASH_SALE_PRODUCTS: '/api/v1/products',
+  SEARCH: '/api/v1/products',
+};
+

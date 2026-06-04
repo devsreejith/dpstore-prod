@@ -1,0 +1,15 @@
+{
+	"cli": {
+		"packageManager": "pnpm"
+	},
+	"telemetry": {
+		"enabled": true,
+		"machine_id": "5b69b4a4-dee5-45d6-801f-fb7196069363"
+	},
+	"star": {
+		"prompted": true
+	},
+	"claude-code-plugin": {
+		"prompted": true
+	}
+}
