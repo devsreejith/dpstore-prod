@@ -1,5 +1,6 @@
 import { defineMiddlewares } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
+import { authenticate } from "@medusajs/medusa"
 import helmet from "helmet"
 import rateLimit from "express-rate-limit"
 import express from "express"
@@ -109,7 +110,7 @@ async function requireAdminAuth(req: any, res: any, next: any) {
 
   const actorId = req.auth_context?.actor_id
   const actorType = req.auth_context?.actor_type
-  if (actorId && actorType === "admin") {
+  if (actorId && (actorType === "admin" || actorType === "user")) {
     // 1. First look up custom admin_users module for user and role
     try {
       const adminUsersModule: any = req.scope.resolve("admin_users")
@@ -267,6 +268,7 @@ export default defineMiddlewares({
       matcher: "/api/v1/uploads",
       middlewares: [
         cors.middleware,
+        authenticate("user", ["session", "bearer", "api-key"]),
         requireAdminAuth,
         helmet(),
         limiter,
@@ -276,6 +278,7 @@ export default defineMiddlewares({
       matcher: "/v1/uploads",
       middlewares: [
         cors.middleware,
+        authenticate("user", ["session", "bearer", "api-key"]),
         requireAdminAuth,
         helmet(),
         limiter,
@@ -285,6 +288,7 @@ export default defineMiddlewares({
       matcher: "/api/v1/admin/products/:id/images",
       middlewares: [
         cors.middleware,
+        authenticate("user", ["session", "bearer", "api-key"]),
         requireAdminAuth,
         helmet(),
         limiter,
@@ -294,6 +298,7 @@ export default defineMiddlewares({
       matcher: "/v1/admin/products/:id/images",
       middlewares: [
         cors.middleware,
+        authenticate("user", ["session", "bearer", "api-key"]),
         requireAdminAuth,
         helmet(),
         limiter,
@@ -303,6 +308,7 @@ export default defineMiddlewares({
       matcher: "/api/v1/admin/categories/:id/image",
       middlewares: [
         cors.middleware,
+        authenticate("user", ["session", "bearer", "api-key"]),
         requireAdminAuth,
         helmet(),
         limiter,
@@ -312,6 +318,7 @@ export default defineMiddlewares({
       matcher: "/v1/admin/categories/:id/image",
       middlewares: [
         cors.middleware,
+        authenticate("user", ["session", "bearer", "api-key"]),
         requireAdminAuth,
         helmet(),
         limiter,
@@ -319,27 +326,67 @@ export default defineMiddlewares({
     },
     {
       matcher: "/api/v1/admin/admin-users",
-      middlewares: [cors.middleware, requireAdminAuth, requireSuperAdmin, helmet(), limiter],
+      middlewares: [
+        cors.middleware,
+        authenticate("user", ["session", "bearer", "api-key"]),
+        requireAdminAuth,
+        requireSuperAdmin,
+        helmet(),
+        limiter,
+      ],
     },
     {
       matcher: "/api/v1/admin/admin-users/*",
-      middlewares: [cors.middleware, requireAdminAuth, requireSuperAdmin, helmet(), limiter],
+      middlewares: [
+        cors.middleware,
+        authenticate("user", ["session", "bearer", "api-key"]),
+        requireAdminAuth,
+        requireSuperAdmin,
+        helmet(),
+        limiter,
+      ],
     },
     {
       matcher: "/v1/admin/admin-users",
-      middlewares: [cors.middleware, requireAdminAuth, requireSuperAdmin, helmet(), limiter],
+      middlewares: [
+        cors.middleware,
+        authenticate("user", ["session", "bearer", "api-key"]),
+        requireAdminAuth,
+        requireSuperAdmin,
+        helmet(),
+        limiter,
+      ],
     },
     {
       matcher: "/v1/admin/admin-users/*",
-      middlewares: [cors.middleware, requireAdminAuth, requireSuperAdmin, helmet(), limiter],
+      middlewares: [
+        cors.middleware,
+        authenticate("user", ["session", "bearer", "api-key"]),
+        requireAdminAuth,
+        requireSuperAdmin,
+        helmet(),
+        limiter,
+      ],
     },
     {
       matcher: "/api/v1/admin/*",
-      middlewares: [cors.middleware, requireAdminAuth, helmet(), limiter],
+      middlewares: [
+        cors.middleware,
+        authenticate("user", ["session", "bearer", "api-key"]),
+        requireAdminAuth,
+        helmet(),
+        limiter,
+      ],
     },
     {
       matcher: "/v1/admin/*",
-      middlewares: [cors.middleware, requireAdminAuth, helmet(), limiter],
+      middlewares: [
+        cors.middleware,
+        authenticate("user", ["session", "bearer", "api-key"]),
+        requireAdminAuth,
+        helmet(),
+        limiter,
+      ],
     },
     {
       matcher: "/api/v1/*",

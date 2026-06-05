@@ -20,13 +20,13 @@ export default function Layout({ children }: React.PropsWithChildren<{}>) {
 						content: 'width=device-width, initial-scale=1.0',
 					},
 				]}
-				title="Dubai Police Online Store"
-				description="Online Store"
-				canonical="https://ecommerce.lsapps.in/"
+				title="Dubai Police Store"
+				description="Merchandise Online Store"
+				canonical="https://dubaipolicestore.ae/"
 				openGraph={{
-					url: 'https://ecommerce.lsapps.in/',
-					title: 'Dubai Police Online Store',
-					description: 'Online Store',
+					url: 'https://dubaipolicestore.ae/',
+					title: 'Dubai Police Store',
+					description: 'Merchandise Online Store',
 					images: [
 						{
 							url: '/assets/images/og-image-01.png',

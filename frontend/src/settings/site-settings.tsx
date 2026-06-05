@@ -1,11 +1,5 @@
 import { SAFlag } from '@components/icons/SAFlag';
 import { USFlag } from '@components/icons/USFlag';
-import Nike from 'public/assets/images/brands/megamenu/nike.png';
-import Dior from 'public/assets/images/brands/megamenu/dior.png';
-import Gucci from 'public/assets/images/brands/megamenu/gucci.png';
-import Gucci1 from 'public/assets/images/brands/megamenu/gucci1.png';
-import Puma from 'public/assets/images/brands/megamenu/puma.png';
-import Levis from 'public/assets/images/brands/megamenu/levis.png';
 import Banner1 from 'public/assets/images/banner/megamenu/banner-1.png';
 import Banner2 from 'public/assets/images/banner/megamenu/banner-2.png';
 
@@ -20,16 +14,16 @@ import { SunglassIcon } from '@components/icons/sunglass-icon';
 import { SneakerIcon } from '@components/icons/sneaker-icon';
 
 export const siteSettings = {
-  name: 'Dubai Police',
-  description: 'Online Store',
+  name: 'Dubai Police Store',
+  description: 'Merchandise Online Store',
   author: {
-    name: 'Dubai Police',
-    websiteUrl: 'https://ecommerce.lsapps.in/',
+    name: 'Dubai Police Store',
+    websiteUrl: 'https://dubaipolicestore.ae/',
     address: '',
   },
   logo: {
     url: '/assets/images/logo-v2.png',
-    alt: 'Dubai Police Online Store',
+    alt: 'Dubai Police Store',
     href: '/',
     width: 150,
     height: 51,
@@ -864,7 +858,7 @@ export const siteSettings = {
             ],
           },
         ],
-        
+
         banners: [
           {
             id: 1,
@@ -1045,7 +1039,7 @@ export const siteSettings = {
             ],
           },
         ],
-        
+
         banners: [
           {
             id: 1,
@@ -1226,7 +1220,7 @@ export const siteSettings = {
             ],
           },
         ],
-        
+
         banners: [
           {
             id: 1,
@@ -1407,7 +1401,7 @@ export const siteSettings = {
             ],
           },
         ],
-        
+
         banners: [
           {
             id: 1,
@@ -1588,7 +1582,7 @@ export const siteSettings = {
             ],
           },
         ],
-        
+
         banners: [
           {
             id: 1,
@@ -1769,7 +1763,7 @@ export const siteSettings = {
             ],
           },
         ],
-        
+
         banners: [
           {
             id: 1,
@@ -1950,7 +1944,7 @@ export const siteSettings = {
             ],
           },
         ],
-        
+
         banners: [
           {
             id: 1,
@@ -2131,7 +2125,7 @@ export const siteSettings = {
             ],
           },
         ],
-        
+
         banners: [
           {
             id: 1,
