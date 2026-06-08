@@ -145,32 +145,6 @@ const OrderDetails: React.FC<{ className?: string }> = ({
   const [canceling, setCanceling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
 
-  const [showPaymentScreen, setShowPaymentScreen] = useState(false);
-  const [activePaymentTab, setActivePaymentTab] = useState<'RECOMMENDED' | 'SAVED' | 'CARDS' | 'COD' | 'GIFT' | 'UPI' | 'EMI'>('CARDS');
-  const [cardNumber, setCardNumber] = useState('');
-  const [cardName, setCardName] = useState('');
-  const [cardExpiry, setCardExpiry] = useState('');
-  const [cardCvv, setCardCvv] = useState('');
-
-  const handleCardNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/\D/g, '');
-    const formatted = value.match(/.{1,4}/g)?.join(' ') || '';
-    setCardNumber(formatted.substring(0, 19));
-  };
-
-  const handleExpiryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/\D/g, '');
-    if (value.length >= 2) {
-      setCardExpiry(`${value.slice(0, 2)}/${value.slice(2, 4)}`);
-    } else {
-      setCardExpiry(value);
-    }
-  };
-
-  const handleCvvChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/\D/g, '');
-    setCardCvv(value.substring(0, 3));
-  };
 
   const paymentCollectionId = useMemo(() => {
     const fromArray =
@@ -223,21 +197,16 @@ const OrderDetails: React.FC<{ className?: string }> = ({
   const taxAmount = Number((order as any)?.tax_total ?? (order as any)?.taxes_total ?? 0) || 0;
   const totalAmount = Number((order as any)?.total ?? 0) || 0;
 
-  const continuePayment = () => {
+  const continuePayment = async () => {
     if (!paymentCollectionId) {
       setPayError('Online payment is not available for this order.');
       return;
     }
     setPayError(null);
-    setShowPaymentScreen(true);
-  };
-
-  const submitDummyPayment = async () => {
-    setPayError(null);
     setPaying(true);
     try {
       let providerId = paymentProvider;
-      if (!providerId) {
+      if (!providerId || providerId === 'pp_system_default') {
         try {
           const regionId = String((order as any)?.region_id ?? '').trim();
           if (regionId) {
@@ -245,35 +214,36 @@ const OrderDetails: React.FC<{ className?: string }> = ({
               params: { region_id: regionId },
             });
             const providers = Array.isArray(resProviders?.data?.payment_providers) ? resProviders.data.payment_providers : [];
-            providerId = providers?.[0]?.id || 'pp_system_default';
+            providerId = providers?.find((p: any) => p.id === "pp_ngenius_ngenius" || p.id === "pp_ngenius" || p.id === "ngenius")?.id || providers?.[0]?.id || 'pp_ngenius_ngenius';
           } else {
-            providerId = 'pp_system_default';
+            providerId = 'pp_ngenius_ngenius';
           }
         } catch {
-          providerId = 'pp_system_default';
+          providerId = 'pp_ngenius_ngenius';
         }
       }
 
       // 1. Create the payment session on the backend
       const res = await http.post(`/store/payment-collections/${paymentCollectionId}/payment-sessions`, {
         provider_id: providerId,
-        data: typeof window !== 'undefined' ? { return_url: window.location.href } : {},
+        data: {},
       });
       const pc = (res as any)?.data?.payment_collection ?? (res as any)?.data?.paymentCollection ?? (res as any)?.data;
       const sessions = Array.isArray(pc?.payment_sessions) ? pc.payment_sessions : [];
-      const session = sessions?.[0];
-      if (!session?.id) {
-        throw new Error('Failed to initialize payment session.');
+      const session = sessions.find(
+        (s: any) => s.provider_id === "pp_ngenius_ngenius" || s.provider_id === "pp_ngenius" || s.provider_id === "ngenius" || s.data?.payment_url
+      );
+
+      if (!session?.data?.payment_url) {
+        throw new Error('Failed to retrieve hosted payment URL from N-Genius.');
       }
 
-      // 2. Authorize the payment session on the backend (completes/captures the payment!)
-      await http.post(`/store/payment-collections/${paymentCollectionId}/authorize`, {});
-
-      // 3. Close payment screen and reload page to show order as PAID!
-      setShowPaymentScreen(false);
-      router.reload();
+      // 2. Redirect customer to N-Genius Hosted Checkout
+      if (typeof window !== 'undefined') {
+        window.location.href = session.data.payment_url;
+      }
     } catch (e: any) {
-      const msg = String(e?.response?.data?.message ?? e?.message ?? 'Failed to complete payment');
+      const msg = String(e?.response?.data?.message ?? e?.message ?? 'Failed to initialize N-Genius payment.');
       setPayError(msg);
     } finally {
       setPaying(false);
@@ -309,445 +279,6 @@ const OrderDetails: React.FC<{ className?: string }> = ({
   const originalSubtotal = Math.round(subtotalAmount * 1.25);
   const discountAmount = originalSubtotal - subtotalAmount;
 
-  if (showPaymentScreen) {
-    const paymentOptions = [
-      {
-        id: 'RECOMMENDED' as const,
-        label: 'Recommended for You',
-        icon: <IoThumbsUpOutline className="text-lg" />,
-        subtext: 'Fastest & most secure ways to pay'
-      },
-      {
-        id: 'SAVED' as const,
-        label: 'Saved Payment Options',
-        icon: <IoRefreshOutline className="text-lg" />,
-        subtext: 'Manage your saved cards'
-      },
-      {
-        id: 'CARDS' as const,
-        label: 'Credit / Debit / ATM Card',
-        icon: <IoCardOutline className="text-lg" />,
-        subtext: 'Add and secure cards. Get upto 5% cashback'
-      },
-      {
-        id: 'COD' as const,
-        label: 'Cash on Delivery',
-        icon: <IoWalletOutline className="text-lg" />,
-        subtext: 'Pay cash on doorstep. AED 9 fee applies'
-      },
-      {
-        id: 'GIFT' as const,
-        label: 'Have a Dubai Police Gift Card?',
-        icon: <IoGiftOutline className="text-lg" />,
-        subtext: 'Redeem gift cards for purchase'
-      },
-      {
-        id: 'UPI' as const,
-        label: 'UPI',
-        icon: <span className="text-[10px] border border-gray-400 px-1 rounded font-bold font-mono select-none">UPI</span>,
-        subtext: 'Instant payment via GPay, PhonePe etc'
-      },
-      {
-        id: 'EMI' as const,
-        label: 'EMI',
-        icon: <IoCalendarOutline className="text-lg" />,
-        subtext: 'Easy monthly installment plans'
-      },
-    ];
-
-    const platformFee = totalAmount > 20 ? 8 : 0;
-    const currentFee = activePaymentTab === 'COD' ? 9 : 0;
-    const couponDiscount = totalAmount > 50 ? 16 : 0;
-
-    const mrp = Math.round((totalAmount + 50) * 1.5);
-    const mrpDiscount = mrp + platformFee - totalAmount - couponDiscount;
-    const finalAmount = totalAmount + currentFee;
-
-    return (
-      <div className={`${className} bg-transparent min-h-screen pb-12 font-body`}>
-        {/* Header */}
-        <div className="flex justify-between items-center pb-4 border-b border-gray-200 mb-6 font-body">
-          <button
-            onClick={() => setShowPaymentScreen(false)}
-            className="flex items-center gap-2.5 text-lg font-bold text-heading font-body hover:text-black transition"
-          >
-            <IoArrowBackOutline className="text-xl" /> Complete Payment
-          </button>
-          <span className="flex items-center gap-1.5 text-xs text-gray-500 font-semibold uppercase tracking-wider font-body">
-            <IoLockClosedOutline className="text-base text-green-600" /> 100% Secure
-          </span>
-        </div>
-
-        {/* Main Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start font-body">
-          {/* Left Navigation Tabs */}
-          <div className="lg:col-span-4 border border-gray-200 bg-white rounded-xl overflow-hidden font-body">
-            <div className="flex flex-col">
-              {paymentOptions.map((opt) => {
-                const isActive = activePaymentTab === opt.id;
-                return (
-                  <button
-                    key={opt.id}
-                    onClick={() => {
-                      setActivePaymentTab(opt.id);
-                    }}
-                    className={`w-full text-left p-4 flex gap-3.5 border-b border-gray-100 last:border-0 transition duration-150 ${
-                      isActive
-                        ? 'bg-white border-l-4 border-l-[#fbbf24] text-heading font-bold'
-                        : 'bg-gray-50 text-gray-600 hover:bg-gray-100 font-medium'
-                    }`}
-                  >
-                    <div className="mt-0.5 text-gray-500">{opt.icon}</div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm">
-                        {opt.label}
-                      </div>
-                      {opt.id === 'CARDS' ? (
-                        <div className="mt-1">
-                          <p className="text-[11px] text-gray-400 font-normal">Add and secure cards</p>
-                          <p className="text-[11px] text-emerald-600 font-semibold">Get upto 5% cashback • 2 offers available</p>
-                        </div>
-                      ) : (
-                        opt.subtext && (
-                          <p className="text-[11px] text-gray-400 font-normal mt-0.5">{opt.subtext}</p>
-                        )
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Middle Content Panel */}
-          <div className="lg:col-span-4 border border-gray-200 bg-white rounded-xl p-5 min-h-[360px] flex flex-col justify-between font-body">
-            {activePaymentTab === 'RECOMMENDED' && (
-              <div className="space-y-4">
-                <h4 className="text-sm font-bold text-heading">Recommended Payment Options</h4>
-                <p className="text-xs text-gray-500 leading-relaxed font-normal">
-                  Select one of our popular secure payment options to complete your transaction instantly.
-                </p>
-                <div className="space-y-2 pt-2">
-                  <button
-                    onClick={() => setActivePaymentTab('CARDS')}
-                    className="w-full py-2.5 px-3 border border-gray-200 hover:border-heading rounded-lg flex items-center justify-between text-xs font-semibold text-heading"
-                  >
-                    <span>Credit / Debit / ATM Card</span>
-                    <span className="text-[10px] text-emerald-600 font-bold">5% Cashback</span>
-                  </button>
-                  <button
-                    onClick={() => setActivePaymentTab('UPI')}
-                    className="w-full py-2.5 px-3 border border-gray-200 hover:border-heading rounded-lg flex items-center justify-between text-xs font-semibold text-heading"
-                  >
-                    <span>UPI (Google Pay / Paytm)</span>
-                    <span className="text-[10px] text-gray-400">Instant</span>
-                  </button>
-                  <button
-                    onClick={() => setActivePaymentTab('COD')}
-                    className="w-full py-2.5 px-3 border border-gray-200 hover:border-heading rounded-lg flex items-center justify-between text-xs font-semibold text-heading"
-                  >
-                    <span>Cash on Delivery</span>
-                    <span className="text-[10px] text-gray-400">COD Fee Applies</span>
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {activePaymentTab === 'SAVED' && (
-              <div className="space-y-4">
-                <h4 className="text-sm font-bold text-heading">Saved Payment Options</h4>
-                <div className="space-y-3 pt-2">
-                  <label className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100/50">
-                    <input type="radio" name="saved_card" defaultChecked className="text-heading focus:ring-heading" />
-                    <div className="flex-1 text-xs font-normal">
-                      <p className="font-bold text-heading">Visa Debit Card (•••• 4242)</p>
-                      <p className="text-gray-400 mt-0.5">Expires 12/28 | Cardholder: {shippingAddress.name}</p>
-                    </div>
-                  </label>
-                  <div className="w-1/2">
-                    <label className="block text-[10px] font-bold text-heading uppercase mb-1">Enter CVV</label>
-                    <input
-                      type="password"
-                      maxLength={3}
-                      placeholder="•••"
-                      className="w-full h-9 text-center border border-gray-300 rounded focus:border-heading outline-none font-semibold text-sm"
-                    />
-                  </div>
-                </div>
-                <div className="pt-4 border-t border-gray-100">
-                  <Button
-                    onClick={submitDummyPayment}
-                    loading={paying}
-                    className="w-full h-11 bg-[#fbbf24] hover:bg-[#f59e0b] text-gray-900 font-bold text-sm rounded-md transition duration-150"
-                  >
-                    Pay {fmt(finalAmount, currency)}
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {activePaymentTab === 'CARDS' && (
-              <div className="space-y-4">
-                <h4 className="text-sm font-bold text-heading">Credit / Debit / ATM Card</h4>
-                <div className="space-y-3 pt-1 text-xs">
-                  <div>
-                    <label className="block text-[10px] font-bold text-heading uppercase mb-1">Cardholder Name</label>
-                    <input
-                      type="text"
-                      value={cardName}
-                      onChange={(e) => setCardName(e.target.value)}
-                      placeholder="e.g. John Doe"
-                      className="w-full h-10 px-3 border border-gray-300 rounded focus:border-heading outline-none font-medium uppercase text-left"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-heading uppercase mb-1">Card Number</label>
-                    <input
-                      type="text"
-                      value={cardNumber}
-                      onChange={handleCardNumberChange}
-                      placeholder="4000 1234 5678 9010"
-                      className="w-full h-10 px-3 border border-gray-300 rounded focus:border-heading outline-none font-medium"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[10px] font-bold text-heading uppercase mb-1">Expiration</label>
-                      <input
-                        type="text"
-                        value={cardExpiry}
-                        onChange={handleExpiryChange}
-                        placeholder="MM/YY"
-                        className="w-full h-10 px-3 border border-gray-300 rounded focus:border-heading outline-none font-medium text-center"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-heading uppercase mb-1">CVV</label>
-                      <input
-                        type="password"
-                        value={cardCvv}
-                        onChange={handleCvvChange}
-                        placeholder="•••"
-                        className="w-full h-10 px-3 border border-gray-300 rounded focus:border-heading outline-none font-medium text-center"
-                      />
-                    </div>
-                  </div>
-                </div>
-                <div className="pt-4 border-t border-gray-100">
-                  <Button
-                    onClick={submitDummyPayment}
-                    disabled={paying || !cardName || cardNumber.length < 19 || cardExpiry.length < 5 || cardCvv.length < 3}
-                    loading={paying}
-                    className="w-full h-11 bg-[#fbbf24] hover:bg-[#f59e0b] text-gray-900 font-bold text-sm rounded-md transition duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Pay {fmt(finalAmount, currency)}
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {activePaymentTab === 'COD' && (
-              <div className="space-y-4 flex-1 flex flex-col justify-between">
-                <div className="space-y-4">
-                  <h4 className="text-sm font-bold text-heading">Cash on Delivery</h4>
-                  <p className="text-xs text-gray-500 leading-relaxed font-normal">
-                    Due to handling costs, a nominal fee of AED 9 will be charged for orders placed using this option. Avoid this fee by paying online now.
-                  </p>
-                </div>
-                <div className="pt-4 border-t border-gray-100 font-normal">
-                  <Button
-                    onClick={async () => {
-                      setPaying(true);
-                      setTimeout(() => {
-                        setPaying(false);
-                        setShowPaymentScreen(false);
-                        router.reload();
-                      }, 1000);
-                    }}
-                    loading={paying}
-                    className="w-full h-11 bg-[#fbbf24] hover:bg-[#f59e0b] text-gray-900 font-bold text-sm rounded-md transition duration-150"
-                  >
-                    Place Order
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {activePaymentTab === 'GIFT' && (
-              <div className="space-y-4">
-                <h4 className="text-sm font-bold text-heading">Dubai Police Gift Card</h4>
-                <div className="space-y-3 pt-1 text-xs">
-                  <div>
-                    <label className="block text-[10px] font-bold text-heading uppercase mb-1">Gift Card Number</label>
-                    <input
-                      type="text"
-                      maxLength={16}
-                      placeholder="1234-5678-9012-3456"
-                      className="w-full h-10 px-3 border border-gray-300 rounded focus:border-heading outline-none font-medium text-left"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-heading uppercase mb-1">Card PIN</label>
-                    <input
-                      type="password"
-                      maxLength={6}
-                      placeholder="••••••"
-                      className="w-full h-10 px-3 border border-gray-300 rounded focus:border-heading outline-none font-medium text-center"
-                    />
-                  </div>
-                </div>
-                <div className="pt-4 border-t border-gray-100">
-                  <Button
-                    onClick={submitDummyPayment}
-                    loading={paying}
-                    className="w-full h-11 bg-[#fbbf24] hover:bg-[#f59e0b] text-gray-900 font-bold text-sm rounded-md transition duration-150"
-                  >
-                    Apply & Pay {fmt(finalAmount, currency)}
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {activePaymentTab === 'UPI' && (
-              <div className="space-y-4">
-                <h4 className="text-sm font-bold text-heading">UPI Payment</h4>
-                <div className="space-y-3 pt-1 text-xs">
-                  <div>
-                    <label className="block text-[10px] font-bold text-heading uppercase mb-1">Enter UPI ID</label>
-                    <input
-                      type="text"
-                      placeholder="username@bank"
-                      className="w-full h-10 px-3 border border-gray-300 rounded focus:border-heading outline-none font-medium text-left"
-                    />
-                    <p className="text-[10px] text-gray-400 mt-1">Pay instantly using Google Pay, PhonePe or BHIM UPI.</p>
-                  </div>
-                </div>
-                <div className="pt-4 border-t border-gray-100">
-                  <Button
-                    onClick={submitDummyPayment}
-                    loading={paying}
-                    className="w-full h-11 bg-[#fbbf24] hover:bg-[#f59e0b] text-gray-900 font-bold text-sm rounded-md transition duration-150"
-                  >
-                    Pay {fmt(finalAmount, currency)}
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {activePaymentTab === 'EMI' && (
-              <div className="space-y-4 flex-1 flex flex-col justify-between">
-                <div className="space-y-4">
-                  <h4 className="text-sm font-bold text-heading">EMI (Easy Monthly Installments)</h4>
-                  <div className="space-y-3 pt-1 text-xs">
-                    <div>
-                      <label className="block text-[10px] font-bold text-heading uppercase mb-1">Select Bank</label>
-                      <select className="w-full h-10 px-2 border border-gray-300 rounded focus:border-heading outline-none font-medium bg-white text-left">
-                        <option>Emirates NBD</option>
-                        <option>Abu Dhabi Commercial Bank (ADCB)</option>
-                        <option>Dubai Islamic Bank</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-heading uppercase mb-1">Select Plan</label>
-                      <select className="w-full h-10 px-2 border border-gray-300 rounded focus:border-heading outline-none font-medium bg-white text-left">
-                        <option>3 Months @ 0% Interest (AED {Math.round(finalAmount / 3)}/mo)</option>
-                        <option>6 Months @ 0.5% Interest (AED {Math.round(finalAmount * 1.03 / 6)}/mo)</option>
-                        <option>12 Months @ 1% Interest (AED {Math.round(finalAmount * 1.12 / 12)}/mo)</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-                <div className="pt-4 border-t border-gray-100 font-normal">
-                  <Button
-                    onClick={submitDummyPayment}
-                    loading={paying}
-                    className="w-full h-11 bg-[#fbbf24] hover:bg-[#f59e0b] text-gray-900 font-bold text-sm rounded-md transition duration-150"
-                  >
-                    Pay EMI
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Right Sidebar Price Details */}
-          <div className="lg:col-span-4 space-y-4 font-body">
-            <div className="border border-gray-200 rounded-xl bg-white p-5">
-              <h3 className="font-bold text-sm text-heading border-b border-gray-100 pb-2.5 mb-3.5 uppercase tracking-wider">
-                Price details
-              </h3>
-
-              <div className="space-y-3.5 text-xs md:text-sm text-heading font-medium">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">MRP (incl. of all taxes)</span>
-                  <span className="font-mono">{fmt(mrp, currency)}</span>
-                </div>
-
-                {/* Fees Section */}
-                <div className="border-t border-gray-100 pt-3 space-y-2">
-                  <div className="flex justify-between items-center font-semibold text-gray-700">
-                    <span>Fees</span>
-                    <span className="text-xs">▲</span>
-                  </div>
-                  {currentFee > 0 && (
-                    <div className="flex justify-between items-center pl-3 text-xs text-gray-500">
-                      <span>Payment Handling Fee</span>
-                      <span className="font-mono">{fmt(currentFee, currency)}</span>
-                    </div>
-                  )}
-                  {platformFee > 0 && (
-                    <div className="flex justify-between items-center pl-3 text-xs text-gray-500">
-                      <span>Platform Fee</span>
-                      <span className="font-mono">{fmt(platformFee, currency)}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Discounts Section */}
-                <div className="border-t border-gray-100 pt-3 space-y-2">
-                  <div className="flex justify-between items-center font-semibold text-gray-700">
-                    <span>Discounts</span>
-                    <span className="text-xs">▲</span>
-                  </div>
-                  {mrpDiscount > 0 && (
-                    <div className="flex justify-between items-center pl-3 text-xs text-gray-500">
-                      <span>MRP Discount</span>
-                      <span className="text-emerald-600 font-mono">-{fmt(mrpDiscount, currency)}</span>
-                    </div>
-                  )}
-                  {couponDiscount > 0 && (
-                    <div className="flex justify-between items-center pl-3 text-xs text-gray-500">
-                      <span>Coupons for you</span>
-                      <span className="text-emerald-600 font-mono">-{fmt(couponDiscount, currency)}</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="border-t border-gray-150 pt-3 flex justify-between items-center font-bold text-base text-heading">
-                  <span>Total Amount</span>
-                  <span className="font-mono text-[#3F51B5]">{fmt(finalAmount, currency)}</span>
-                </div>
-              </div>
-
-              {/* 5% Cashback green box */}
-              <div className="bg-[#E8F5E9] border border-[#C8E6C9] rounded-xl p-3 mt-5 flex justify-between items-center text-xs text-[#2E7D32]">
-                <div className="font-semibold leading-relaxed">
-                  <p className="font-bold text-[#1B5E20] text-sm">5% Cashback</p>
-                  <p className="text-gray-600">Claim now with payment offers</p>
-                </div>
-                <div className="flex items-center gap-1">
-                  <div className="w-5 h-5 rounded-full bg-white border border-gray-200 flex items-center justify-center font-bold font-mono text-[9px] text-gray-500">G</div>
-                  <div className="w-5 h-5 rounded-full bg-[#3F51B5] text-white flex items-center justify-center font-bold font-mono text-[9px]">P</div>
-                  <div className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center font-bold text-[9px] text-gray-600">+3</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className={`${className} bg-transparent min-h-screen pb-12 font-body`}>
       <Link href={ROUTES.ORDERS} className="inline-flex items-center text-sm font-semibold text-gray-600 hover:text-black transition gap-2 mb-5 font-body">
@@ -755,19 +286,26 @@ const OrderDetails: React.FC<{ className?: string }> = ({
       </Link>
 
       {isPaymentPending && !isCancelled && (
-        <div className="bg-[#FEFBF7] border border-[#FFE8C5] rounded-md p-4 flex flex-col sm:flex-row justify-between items-center gap-3.5 mb-5 font-body">
-          <span className="text-xs md:text-sm text-heading font-medium">
-            Pay online for a smooth doorstep experience
-          </span>
-          <Button
-            type="button"
-            onClick={continuePayment}
-            loading={paying}
-            disabled={paying}
-            className="h-9 px-5 text-xs font-bold font-body uppercase bg-heading hover:bg-gray-600 text-white"
-          >
-            Pay {fmt(totalAmount, currency)}
-          </Button>
+        <div className="mb-5 font-body">
+          <div className="bg-[#FEFBF7] border border-[#FFE8C5] rounded-md p-4 flex flex-col sm:flex-row justify-between items-center gap-3.5 font-body">
+            <span className="text-xs md:text-sm text-heading font-medium">
+              Pay online for a smooth doorstep experience
+            </span>
+            <Button
+              type="button"
+              onClick={continuePayment}
+              loading={paying}
+              disabled={paying}
+              className="h-9 px-5 text-xs font-bold font-body uppercase bg-heading hover:bg-gray-600 text-white"
+            >
+              Pay {fmt(totalAmount, currency)}
+            </Button>
+          </div>
+          {payError && (
+            <div className="bg-red-50 border border-red-200 text-red-600 rounded-md p-3.5 text-xs font-semibold mt-3.5 flex items-center gap-2">
+              <span>⚠️</span> {payError}
+            </div>
+          )}
         </div>
       )}
 

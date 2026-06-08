@@ -1,42 +1,7 @@
-import {
-  IoLogoInstagram,
-  IoLogoTwitter,
-  IoLogoFacebook,
-  IoLogoYoutube,
-} from 'react-icons/io5'
+
 
 export const footer = {
   widgets: [
-    {
-      id: 1,
-      widgetTitle: 'widget-title-social',
-      lists: [
-        {
-          id: 1,
-          title: 'link-instagram',
-          path: 'https://www.instagram.com/',
-          icon: <IoLogoInstagram />,
-        },
-        {
-          id: 2,
-          title: 'link-twitter',
-          path: 'https://twitter.com/',
-          icon: <IoLogoTwitter />,
-        },
-        {
-          id: 3,
-          title: 'link-facebook',
-          path: 'https://www.facebook.com/',
-          icon: <IoLogoFacebook />,
-        },
-        {
-          id: 4,
-          title: 'link-youtube',
-          path: 'https://www.youtube.com/',
-          icon: <IoLogoYoutube />,
-        },
-      ],
-    },
     {
       id: 2,
       widgetTitle: 'widget-title-contact',
@@ -213,63 +178,10 @@ export const footerContemporary = {
       id: 0,
       isCompanyIntroduction: true,
       description:
-        'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua',
+        'The Authorized  online store for all Dubai Police merchandise Official merchandise , proudly representing excellence.',
 
       lists: [
-        {
-          id: 1,
-          title: 'link-instagram',
-          path: 'https://www.instagram.com/',
-          icon: <IoLogoInstagram />,
-        },
-        {
-          id: 2,
-          title: 'link-twitter',
-          path: 'https://twitter.com/',
-          icon: <IoLogoTwitter />,
-        },
-        {
-          id: 3,
-          title: 'link-facebook',
-          path: 'https://www.facebook.com/',
-          icon: <IoLogoFacebook />,
-        },
-        {
-          id: 4,
-          title: 'link-youtube',
-          path: 'https://www.youtube.com/',
-          icon: <IoLogoYoutube />,
-        },
-      ],
-    },
-    {
-      id: 1,
-      widgetTitle: 'widget-title-social',
-      lists: [
-        {
-          id: 1,
-          title: 'link-instagram',
-          path: 'https://www.instagram.com/',
-          icon: <IoLogoInstagram />,
-        },
-        {
-          id: 2,
-          title: 'link-twitter',
-          path: 'https://twitter.com/',
-          icon: <IoLogoTwitter />,
-        },
-        {
-          id: 3,
-          title: 'link-facebook',
-          path: 'https://www.facebook.com/',
-          icon: <IoLogoFacebook />,
-        },
-        {
-          id: 4,
-          title: 'link-youtube',
-          path: 'https://www.youtube.com/',
-          icon: <IoLogoYoutube />,
-        },
+
       ],
     },
     {

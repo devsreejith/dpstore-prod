@@ -58,56 +58,7 @@ const fetchProducts = async ({ queryKey, pageParam }: any) => {
 	}
 
 	if (safeOptions?.category) {
-		try {
-			const { data: catData } = await http.get(`/store/product-categories`, {
-				params: { limit: 100, offset: 0 },
-			});
-			const categoriesList = catData?.product_categories ?? [];
-			
-			// Map category ID to category details
-			const categoryMap = new Map<string, any>();
-			for (const c of categoriesList) {
-				categoryMap.set(c.id, c);
-			}
-
-			// Helper to recursively collect all descendant category IDs
-			const collectSubtreeIds = (catId: string, visited: Set<string>) => {
-				if (visited.has(catId)) return;
-				visited.add(catId);
-				const cat = categoryMap.get(catId);
-				const children = cat?.category_children ?? cat?.children ?? [];
-				if (Array.isArray(children)) {
-					for (const child of children) {
-						collectSubtreeIds(child.id, visited);
-					}
-				}
-			};
-
-			// Build map from category handle -> category object
-			const handleToIdsMap = new Map<string, string[]>();
-			for (const c of categoriesList) {
-				if (c.handle) {
-					const visited = new Set<string>();
-					collectSubtreeIds(c.id, visited);
-					handleToIdsMap.set(c.handle, Array.from(visited));
-				}
-			}
-
-			const handles = safeOptions.category.split(",");
-			const categoryIds: string[] = [];
-			for (const h of handles) {
-				const ids = handleToIdsMap.get(h);
-				if (ids) {
-					categoryIds.push(...ids);
-				}
-			}
-
-			if (categoryIds.length > 0) {
-				params.category_id = Array.from(new Set(categoryIds));
-			}
-		} catch (err) {
-			console.error("Error resolving categories for product filtering", err);
-		}
+		params.category = safeOptions.category;
 	}
 
 	const { data } = await http.get(endpoint, { params });

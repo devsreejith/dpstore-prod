@@ -10,6 +10,13 @@ import { getDirection } from '@utils/get-direction';
 import motionProps from '@components/common/drawer/motion';
 import { useProductsQuery } from "@framework/product/get-all-products";
 
+const sortOptions = [
+  { name: 'text-sorting-options', value: 'options' },
+  { name: 'text-newest', value: 'newest' },
+  { name: 'text-price-low-high', value: 'price_asc' },
+  { name: 'text-price-high-low', value: 'price_desc' },
+];
+
 export default function SearchTopBar() {
   const { openFilter, displayFilter, closeFilter } = useUI();
   const { t } = useTranslation('common');
@@ -48,14 +55,7 @@ export default function SearchTopBar() {
         <div className="flex-shrink-0 text-body text-xs md:text-sm leading-4 ltr:pr-4 rtl:pl-4 ltr:md:mr-6 rtl:md:ml-6 ltr:pl-2 rtl:pr-2 hidden lg:block">
           {totalItems} {t('text-items')}
         </div>
-        <ListBox
-          options={[
-            { name: 'text-sorting-options', value: 'options' },
-            { name: 'text-newest', value: 'newest' },
-            { name: 'text-price-low-high', value: 'price_asc' },
-            { name: 'text-price-high-low', value: 'price_desc' },
-          ]}
-        />
+        <ListBox options={sortOptions} />
       </div>
       {/* TODO: need to use just one drawer component */}
       <Drawer placement={dir === 'rtl' ? 'right' : 'left'} open={displayFilter} onClose={closeFilter} {...motionProps}>

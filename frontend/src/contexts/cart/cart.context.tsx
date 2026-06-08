@@ -179,11 +179,11 @@ export const CartProvider: React.FC = (props) => {
       try {
         const c = await retrieveCart(existingId);
         if (c?.id) {
-          if (!c?.region_id) {
+          if (!c?.region_id || c?.completed_at) {
             setCartId(null);
           } else {
-          setCart(c);
-          return c;
+            setCart(c);
+            return c;
           }
         }
       } catch {
@@ -438,7 +438,15 @@ export const CartProvider: React.FC = (props) => {
         setCartId(null);
         setCart(null);
         await ensureCart();
-        return { type: "order" as const, order: resComplete?.data?.order };
+        const order = resComplete?.data?.order;
+        const sessions = order?.payment_collections?.[0]?.payment_sessions || [];
+        const ngeniusSession = sessions.find(
+          (s: any) => s.provider_id === "pp_ngenius_ngenius" || s.provider_id === "pp_ngenius" || s.provider_id === "ngenius" || s.data?.payment_url
+        );
+        if (ngeniusSession?.data?.payment_url && typeof window !== "undefined") {
+          window.location.href = ngeniusSession.data.payment_url;
+        }
+        return { type: "order" as const, order };
       }
       const errMsg = String(resComplete?.data?.error?.message ?? "").trim();
       if (errMsg) throw new Error(errMsg);

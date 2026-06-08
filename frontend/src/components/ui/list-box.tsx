@@ -13,7 +13,7 @@ export default function ListBox({ options }: { options: Option[] }) {
   const router = useRouter();
   const { pathname, query } = router;
   const currentSelectedItem = query?.sort
-    ? options.find((o) => o.value === query.sort)!
+    ? (options.find((o) => o.value === query.sort) ?? options[0])
     : options[0];
   const [selectedItem, setSelectedItem] = useState<Option>(currentSelectedItem);
   useEffect(() => {
@@ -39,7 +39,7 @@ export default function ListBox({ options }: { options: Option[] }) {
   }
 
   return (
-    <Listbox value={selectedItem} onChange={handleItemClick}>
+    <Listbox value={selectedItem} onChange={handleItemClick} by="value">
       {({ open }) => (
         <div className="relative ltr:ml-2 rtl:mr-2 ltr:lg:ml-0 rtl:lg:mr-0 z-10 min-w-[180px]">
           <Listbox.Button className="border border-gray-300  text-heading text-[13px] md:text-sm font-semibold  relative w-full py-2 ltr:pl-3 rtl:pr-3 ltr:pr-10 rtl:pl-10 ltr:text-left rtl:text-right bg-white rounded-lg shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-opacity-75 focus-visible:ring-white focus-visible:ring-offset-orange-300 focus-visible:ring-offset-2 focus-visible:border-indigo-500 sm:text-sm cursor-pointer">

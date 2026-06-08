@@ -1347,12 +1347,12 @@ export const homeContemporaryHeroSlider = [
     slug: "latest-collections",
     image: {
       mobile: {
-        url: "/assets/images/hero/banner-mobile-11.png",
+        url: "/assets/images/hero/banner-mobile-11.webp",
         width: 900,
         height: 540,
       },
       desktop: {
-        url: "/assets/images/hero/banner-11.webp",
+        url: "/assets/images/hero/banner-2.webp",
         width: 1920,
         height: 900,
       },
@@ -1370,6 +1370,23 @@ export const homeContemporaryHeroSlider = [
       },
       desktop: {
         url: "/assets/images/hero/banner-12-1.webp",
+        width: 1920,
+        height: 900,
+      },
+    },
+  },
+  {
+    id: 4,
+    title: "We picked every item with care you must try",
+    slug: "latest-collections",
+    image: {
+      mobile: {
+        url: "/assets/images/hero/banner-mobile-14.webp",
+        width: 900,
+        height: 540,
+      },
+      desktop: {
+        url: "/assets/images/hero/banner-4.webp",
         width: 1920,
         height: 900,
       },

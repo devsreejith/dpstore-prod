@@ -11,9 +11,8 @@ const ShopDiscount: React.FC = () => {
   const { t } = useTranslation('common');
   return (
     <div
-      className={`flex justify-center relative bg-borderBottom transition duration-200 ease-in ${
-        status === true ? 'h-0.5' : 'py-4'
-      }`}
+      className={`flex justify-center relative bg-borderBottom transition duration-200 ease-in ${status === true ? 'h-0.5' : 'py-4'
+        }`}
     >
       <Container className={status === true ? 'opacity-0 invisible' : 'w-full'}>
         <div className="relative text-center text-heading text-xs md:text-sm leading-6 md:leading-7 px-8">

@@ -57,6 +57,27 @@ const modules = [
       ],
     },
   },
+  {
+    resolve: "@medusajs/medusa/payment",
+    options: {
+      providers: [
+        {
+          resolve: "./src/modules/ngenius-payment",
+          id: "ngenius",
+          options: {
+            apiKey: process.env.NGENIUS_API_KEY,
+            merchantId: process.env.NGENIUS_MERCHANT_ID,
+            outletId: process.env.NGENIUS_OUTLET_ID,
+            tokenUrl: process.env.NGENIUS_TOKEN_URL || "https://api-gateway.sandbox.ngenius-payments.com/identity/auth/access-token",
+            transactionUrl: process.env.NGENIUS_TRANSACTION_URL || "https://api-gateway.sandbox.ngenius-payments.com/transactions/outlets/{OUTLET_ID}/orders",
+            successUrl: process.env.NGENIUS_SUCCESS_URL || "http://localhost:8000/order",
+            failureUrl: process.env.NGENIUS_FAILURE_URL || "http://localhost:8000/order",
+            cancelUrl: process.env.NGENIUS_CANCEL_URL || "http://localhost:8000/order",
+          },
+        },
+      ],
+    },
+  },
 ]
 
 module.exports = defineConfig({
