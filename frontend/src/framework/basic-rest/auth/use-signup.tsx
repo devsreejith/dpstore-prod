@@ -1,6 +1,7 @@
 import { useUI } from "@contexts/ui.context";
 import http from "@framework/utils/http";
 import { useMutation } from "@tanstack/react-query";
+import Cookies from "js-cookie";
 
 export interface SignUpInputType {
   email: string;
@@ -40,6 +41,8 @@ async function signUp(input: SignUpInputType) {
   });
   const loginToken = String(loginRes?.data?.token ?? "").trim();
   if (!loginToken) throw new Error("Signup failed");
+
+  Cookies.set("auth_token", loginToken);
 
   await http.post(
     "/auth/session",

@@ -9,8 +9,11 @@ export interface LoginInputType {
   remember_me: boolean;
 }
 
+import Cookies from "js-cookie";
+
 async function logout() {
   await http.delete("/auth/session");
+  Cookies.remove("auth_token");
   return { ok: true };
 }
 

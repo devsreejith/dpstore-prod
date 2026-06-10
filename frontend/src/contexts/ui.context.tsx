@@ -274,6 +274,12 @@ export const UIProvider: React.FC = (props) => {
     let mounted = true;
     (async () => {
       try {
+        const { getToken } = require("@framework/utils/get-token");
+        const token = getToken();
+        if (!token) {
+          if (mounted) unauthorize();
+          return;
+        }
         await http.get("/store/customers/me");
         if (mounted) authorize();
       } catch {

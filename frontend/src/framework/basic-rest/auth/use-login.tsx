@@ -1,6 +1,7 @@
 import { useUI } from '@contexts/ui.context';
 import http from '@framework/utils/http';
 import { useMutation } from '@tanstack/react-query';
+import Cookies from 'js-cookie';
 
 export interface LoginInputType {
   email: string;
@@ -14,6 +15,9 @@ async function login(input: LoginInputType) {
   });
   const token = String(res?.data?.token ?? '').trim();
   if (!token) throw new Error('Login failed');
+  
+  Cookies.set('auth_token', token);
+  
   await http.post(
     '/auth/session',
     {},
