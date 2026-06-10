@@ -1,9 +1,5 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
-import {
-  deleteProductCategoriesWorkflow,
-  updateProductCategoriesWorkflow,
-} from "@medusajs/medusa/core-flows"
 import { z } from "zod"
 import { mapMedusaCategoryToFrontend } from "../../../_shared/frontend"
 
@@ -76,6 +72,7 @@ export async function PATCH(req: MedusaRequest, res: MedusaResponse) {
   if (parsed.data.image !== undefined) metadata.image = parsed.data.image ?? undefined
   if (Object.keys(metadata).length) update.metadata = metadata
 
+  const { updateProductCategoriesWorkflow } = await import("@medusajs/medusa/core-flows")
   const { result } = await updateProductCategoriesWorkflow(req.scope).run({
     input: {
       selector: { id },
@@ -97,6 +94,7 @@ export async function DELETE(req: MedusaRequest, res: MedusaResponse) {
     return
   }
 
+  const { deleteProductCategoriesWorkflow } = await import("@medusajs/medusa/core-flows")
   await deleteProductCategoriesWorkflow(req.scope).run({ input: [id] })
   res.status(204).send()
 }

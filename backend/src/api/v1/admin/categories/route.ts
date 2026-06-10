@@ -1,6 +1,5 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
-import { createProductCategoriesWorkflow } from "@medusajs/medusa/core-flows"
 import { z } from "zod"
 import { mapMedusaCategoryToFrontend } from "../../_shared/frontend"
 
@@ -59,6 +58,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
   if (parsed.data.icon) metadata.icon = parsed.data.icon
   if (parsed.data.image) metadata.image = parsed.data.image
 
+  const { createProductCategoriesWorkflow } = await import("@medusajs/medusa/core-flows")
   const { result } = await createProductCategoriesWorkflow(req.scope).run({
     input: {
       product_categories: [

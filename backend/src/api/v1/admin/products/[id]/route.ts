@@ -1,6 +1,5 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
-import { deleteProductsWorkflow, updateProductsWorkflow } from "@medusajs/medusa/core-flows"
 import { z } from "zod"
 import { mapMedusaProductToFrontend } from "../../../_shared/frontend"
 
@@ -142,6 +141,7 @@ export async function PATCH(req: MedusaRequest, res: MedusaResponse) {
     },
   }
 
+  const { updateProductsWorkflow } = await import("@medusajs/medusa/core-flows")
   const { result } = await updateProductsWorkflow(req.scope).run({
     input: {
       selector: { id },
@@ -163,6 +163,7 @@ export async function DELETE(req: MedusaRequest, res: MedusaResponse) {
     return
   }
 
+  const { deleteProductsWorkflow } = await import("@medusajs/medusa/core-flows")
   await deleteProductsWorkflow(req.scope).run({ input: { ids: [id] } })
   res.status(204).send()
 }

@@ -1,6 +1,5 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys, ProductStatus } from "@medusajs/framework/utils"
-import { createProductsWorkflow, createInventoryLevelsWorkflow } from "@medusajs/medusa/core-flows"
 import { z } from "zod"
 import { mapMedusaProductToFrontend } from "../../_shared/frontend"
 
@@ -142,6 +141,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
     const sku = (parsed.data.item_code || parsed.data.sku || "").trim()
     const collection_id = (parsed.data.collection_id || "").trim()
 
+    const { createProductsWorkflow } = await import("@medusajs/medusa/core-flows")
     const { result } = await createProductsWorkflow(req.scope).run({
       input: {
         products: [
@@ -220,6 +220,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
       const stockLocationId = await resolveStockLocationId(query)
       const inventoryItemId = variant.inventory_items?.[0]?.inventory_item_id
       if (stockLocationId && inventoryItemId) {
+        const { createInventoryLevelsWorkflow } = await import("@medusajs/medusa/core-flows")
         await createInventoryLevelsWorkflow(req.scope).run({
           input: {
             inventory_levels: [

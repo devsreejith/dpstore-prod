@@ -1,5 +1,4 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
-import { uploadFilesWorkflow } from "@medusajs/core-flows"
 import crypto from "crypto"
 import path from "path"
 import fs from "fs"
@@ -119,6 +118,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
     return
   }
 
+  const { uploadFilesWorkflow } = await import("@medusajs/core-flows")
   const { result: uploadResult } = await uploadFilesWorkflow(req.scope).run({
     input: { files: cleaned },
   })

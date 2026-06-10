@@ -3,32 +3,29 @@ import { useEffect } from "react"
 
 const LoginCustomizationWidget = () => {
   useEffect(() => {
-    // Function to replace the text
+    // Function to safely replace text within text nodes
     const replaceText = () => {
-      // 1. Replace the Title
-      const titles = document.querySelectorAll("h1, h2");
-      titles.forEach(title => {
-        if (title.textContent && title.textContent.includes("Welcome to Medusa")) {
-          title.textContent = "Dubai Police Store Admin";
+      const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null);
+      let node;
+      while ((node = walk.nextNode())) {
+        if (node.nodeValue) {
+          if (node.nodeValue.includes("Welcome to Medusa")) {
+            node.nodeValue = node.nodeValue.replace("Welcome to Medusa", "Dubai Police Store Admin");
+          }
+          if (node.nodeValue.includes("Continue with Email")) {
+            node.nodeValue = node.nodeValue.replace("Continue with Email", "Login");
+          }
         }
-      });
-
-      // 2. Replace the 'Continue with Email' button
-      const buttons = document.querySelectorAll("button");
-      buttons.forEach(button => {
-        if (button.textContent && button.textContent.includes("Continue with Email")) {
-          // If the button has a span inside (which Medusa UI often does), replace the text node
-          // Or just replace the textContent entirely if it doesn't break the styling
-          button.textContent = "Login";
-        }
-      });
+      }
     };
 
     // Run it immediately for the initial load
     replaceText();
 
     // Set up an observer to catch it if React re-renders or changes state
-    const observer = new MutationObserver(() => {
+    const observer = new MutationObserver((mutations) => {
+      // Only run if there are added nodes or character data changes
+      // to avoid unnecessary traversals
       replaceText();
     });
 

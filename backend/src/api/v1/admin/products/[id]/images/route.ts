@@ -1,7 +1,5 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
-import { updateProductsWorkflow } from "@medusajs/medusa/core-flows"
-import { uploadFilesWorkflow } from "@medusajs/core-flows"
 import { mapMedusaProductToFrontend } from "../../../../_shared/frontend"
 import crypto from "crypto"
 import path from "path"
@@ -132,6 +130,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
     return
   }
 
+  const { uploadFilesWorkflow } = await import("@medusajs/core-flows")
   const { result: uploadResult } = await uploadFilesWorkflow(req.scope).run({
     input: { files: cleaned },
   })
@@ -171,6 +170,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
 
   const nextImages = [...existingUrls, ...urls].map((url) => ({ url }))
 
+  const { updateProductsWorkflow } = await import("@medusajs/medusa/core-flows")
   const { result } = await updateProductsWorkflow(req.scope).run({
     input: {
       selector: { id },

@@ -1,7 +1,5 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
-import { cancelOrderWorkflow } from "@medusajs/medusa/core-flows";
-
 export async function POST(req: MedusaRequest, res: MedusaResponse) {
   const orderId = String(req.params.id ?? "").trim();
   if (!orderId) {
@@ -45,6 +43,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
     }
 
     // 5. Run standard Medusa v2 cancel order workflow
+    const { cancelOrderWorkflow } = await import("@medusajs/medusa/core-flows");
     await cancelOrderWorkflow(req.scope).run({
       input: {
         order_id: orderId,

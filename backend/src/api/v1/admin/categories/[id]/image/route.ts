@@ -1,6 +1,4 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
-import { updateProductCategoriesWorkflow } from "@medusajs/medusa/core-flows"
-import { uploadFilesWorkflow } from "@medusajs/core-flows"
 import { mapMedusaCategoryToFrontend } from "../../../../_shared/frontend"
 import crypto from "crypto"
 import path from "path"
@@ -80,6 +78,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
   const ext = path.extname(file.originalname || "").toLowerCase()
   const filename = `${crypto.randomUUID()}${ext || ".jpg"}`
 
+  const { uploadFilesWorkflow } = await import("@medusajs/core-flows")
   const { result: uploadResult } = await uploadFilesWorkflow(req.scope).run({
     input: {
       files: [
@@ -99,6 +98,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
     return
   }
 
+  const { updateProductCategoriesWorkflow } = await import("@medusajs/medusa/core-flows")
   const { result } = await updateProductCategoriesWorkflow(req.scope).run({
     input: {
       selector: { id },
