@@ -253,11 +253,18 @@ const CategoriesImportExportPage = () => {
         if (!name) return null
 
         const key = `${safeString(parentId).trim()}|${name.toLowerCase()}`
-        const slug = (slugOverride ? safeString(slugOverride).trim() : "") || slugify(name)
-        const byHandle = slug ? index.byHandle.get(slug) : undefined
-        if (byHandle?.id) return byHandle
+        const baseSlug = (slugOverride ? safeString(slugOverride).trim() : "") || slugify(name)
+        
         const existing = index.byParentAndName.get(key)
         if (existing?.id) return existing
+
+        // Ensure the slug is unique in index.byHandle to prevent duplicate key constraint violations
+        let slug = baseSlug
+        let counter = 1
+        while (index.byHandle.has(slug)) {
+          slug = `${baseSlug}-${counter}`
+          counter++
+        }
 
         const createResp = await fetch("/api/v1/admin/categories", {
           method: "POST",
@@ -289,7 +296,24 @@ const CategoriesImportExportPage = () => {
 
       const updateCategory = async (id: string, extras: any) => {
         const patch: any = {}
-        if (extras?.slug !== undefined) patch.slug = extras.slug ? safeString(extras.slug).trim() : ""
+        if (extras?.slug !== undefined) {
+          const targetSlug = extras.slug ? safeString(extras.slug).trim() : ""
+          if (targetSlug) {
+            let slug = targetSlug
+            let counter = 1
+            while (index.byHandle.has(slug)) {
+              const existing = index.byHandle.get(slug)
+              if (existing?.id === id) {
+                break
+              }
+              slug = `${targetSlug}-${counter}`
+              counter++
+            }
+            patch.slug = slug
+          } else {
+            patch.slug = ""
+          }
+        }
         if (extras?.icon !== undefined) patch.icon = extras.icon ? safeString(extras.icon).trim() : null
         if (extras?.image !== undefined) patch.image = extras.image ? safeString(extras.image).trim() : null
         if (extras?.details !== undefined) patch.details = extras.details ? safeString(extras.details).trim() : ""
@@ -305,6 +329,21 @@ const CategoriesImportExportPage = () => {
         if (!resp.ok) {
           const errText = await resp.text()
           throw new Error(errText || "Update failed")
+        }
+
+        // Keep local index in sync
+        const existing = index.byId.get(id)
+        if (existing) {
+          if (patch.slug && existing.handle !== patch.slug) {
+            if (existing.handle) {
+              index.byHandle.delete(existing.handle)
+            }
+            existing.handle = patch.slug
+            index.byHandle.set(patch.slug, existing)
+          }
+          if (extras.is_active !== undefined) {
+            existing.is_active = extras.is_active
+          }
         }
       }
 
@@ -327,13 +366,19 @@ const CategoriesImportExportPage = () => {
 
           if (!level1) throw new Error("Missing Level 1")
 
-          const c1 = await ensureCategory(level1, null, undefined, !level2 && !level3 ? handle : undefined)
+          const c1 = await ensureCategory(level1, null, { is_active }, !level2 && !level3 ? handle : undefined)
           if (!c1?.id) throw new Error("Failed to ensure Level 1")
+          if (is_active !== undefined) {
+            await updateCategory(c1.id, { is_active })
+          }
 
           let target = c1
           if (level2) {
-            const c2 = await ensureCategory(level2, c1.id, undefined, level2 && !level3 ? handle : undefined)
+            const c2 = await ensureCategory(level2, c1.id, { is_active }, level2 && !level3 ? handle : undefined)
             if (!c2?.id) throw new Error("Failed to ensure Level 2")
+            if (is_active !== undefined) {
+              await updateCategory(c2.id, { is_active })
+            }
             target = c2
           }
           if (level3) {

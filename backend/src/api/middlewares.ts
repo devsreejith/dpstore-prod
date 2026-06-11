@@ -89,6 +89,17 @@ const limiter = rateLimit({
   limit: 120,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => {
+    const p = String(req.path || req.originalUrl || "")
+    return p.includes("/admin/") || p.includes("/admin")
+  }
+})
+
+const adminLimiter = rateLimit({
+  windowMs: 60_000,
+  limit: 2000,
+  standardHeaders: true,
+  legacyHeaders: false,
 })
 
 const cors = createCors()
@@ -271,7 +282,7 @@ export default defineMiddlewares({
         authenticate("user", ["session", "bearer", "api-key"]),
         requireAdminAuth,
         helmet(),
-        limiter,
+        adminLimiter,
       ],
     },
     {
@@ -281,7 +292,7 @@ export default defineMiddlewares({
         authenticate("user", ["session", "bearer", "api-key"]),
         requireAdminAuth,
         helmet(),
-        limiter,
+        adminLimiter,
       ],
     },
     {
@@ -291,7 +302,7 @@ export default defineMiddlewares({
         authenticate("user", ["session", "bearer", "api-key"]),
         requireAdminAuth,
         helmet(),
-        limiter,
+        adminLimiter,
       ],
     },
     {
@@ -301,7 +312,7 @@ export default defineMiddlewares({
         authenticate("user", ["session", "bearer", "api-key"]),
         requireAdminAuth,
         helmet(),
-        limiter,
+        adminLimiter,
       ],
     },
     {
@@ -311,7 +322,7 @@ export default defineMiddlewares({
         authenticate("user", ["session", "bearer", "api-key"]),
         requireAdminAuth,
         helmet(),
-        limiter,
+        adminLimiter,
       ],
     },
     {
@@ -321,7 +332,7 @@ export default defineMiddlewares({
         authenticate("user", ["session", "bearer", "api-key"]),
         requireAdminAuth,
         helmet(),
-        limiter,
+        adminLimiter,
       ],
     },
     {
@@ -332,7 +343,7 @@ export default defineMiddlewares({
         requireAdminAuth,
         requireSuperAdmin,
         helmet(),
-        limiter,
+        adminLimiter,
       ],
     },
     {
@@ -343,7 +354,7 @@ export default defineMiddlewares({
         requireAdminAuth,
         requireSuperAdmin,
         helmet(),
-        limiter,
+        adminLimiter,
       ],
     },
     {
@@ -354,7 +365,7 @@ export default defineMiddlewares({
         requireAdminAuth,
         requireSuperAdmin,
         helmet(),
-        limiter,
+        adminLimiter,
       ],
     },
     {
@@ -365,7 +376,7 @@ export default defineMiddlewares({
         requireAdminAuth,
         requireSuperAdmin,
         helmet(),
-        limiter,
+        adminLimiter,
       ],
     },
     {
@@ -375,7 +386,7 @@ export default defineMiddlewares({
         authenticate("user", ["session", "bearer", "api-key"]),
         requireAdminAuth,
         helmet(),
-        limiter,
+        adminLimiter,
       ],
     },
     {
@@ -385,7 +396,7 @@ export default defineMiddlewares({
         authenticate("user", ["session", "bearer", "api-key"]),
         requireAdminAuth,
         helmet(),
-        limiter,
+        adminLimiter,
       ],
     },
     {

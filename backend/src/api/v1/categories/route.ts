@@ -67,79 +67,16 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
     console.error("Failed to query product category counts:", err)
   }
 
-  const idToSlug = new Map<string, string>()
-  const slugToId = new Map<string, string>()
-  
-  const registerCategory = (cat: any) => {
-    const cId = String(cat?.id ?? "")
-    const cSlug = String(cat?.handle ?? cat?.slug ?? "")
-    if (cId && cSlug) {
-      idToSlug.set(cId, cSlug)
-      slugToId.set(cSlug, cId)
-    }
-    const kids = Array.isArray(cat?.category_children) ? cat.category_children : []
-    for (const kid of kids) {
-      registerCategory(kid)
-    }
-  }
-
-  for (const cat of categories ?? []) {
-    registerCategory(cat)
-  }
-
-  const logicalHierarchy: Record<string, string[]> = {
-    "gifts": [
-      "bags-&-wallets", "bags-&-pouches", "purse-&-wallets",
-      "keychain", "others",
-      "drinkware", "mug", "water-bottle",
-      "magnet", "metal-magnet",
-      "stationery", "notebook", "pencil", "pen", "pencil-case",
-      "travel-accessories", "neck-pillow",
-      "phone-cover", "cover"
-    ],
-    "bags-&-wallets": ["bags-&-pouches", "purse-&-wallets"],
-    "drinkware": ["mug", "water-bottle"],
-    "magnet": ["metal-magnet"],
-    "stationery": ["notebook", "pencil", "pen", "pencil-case"],
-    "travel-accessories": ["neck-pillow"],
-    "phone-cover": ["cover"],
-    "apparels": ["t-shirt", "dp-t-shirt", "kids-uniform", "hoodies", "caps", "dp-uniforms"],
-    "t-shirt": ["dp-t-shirt", "kids-uniform"],
-    "toys-games": ["toys", "toy-car", "plush-toys", "cars"],
-    "toys": ["toy-car", "plush-toys", "cars"]
-  }
-
-  const getProductCountBySlug = (slug: string): number => {
-    const collectedSlugs = new Set<string>()
-    collectedSlugs.add(slug)
-
-    const collectDescendants = (s: string) => {
-      const children = logicalHierarchy[s] || []
-      for (const ch of children) {
-        if (!collectedSlugs.has(ch)) {
-          collectedSlugs.add(ch)
-          collectDescendants(ch)
-        }
-      }
-    }
-    collectDescendants(slug)
-
-    let total = 0
-    for (const s of collectedSlugs) {
-      const cId = slugToId.get(s)
-      if (cId) {
-        total += directMap.get(cId) || 0
-      }
-    }
-    return total
-  }
-
   const enrichCategoryWithCounts = (cat: any): any => {
     const children = Array.isArray(cat?.category_children)
       ? cat.category_children.map(enrichCategoryWithCounts)
       : []
-    const cSlug = String(cat?.handle ?? cat?.slug ?? "")
-    const count = getProductCountBySlug(cSlug)
+    
+    let count = directMap.get(String(cat.id)) || 0
+    for (const child of children) {
+      count += child.productCount || 0
+    }
+
     return {
       ...cat,
       category_children: children,
