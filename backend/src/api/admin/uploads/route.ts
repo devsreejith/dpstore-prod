@@ -90,7 +90,7 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
       throw new MedusaError(MedusaError.Types.INVALID_DATA, "No files were uploaded")
     }
 
-    const { uploadFilesWorkflow } = await import("@medusajs/core-flows")
+    const { uploadFilesWorkflow } = await import("@medusajs/medusa/core-flows")
     const { result } = await uploadFilesWorkflow(req.scope).run({
       input: { files: cleaned },
     })

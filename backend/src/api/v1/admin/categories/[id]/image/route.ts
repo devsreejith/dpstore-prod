@@ -78,7 +78,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
   const ext = path.extname(file.originalname || "").toLowerCase()
   const filename = `${crypto.randomUUID()}${ext || ".jpg"}`
 
-  const { uploadFilesWorkflow } = await import("@medusajs/core-flows")
+  const { uploadFilesWorkflow } = await import("@medusajs/medusa/core-flows")
   const { result: uploadResult } = await uploadFilesWorkflow(req.scope).run({
     input: {
       files: [
