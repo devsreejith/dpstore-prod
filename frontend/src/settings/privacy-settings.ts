@@ -24,9 +24,4 @@ export const privacyPolicy = [
     title: "privacy-five-title",
     description:"privacy-five-content",
   },
-  {
-    id: "6",
-    title: "privacy-six-title",
-    description:"privacy-six-content",
-  },
 ];

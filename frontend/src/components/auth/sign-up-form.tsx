@@ -61,6 +61,7 @@ const SignUpForm: React.FC = () => {
           <Link
             href={ROUTES.TERMS}
             className="text-heading underline hover:no-underline focus:outline-none"
+            onClick={closeModal}
           >
             {t('common:text-terms')}
           </Link>{' '}
@@ -68,6 +69,7 @@ const SignUpForm: React.FC = () => {
           <Link
             href={ROUTES.POLICY}
             className="text-heading underline hover:no-underline focus:outline-none"
+            onClick={closeModal}
           >
             {t('common:text-policy')}
           </Link>
