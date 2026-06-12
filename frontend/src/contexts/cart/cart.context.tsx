@@ -50,6 +50,8 @@ export const CartProvider: React.FC = (props) => {
   const CART_ID_KEY = "medusa_cart_id";
   const regionIdRef = React.useRef<string | null>(null);
   const salesChannelIdRef = React.useRef<string | null>(null);
+  const ignoreConfiguredRegionRef = React.useRef(false);
+  const ignoreConfiguredSalesChannelRef = React.useRef(false);
 
   const [cart, setCart] = React.useState<any>(null);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -130,24 +132,32 @@ export const CartProvider: React.FC = (props) => {
 
   const resolveRegionId = React.useCallback(async () => {
     if (regionIdRef.current) return regionIdRef.current;
-    const configured = String((process.env.NEXT_PUBLIC_MEDUSA_REGION_ID as any) ?? "").trim();
-    if (configured) {
-      regionIdRef.current = configured;
-      return configured;
+    if (!ignoreConfiguredRegionRef.current) {
+      const configured = String((process.env.NEXT_PUBLIC_MEDUSA_REGION_ID as any) ?? "").trim();
+      if (configured) {
+        regionIdRef.current = configured;
+        return configured;
+      }
     }
-    const res = await http.get(`/store/regions`);
-    const regions = Array.isArray(res?.data?.regions) ? res.data.regions : [];
-    const id = String(regions?.[0]?.id ?? "").trim();
-    if (id) regionIdRef.current = id;
-    return id || null;
+    try {
+      const res = await http.get(`/store/regions`);
+      const regions = Array.isArray(res?.data?.regions) ? res.data.regions : [];
+      const id = String(regions?.[0]?.id ?? "").trim();
+      if (id) regionIdRef.current = id;
+      return id || null;
+    } catch {
+      return null;
+    }
   }, []);
 
   const resolveSalesChannelId = React.useCallback(async () => {
     if (salesChannelIdRef.current) return salesChannelIdRef.current;
-    const configured = String((process.env.NEXT_PUBLIC_MEDUSA_SALES_CHANNEL_ID as any) ?? "").trim();
-    if (configured) {
-      salesChannelIdRef.current = configured;
-      return configured;
+    if (!ignoreConfiguredSalesChannelRef.current) {
+      const configured = String((process.env.NEXT_PUBLIC_MEDUSA_SALES_CHANNEL_ID as any) ?? "").trim();
+      if (configured) {
+        salesChannelIdRef.current = configured;
+        return configured;
+      }
     }
     return null;
   }, []);
@@ -194,11 +204,18 @@ export const CartProvider: React.FC = (props) => {
     try {
       created = await createCart();
     } catch (e: any) {
-      const status = e?.response?.status;
-      const msg = String(e?.response?.data?.message ?? e?.message ?? "");
-      if (status === 400 && msg.toLowerCase().includes("region")) {
+      const hasConfigured = !!String(process.env.NEXT_PUBLIC_MEDUSA_REGION_ID ?? "").trim() ||
+                            !!String(process.env.NEXT_PUBLIC_MEDUSA_SALES_CHANNEL_ID ?? "").trim();
+      if (hasConfigured && !ignoreConfiguredRegionRef.current && !ignoreConfiguredSalesChannelRef.current) {
+        ignoreConfiguredRegionRef.current = true;
+        ignoreConfiguredSalesChannelRef.current = true;
         regionIdRef.current = null;
-        created = await createCart();
+        salesChannelIdRef.current = null;
+        try {
+          created = await createCart();
+        } catch (retryErr) {
+          throw retryErr;
+        }
       } else {
         throw e;
       }

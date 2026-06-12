@@ -54,7 +54,7 @@ export default async function fixProductsData({ container }: ExecArgs) {
       "title",
       "handle",
       "metadata",
-      "shipping_profile_id",
+      "shipping_profile.id",
       "variants.id",
       "options.id",
     ],
@@ -76,6 +76,7 @@ export default async function fixProductsData({ container }: ExecArgs) {
     const priceVal = metadata.price ?? metadata.retail_price ?? 10
     const price = Number(priceVal) || 10
     const sku = String(metadata.item_code ?? metadata.sku ?? `SKU-${product.handle.slice(0, 30)}`).trim()
+    const currentShippingProfileId = (product as any).shipping_profile?.id || (product as any).shipping_profile_id
 
     try {
       // Create option, variant, link sales channel and shipping profile
@@ -83,7 +84,7 @@ export default async function fixProductsData({ container }: ExecArgs) {
         input: {
           selector: { id: product.id },
           update: {
-            shipping_profile_id: product.shipping_profile_id || shippingProfileId,
+            shipping_profile_id: currentShippingProfileId || shippingProfileId,
             sales_channels: [{ id: salesChannelId }],
             options: [{ title: "Default", values: ["Default"] }],
             variants: [
