@@ -10,6 +10,7 @@ import { generateCartItem } from "@utils/generate-cart-item";
 import { ProductAttributes } from "./product-attributes";
 import Link from "@components/ui/link";
 import { toast } from "react-toastify";
+import { ROUTES } from "@utils/routes";
 import { useWindowSize } from "@utils/use-window-size";
 import Carousel from "@components/ui/carousel/carousel";
 import { SwiperSlide } from "swiper/react";
@@ -218,7 +219,7 @@ const ProductSingleDetails: React.FC = () => {
                 {data.tags.map((tag) => (
                   <Link
                     key={tag.id}
-                    href={tag.slug}
+                    href={`${ROUTES.PRODUCT}?category=${tag.slug}`}
                     className="inline-block ltr:pr-1.5 rtl:pl-1.5 transition hover:underline hover:text-heading ltr:last:pr-0 rtl:last:pl-0"
                   >
                     {tag.name}

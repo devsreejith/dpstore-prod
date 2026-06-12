@@ -9,6 +9,7 @@ import { useTranslation } from 'next-i18next';
 import { getDirection } from '@utils/get-direction';
 import motionProps from '@components/common/drawer/motion';
 import { useProductsQuery } from "@framework/product/get-all-products";
+import { useCategoriesQuery } from "@framework/category/get-all-categories";
 
 const sortOptions = [
   { name: 'text-sorting-options', value: 'options' },
@@ -16,6 +17,17 @@ const sortOptions = [
   { name: 'text-price-low-high', value: 'price_asc' },
   { name: 'text-price-high-low', value: 'price_desc' },
 ];
+
+function findCategoryBySlug(categories: any[], slug: string): any {
+  for (const cat of categories) {
+    if (cat.slug === slug) return cat;
+    if (Array.isArray(cat.children) && cat.children.length) {
+      const found = findCategoryBySlug(cat.children, slug);
+      if (found) return found;
+    }
+  }
+  return null;
+}
 
 export default function SearchTopBar() {
   const { openFilter, displayFilter, closeFilter } = useUI();
@@ -36,13 +48,23 @@ export default function SearchTopBar() {
   }
   delete options.slug;
 
+  const activeCategory = (options.category as string) || null;
+
   const { data } = useProductsQuery({ limit: 10, ...options });
   const totalItems = data?.pages?.[0]?.paginatorInfo?.total ?? 0;
+
+  const { data: categoriesData } = useCategoriesQuery({ limit: 100 });
+  const allCategories = categoriesData?.categories?.data ?? [];
+  const matchedCategory = activeCategory
+    ? findCategoryBySlug(allCategories, activeCategory)
+    : null;
+
+  const heading = matchedCategory?.name ?? t('text-our-products');
 
   return (
     <div className="flex justify-between items-center mb-7">
       <Text variant="pageHeading" className="hidden lg:inline-flex pb-1">
-        {t('text-our-products')}
+        {heading}
       </Text>
       <button
         className="lg:hidden text-heading text-sm px-4 py-2 font-semibold border border-gray-300 rounded-md flex items-center transition duration-200 ease-in-out focus:outline-none hover:bg-gray-200"
@@ -64,3 +86,4 @@ export default function SearchTopBar() {
     </div>
   );
 }
+

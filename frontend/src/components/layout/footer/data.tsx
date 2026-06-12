@@ -18,11 +18,6 @@ export const footer = {
         },
         {
           id: 3,
-          title: 'link-email-two',
-          path: '/',
-        },
-        {
-          id: 4,
           title: 'link-phone',
           path: '/',
         },
@@ -200,11 +195,6 @@ export const footerContemporary = {
         },
         {
           id: 3,
-          title: 'link-email-two',
-          path: '/',
-        },
-        {
-          id: 4,
           title: 'link-phone',
           path: '/',
         },
