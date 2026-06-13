@@ -35,6 +35,17 @@ async function main() {
       console.log(`Sales Channel ID: ${row.id} (${row.name})`);
     });
 
+    // 3.5. Fetch Admin User Emails
+    try {
+      const usersRes = await client.query('SELECT email FROM "user"');
+      console.log("\n--- Registered Admin User Emails ---");
+      usersRes.rows.forEach(row => {
+        console.log(`Email: ${row.email}`);
+      });
+    } catch (userErr) {
+      console.log("\nCould not fetch user emails:", userErr.message);
+    }
+
     // 4. Fetch Last 5 Payment Collections to diagnose UAT statuses
     try {
       const pcRes = await client.query(`
