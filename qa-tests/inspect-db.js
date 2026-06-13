@@ -81,6 +81,16 @@ async function main() {
             [firstVariant.id]
           );
           console.log("DB Inventory levels:", inventoryDb.rows);
+
+          const reservationsDb = await client.query(
+            `SELECT id, quantity, location_id, line_item_id 
+             FROM reservation_item 
+             WHERE inventory_item_id = (
+               SELECT inventory_item_id FROM product_variant_inventory_item WHERE variant_id = $1
+             )`,
+            [firstVariant.id]
+          );
+          console.log("DB Reservation Items:", reservationsDb.rows);
         }
       }
     } catch (err) {
