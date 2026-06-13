@@ -43,36 +43,45 @@ export const medusaHelpers = {
   },
 
   /**
-   * Helper to fetch inventory quantity directly from the DB
+   * Helper to fetch available inventory quantity (stocked - reserved) directly from the DB
    */
   async getDbInventory(variantId: string): Promise<number> {
     const db = await getDbClient();
     try {
       // Query Medusa v2 inventory levels
       const res = await db.query(
-        `SELECT stocked_quantity FROM inventory_level WHERE inventory_item_id = (
+        `SELECT stocked_quantity, reserved_quantity FROM inventory_level WHERE inventory_item_id = (
            SELECT inventory_item_id FROM product_variant_inventory_item WHERE variant_id = $1
          ) LIMIT 1`,
         [variantId]
       );
       if (res.rows.length === 0) return 0;
-      return Number(res.rows[0].stocked_quantity);
+      const stocked = Number(res.rows[0].stocked_quantity);
+      const reserved = Number(res.rows[0].reserved_quantity || 0);
+      return stocked - reserved;
     } finally {
       await db.end();
     }
   },
 
   /**
-   * Helper to set inventory quantity directly in the DB
+   * Helper to set inventory quantity directly in the DB and enable strict inventory management
    */
   async setDbInventory(variantId: string, quantity: number): Promise<void> {
     const db = await getDbClient();
     try {
+      // 1. Update stocked quantity and reset reserved quantity
       await db.query(
-        `UPDATE inventory_level SET stocked_quantity = $1 WHERE inventory_item_id = (
+        `UPDATE inventory_level SET stocked_quantity = $1, reserved_quantity = 0 WHERE inventory_item_id = (
            SELECT inventory_item_id FROM product_variant_inventory_item WHERE variant_id = $2
          )`,
         [quantity, variantId]
+      );
+      
+      // 2. Ensure the variant has inventory management enabled and backorders disabled
+      await db.query(
+        `UPDATE product_variant SET manage_inventory = true, allow_backorder = false WHERE id = $1`,
+        [variantId]
       );
     } finally {
       await db.end();
