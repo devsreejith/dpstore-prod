@@ -129,4 +129,56 @@ describe('Medusa.js v2 Inventory & Concurrency Tests', () => {
     // Only one order should be created successfully, the rest fail or return already completed state
     expect(successes.length).toBe(1);
   });
+
+  test('Scenario A - Adding products to cart by multiple users must NOT reduce stock or create reservations', async () => {
+    // 1. Reset stock to 10
+    await medusaHelpers.setDbInventory(variantId, 10);
+    const initialStock = await medusaHelpers.getDbInventory(variantId);
+    expect(initialStock).toBe(10);
+
+    // 2. Simulate User A, B, C, D, E adding 5 to cart
+    const cartA = await medusaHelpers.createCart();
+    await medusaHelpers.addToCart(cartA.id, variantId, 5);
+
+    const cartB = await medusaHelpers.createCart();
+    await medusaHelpers.addToCart(cartB.id, variantId, 5);
+
+    const cartC = await medusaHelpers.createCart();
+    await medusaHelpers.addToCart(cartC.id, variantId, 5);
+
+    const cartD = await medusaHelpers.createCart();
+    await medusaHelpers.addToCart(cartD.id, variantId, 5);
+
+    const cartE = await medusaHelpers.createCart();
+    await medusaHelpers.addToCart(cartE.id, variantId, 5);
+
+    // 3. Verify stock is unchanged and available stock remains 10 (no reservations are created)
+    const availableStock = await medusaHelpers.getDbInventory(variantId);
+    expect(availableStock).toBe(10);
+  });
+
+  test('Expected Lifecycle Stages - Verifying stock at cart creation, checkout start, and completion', async () => {
+    // 1. Initial State: stock = 10
+    await medusaHelpers.setDbInventory(variantId, 10);
+    const stockStage1 = await medusaHelpers.getDbInventory(variantId);
+    expect(stockStage1).toBe(10);
+
+    // 2. Customer adds 2 to cart: stock must remain 10
+    const cart = await medusaHelpers.createCart();
+    await medusaHelpers.addToCart(cart.id, variantId, 2);
+    const stockStage2 = await medusaHelpers.getDbInventory(variantId);
+    expect(stockStage2).toBe(10);
+
+    // 3. Customer starts checkout (shipping & payment session setup): stock must remain 10
+    await medusaHelpers.setShippingAddress(cart.id);
+    await medusaHelpers.applyShipping(cart.id);
+    await medusaHelpers.createPaymentSession(cart.id, 'pp_ngenius_ngenius');
+    const stockStage3 = await medusaHelpers.getDbInventory(variantId);
+    expect(stockStage3).toBe(10);
+
+    // 4. Order completed (cart completed): reservation created, available stock becomes 8
+    await medusaHelpers.completeCart(cart.id);
+    const stockStage4 = await medusaHelpers.getDbInventory(variantId);
+    expect(stockStage4).toBe(8);
+  });
 });
