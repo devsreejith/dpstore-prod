@@ -161,10 +161,23 @@ const OrderDetails: React.FC<{ className?: string }> = ({
 
   const items = Array.isArray(order?.items) ? order.items : [];
   const currency = String(order?.currency_code ?? 'aed').toUpperCase();
-  const paymentProvider =
-    Array.isArray(order?.payment_collections) && order.payment_collections.length
-      ? String(order.payment_collections[0]?.payment_sessions?.[0]?.provider_id ?? '')
-      : '';
+  const paymentProvider = useMemo(() => {
+    if (!Array.isArray(order?.payment_collections) || !order.payment_collections.length) {
+      return '';
+    }
+    const col = order.payment_collections[0];
+    if (Array.isArray(col.payments) && col.payments.length) {
+      const p = col.payments.find((py: any) => py.provider_id && py.provider_id !== 'pp_system_default');
+      if (p) return String(p.provider_id);
+      return String(col.payments[0].provider_id ?? '');
+    }
+    if (Array.isArray(col.payment_sessions) && col.payment_sessions.length) {
+      const s = col.payment_sessions.find((sn: any) => sn.provider_id && sn.provider_id !== 'pp_system_default');
+      if (s) return String(s.provider_id);
+      return String(col.payment_sessions[0].provider_id ?? '');
+    }
+    return '';
+  }, [order]);
   const isCancelled =
     Boolean((order as any)?.canceled_at) || String((order as any)?.status ?? '').toLowerCase() === 'canceled' || String((order as any)?.status ?? '').toLowerCase() === 'cancelled';
   const paymentStatus = String((order as any)?.payment_status ?? '').toLowerCase();
@@ -343,47 +356,61 @@ const OrderDetails: React.FC<{ className?: string }> = ({
                       </div>
                     </div>
 
-                    <div className="relative">
-                      <div className={`absolute -left-[39px] top-0.5 w-5 h-5 rounded-full border-2 ${isShipped ? 'bg-green-500 border-green-500 text-white' : 'bg-white border-gray-300 text-gray-300'} flex items-center justify-center`}>
-                        {isShipped ? <IoCheckmarkCircle className="text-xs" /> : <div className="w-1.5 h-1.5 rounded-full bg-gray-300" />}
+                    {isCancelled ? (
+                      <div className="relative">
+                        <div className="absolute -left-[39px] top-0.5 w-5 h-5 rounded-full bg-rose-500 border border-rose-500 flex items-center justify-center text-white">
+                          <IoCloseCircleOutline className="text-xs" />
+                        </div>
+                        <div>
+                          <h4 className="text-xs md:text-sm font-bold text-rose-600 font-body">Order Cancelled</h4>
+                          <p className="text-xs text-gray-500 mt-0.5 font-body">This order has been cancelled.</p>
+                        </div>
                       </div>
-                      <div>
-                        <h4 className={`text-xs md:text-sm font-bold ${isShipped ? 'text-heading' : 'text-gray-500'}`}>Shipped</h4>
-                        {isShipped ? (
-                          <p className="text-xs text-gray-500 mt-0.5">Item departed sorting facility.</p>
-                        ) : (
-                          <p className="text-xs text-gray-400 mt-0.5">Item has not shipped yet.</p>
-                        )}
-                      </div>
-                    </div>
+                    ) : (
+                      <>
+                        <div className="relative">
+                          <div className={`absolute -left-[39px] top-0.5 w-5 h-5 rounded-full border-2 ${isShipped ? 'bg-green-500 border-green-500 text-white' : 'bg-white border-gray-300 text-gray-300'} flex items-center justify-center`}>
+                            {isShipped ? <IoCheckmarkCircle className="text-xs" /> : <div className="w-1.5 h-1.5 rounded-full bg-gray-300" />}
+                          </div>
+                          <div>
+                            <h4 className={`text-xs md:text-sm font-bold ${isShipped ? 'text-heading' : 'text-gray-500'}`}>Shipped</h4>
+                            {isShipped ? (
+                              <p className="text-xs text-gray-500 mt-0.5">Item departed sorting facility.</p>
+                            ) : (
+                              <p className="text-xs text-gray-400 mt-0.5">Item has not shipped yet.</p>
+                            )}
+                          </div>
+                        </div>
 
-                    <div className="relative">
-                      <div className={`absolute -left-[39px] top-0.5 w-5 h-5 rounded-full border-2 ${isOutForDelivery ? 'bg-green-500 border-green-500 text-white' : 'bg-white border-gray-300 text-gray-300'} flex items-center justify-center`}>
-                        {isOutForDelivery ? <IoCheckmarkCircle className="text-xs" /> : <div className="w-1.5 h-1.5 rounded-full bg-gray-300" />}
-                      </div>
-                      <div>
-                        <h4 className={`text-xs md:text-sm font-bold ${isOutForDelivery ? 'text-heading' : 'text-gray-500'}`}>Out For Delivery</h4>
-                        {isOutForDelivery ? (
-                          <p className="text-xs text-gray-500 mt-0.5">Item is with carrier for delivery.</p>
-                        ) : (
-                          <p className="text-xs text-gray-400 mt-0.5">Item is not out for delivery yet.</p>
-                        )}
-                      </div>
-                    </div>
+                        <div className="relative">
+                          <div className={`absolute -left-[39px] top-0.5 w-5 h-5 rounded-full border-2 ${isOutForDelivery ? 'bg-green-500 border-green-500 text-white' : 'bg-white border-gray-300 text-gray-300'} flex items-center justify-center`}>
+                            {isOutForDelivery ? <IoCheckmarkCircle className="text-xs" /> : <div className="w-1.5 h-1.5 rounded-full bg-gray-300" />}
+                          </div>
+                          <div>
+                            <h4 className={`text-xs md:text-sm font-bold ${isOutForDelivery ? 'text-heading' : 'text-gray-500'}`}>Out For Delivery</h4>
+                            {isOutForDelivery ? (
+                              <p className="text-xs text-gray-500 mt-0.5">Item is with carrier for delivery.</p>
+                            ) : (
+                              <p className="text-xs text-gray-400 mt-0.5">Item is not out for delivery yet.</p>
+                            )}
+                          </div>
+                        </div>
 
-                    <div className="relative">
-                      <div className={`absolute -left-[39px] top-0.5 w-5 h-5 rounded-full border-2 ${isDelivered ? 'bg-green-500 border-green-500 text-white' : 'bg-white border-gray-300 text-gray-300'} flex items-center justify-center`}>
-                        {isDelivered ? <IoCheckmarkCircle className="text-xs" /> : <div className="w-1.5 h-1.5 rounded-full bg-gray-300" />}
-                      </div>
-                      <div>
-                        <h4 className={`text-xs md:text-sm font-bold ${isDelivered ? 'text-heading' : 'text-gray-500'}`}>Delivered</h4>
-                        {isDelivered ? (
-                          <p className="text-xs text-gray-500 mt-0.5">Item delivered on {fmtDate((order as any)?.updated_at)}</p>
-                        ) : (
-                          <p className="text-xs text-gray-500 mt-0.5">Expected Delivery within 7-20 Days</p>
-                        )}
-                      </div>
-                    </div>
+                        <div className="relative">
+                          <div className={`absolute -left-[39px] top-0.5 w-5 h-5 rounded-full border-2 ${isDelivered ? 'bg-green-500 border-green-500 text-white' : 'bg-white border-gray-300 text-gray-300'} flex items-center justify-center`}>
+                            {isDelivered ? <IoCheckmarkCircle className="text-xs" /> : <div className="w-1.5 h-1.5 rounded-full bg-gray-300" />}
+                          </div>
+                          <div>
+                            <h4 className={`text-xs md:text-sm font-bold ${isDelivered ? 'text-heading' : 'text-gray-500'}`}>Delivered</h4>
+                            {isDelivered ? (
+                              <p className="text-xs text-gray-500 mt-0.5">Item delivered on {fmtDate((order as any)?.updated_at)}</p>
+                            ) : (
+                              <p className="text-xs text-gray-500 mt-0.5">Expected Delivery within 7-20 Days</p>
+                            )}
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -477,15 +504,19 @@ const OrderDetails: React.FC<{ className?: string }> = ({
             </div>
 
             <div className={`rounded p-2.5 mt-4 text-xs font-bold text-center border ${
-              isPaymentPaid && paymentProvider !== 'pp_system_default'
-                ? 'bg-emerald-50 border-emerald-100 text-emerald-700'
-                : 'bg-amber-50 border-amber-100 text-[#D97706]'
+              isCancelled
+                ? 'bg-rose-50 border-rose-100 text-rose-700'
+                : isPaymentPaid && paymentProvider !== 'pp_system_default'
+                  ? 'bg-emerald-50 border-emerald-100 text-emerald-700'
+                  : 'bg-amber-50 border-amber-100 text-[#D97706]'
             }`}>
-              {isPaymentPaid && paymentProvider !== 'pp_system_default'
-                ? `Paid By ${paymentMethodName}`
-                : (paymentProvider === 'pp_system_default' || !paymentProvider
-                    ? 'Cash On Delivery'
-                    : 'Pending Payment')}
+              {isCancelled
+                ? 'Order Cancelled'
+                : isPaymentPaid && paymentProvider !== 'pp_system_default'
+                  ? `Paid By ${paymentMethodName}`
+                  : (paymentProvider === 'pp_system_default' || !paymentProvider
+                      ? 'Cash On Delivery'
+                      : 'Pending Payment')}
             </div>
           </div>
         </div>

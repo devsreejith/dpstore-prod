@@ -8,4 +8,10 @@ turbo
 coverage
 dist
 build
+qa-tests/reports
+qa-tests.zip
+backend/scratch/
+backend/webhook-logs/
+
+
 

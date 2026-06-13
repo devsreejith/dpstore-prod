@@ -37,10 +37,23 @@ export default function OrderInformation() {
     return fromArray || direct || '';
   }, [data]);
 
-  const paymentProvider =
-    Array.isArray(data?.payment_collections) && data.payment_collections.length
-      ? String(data.payment_collections[0]?.payment_sessions?.[0]?.provider_id ?? '')
-      : '';
+  const paymentProvider = useMemo(() => {
+    if (!Array.isArray(data?.payment_collections) || !data.payment_collections.length) {
+      return '';
+    }
+    const col = data.payment_collections[0];
+    if (Array.isArray(col.payments) && col.payments.length) {
+      const p = col.payments.find((py: any) => py.provider_id && py.provider_id !== 'pp_system_default');
+      if (p) return String(p.provider_id);
+      return String(col.payments[0].provider_id ?? '');
+    }
+    if (Array.isArray(col.payment_sessions) && col.payment_sessions.length) {
+      const s = col.payment_sessions.find((sn: any) => sn.provider_id && sn.provider_id !== 'pp_system_default');
+      if (s) return String(s.provider_id);
+      return String(col.payment_sessions[0].provider_id ?? '');
+    }
+    return '';
+  }, [data]);
 
   const paymentMethodName =
     paymentProvider === 'pp_system_default' || !paymentProvider
@@ -60,6 +73,11 @@ export default function OrderInformation() {
     : (paymentStatus === 'captured' || paymentStatus === 'paid' || paymentStatus === 'authorized');
   
   const isPaymentFailed = isOnlinePayment && (!isPaid || verificationFailed);
+
+  const isCancelled =
+    Boolean(data?.canceled_at) ||
+    String(data?.status ?? '').toLowerCase() === 'canceled' ||
+    String(data?.status ?? '').toLowerCase() === 'cancelled';
 
   useEffect(() => {
     if (!data || !paymentCollectionId || !isOnlinePayment || capturedAmount > 0 || verificationDone || verifying) {
@@ -149,8 +167,8 @@ export default function OrderInformation() {
         /* Outer Card Box */
         <div className="border border-gray-150 rounded-xl bg-white p-8 md:p-10 shadow-sm max-w-2xl mx-auto flex flex-col items-center">
           <div className="relative mb-6">
-            {/* Confetti sparkles (4-pointed stars) - only show if payment succeeded or is COD */}
-            {!isPaymentFailed && (
+            {/* Confetti sparkles (4-pointed stars) - only show if payment succeeded or is COD and order is not cancelled */}
+            {!isPaymentFailed && !isCancelled && (
               <>
                 <span className="absolute -top-2 -left-3 text-sm text-[#1C5E39] font-bold">✦</span>
                 <span className="absolute -top-3 -right-3 text-xs text-[#1C5E39] font-bold">✦</span>
@@ -159,8 +177,24 @@ export default function OrderInformation() {
               </>
             )}
 
-            {/* Check Circle or Warning Exclamation */}
-            {isPaymentFailed ? (
+            {/* Check Circle, Warning Exclamation, or Cancelled Cross */}
+            {isCancelled ? (
+              <div className="w-16 h-16 rounded-full bg-rose-500 flex items-center justify-center shadow-sm">
+                <svg
+                  className="w-8 h-8 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="3"
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </div>
+            ) : isPaymentFailed ? (
               <div className="w-16 h-16 rounded-full bg-[#D97706]/10 border border-[#D97706]/30 flex items-center justify-center shadow-sm">
                 <svg
                   className="w-8 h-8 text-[#D97706]"
@@ -196,10 +230,14 @@ export default function OrderInformation() {
           </div>
 
           <h1 className="text-xl md:text-2xl font-bold text-heading font-body mb-2">
-            {isPaymentFailed ? 'Payment Awaiting!' : 'Order Received!'}
+            {isCancelled ? 'Order Cancelled!' : isPaymentFailed ? 'Payment Awaiting!' : 'Order Received!'}
           </h1>
           <div className="text-xs md:text-sm text-gray-500 font-body mb-8 space-y-1 text-center">
-            {isPaymentFailed ? (
+            {isCancelled ? (
+              <>
+                <p>This order has been cancelled.</p>
+              </>
+            ) : isPaymentFailed ? (
               <>
                 <p>Your order has been registered.</p>
                 <p className="text-[#D97706] font-semibold">Payment was unsuccessful or is pending.</p>
