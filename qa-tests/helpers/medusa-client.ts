@@ -140,7 +140,9 @@ export const medusaHelpers = {
    */
   async applyShipping(cartId: string): Promise<any> {
     // 1. Fetch available shipping options for the cart
-    const resOptions = await storeApi.get(`/store/carts/${cartId}/shipping-options`);
+    const resOptions = await storeApi.get('/store/shipping-options', {
+      params: { cart_id: cartId },
+    });
     const options = resOptions.data.shipping_options || [];
     if (!options.length) {
       throw new Error("No shipping options available for this region.");
