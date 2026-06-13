@@ -35,6 +35,22 @@ async function main() {
       console.log(`Sales Channel ID: ${row.id} (${row.name})`);
     });
 
+    // 4. Fetch Last 5 Payment Collections to diagnose UAT statuses
+    try {
+      const pcRes = await client.query(`
+        SELECT pc.id, pc.status, pc.amount, pc.authorized_amount, pc.captured_amount, ps.provider_id 
+        FROM payment_collection pc
+        LEFT JOIN payment_session ps ON ps.payment_collection_id = pc.id
+        ORDER BY pc.created_at DESC LIMIT 5
+      `);
+      console.log("\n--- Last 5 Payment Collections ---");
+      pcRes.rows.forEach(row => {
+        console.log(`ID: ${row.id} | Status: ${row.status} | Provider: ${row.provider_id} | Amt: ${row.amount} | Auth: ${row.authorized_amount} | Cap: ${row.captured_amount}`);
+      });
+    } catch (pcErr) {
+      console.log("\nCould not fetch payment collections:", pcErr.message);
+    }
+
     if (apiKeysRes.rows.length && regionsRes.rows.length) {
       console.log("\n==================================================");
       console.log("RECOMMENDED CONFIGURATION FOR YOUR qa-tests/.env FILE:");
