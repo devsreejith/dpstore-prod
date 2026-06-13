@@ -182,11 +182,7 @@ export class NGeniusPaymentService extends AbstractPaymentProvider<any> {
       };
     } catch (error: any) {
       this.logger.error(`[N-Genius Service] Capture payment failed. Error: ${error.message}`);
-      return {
-        error: error.message || "Failed to capture payment",
-        code: "capture_failed",
-        detail: error,
-      };
+      throw error;
     }
   }
 
