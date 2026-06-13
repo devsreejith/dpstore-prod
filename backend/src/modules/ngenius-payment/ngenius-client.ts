@@ -8,17 +8,35 @@ export class NGeniusClient {
   private outletId: string;
   private tokenUrl: string;
   private transactionUrl: string;
+  private successUrl: string;
+  private failureUrl: string;
+  private cancelUrl: string;
   private logger?: any;
 
   constructor(config: NGeniusConfig, logger?: any) {
     this.logger = logger;
     this.validateConfig(config);
 
-    this.apiKey = config.apiKey;
-    this.merchantId = config.merchantId;
-    this.outletId = config.outletId;
-    this.tokenUrl = config.tokenUrl;
-    this.transactionUrl = config.transactionUrl;
+    const cleanStr = (val: any): string => {
+      if (!val) return "";
+      let s = String(val).trim();
+      if (s.startsWith('"') && s.endsWith('"')) {
+        s = s.slice(1, -1);
+      }
+      if (s.startsWith("'") && s.endsWith("'")) {
+        s = s.slice(1, -1);
+      }
+      return s.trim();
+    };
+
+    this.apiKey = cleanStr(config.apiKey);
+    this.merchantId = cleanStr(config.merchantId);
+    this.outletId = cleanStr(config.outletId);
+    this.tokenUrl = cleanStr(config.tokenUrl);
+    this.transactionUrl = cleanStr(config.transactionUrl);
+    this.successUrl = cleanStr(config.successUrl);
+    this.failureUrl = cleanStr(config.failureUrl);
+    this.cancelUrl = cleanStr(config.cancelUrl);
   }
 
   /**
@@ -105,21 +123,25 @@ export class NGeniusClient {
     return this.accessToken;
   }
 
-  /**
-   * Create an order (Hosted Checkout session) in N-Genius.
-   */
   async createOrder(
     amountMinor: number,
     currencyCode: string,
     orderReference: string,
-    customerEmail?: string
+    customerEmail?: string,
+    redirectParam?: string
   ): Promise<CreateOrderResponse> {
     this.logger?.info?.(
-      `[N-Genius Client] Creating order redirect session. Ref: ${orderReference}, Amount: ${amountMinor} ${currencyCode}`
+      `[N-Genius Client] Creating order redirect session. Ref: ${orderReference}, redirectParam: ${redirectParam}, Amount: ${amountMinor} ${currencyCode}`
     );
 
     const token = await this.getAccessToken();
     const url = this.transactionUrl.replace(/{OUTLET_ID}/i, this.outletId);
+
+    const redirectUrl = this.successUrl
+      ? `${this.successUrl}${this.successUrl.includes("?") ? "&" : "?"}${redirectParam || `ref=${orderReference}`}`
+      : undefined;
+
+    this.logger?.info?.(`[N-Genius Client] Constructed redirectUrl: ${redirectUrl}`);
 
     const payload: CreateOrderRequest = {
       action: "SALE",
@@ -129,7 +151,9 @@ export class NGeniusClient {
       },
       merchantOrderReference: orderReference,
       emailAddress: customerEmail,
-      // TODO: Add official fields such as returnUrl, billing/shipping address, once documentation is available.
+      merchantAttributes: redirectUrl ? {
+        redirectUrl: redirectUrl
+      } : undefined
     };
 
     const data = await this.requestWithRetry(async () => {

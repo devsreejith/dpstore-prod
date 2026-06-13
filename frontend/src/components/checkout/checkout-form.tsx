@@ -40,7 +40,19 @@ type AddressInput = {
 const PHONE_ONLY_REGEX = /^[0-9]{6,15}$/;
 const POSTAL_ONLY_REGEX = /^[0-9]{3,10}$/;
 
-const CheckoutForm: React.FC = () => {
+interface CheckoutFormProps {
+  activeStep: 1 | 2 | 3;
+  setActiveStep: React.Dispatch<React.SetStateAction<1 | 2 | 3>>;
+  selectedAddress: any;
+  setSelectedAddress: React.Dispatch<React.SetStateAction<any>>;
+}
+
+const CheckoutForm: React.FC<CheckoutFormProps> = ({
+  activeStep,
+  setActiveStep,
+  selectedAddress,
+  setSelectedAddress,
+}) => {
   const { placeOrder, isEmpty, cartId, items } = useCart();
   const { isAuthorized } = useUI();
   const queryClient = useQueryClient();
@@ -50,8 +62,7 @@ const CheckoutForm: React.FC = () => {
   const [formError, setFormError] = useState<string | null>(null);
   const [showAddAddress, setShowAddAddress] = useState(false);
   const [selectedAddressId, setSelectedAddressId] = useState<string>('');
-  const [selectedAddress, setSelectedAddress] = useState<any>(null);
-  const [activeStep, setActiveStep] = useState<1 | 2 | 3>(2);
+  const [selectedPaymentProvider, setSelectedPaymentProvider] = useState<'pp_system_default' | 'pp_ngenius_ngenius'>('pp_ngenius_ngenius');
 
   const {
     register,
@@ -176,26 +187,39 @@ const CheckoutForm: React.FC = () => {
     setSubmitting(true);
     (async () => {
       try {
+        const email = String(input.email || customerQuery.data?.email || '').trim();
+        const phone = String(input.phone || selectedAddress?.phone || customerQuery.data?.phone || '987654321').trim();
+        if (!email) {
+          throw new Error('Email address is required for checkout.');
+        }
         const deliveryInstructions = String(input.note ?? '').trim();
         const shipping_address = {
-          first_name: input.firstName,
-          last_name: input.lastName,
+          first_name: String(input.firstName || selectedAddress?.first_name || 'N/A').trim(),
+          last_name: String(input.lastName || selectedAddress?.last_name || 'N/A').trim(),
           address_1: selectedAddress?.address_1 || 'N/A',
           address_2: deliveryInstructions || undefined,
-          city: input.city || undefined,
-          province: input.state || undefined,
-          postal_code: input.zipCode || undefined,
-          phone: input.phone,
+          city: String(input.city || selectedAddress?.city || 'N/A').trim(),
+          province: String(input.state || selectedAddress?.province || 'N/A').trim(),
+          postal_code: String(input.zipCode || selectedAddress?.postal_code || '00000').trim(),
+          phone: phone,
           country_code: 'ae',
         };
         const result = await placeOrder({
-          email: input.email,
+          email,
           shipping_address,
           billing_address: shipping_address,
           shipping_option_id: shippingOptionId || undefined,
+          payment_provider_id: selectedPaymentProvider,
         });
         if (result?.type === 'order' && result?.order?.id) {
-          router.push(`/my-account/orders/${result.order.id}`);
+          if (selectedPaymentProvider === 'pp_system_default') {
+            router.push(`${ROUTES.ORDER}?id=${result.order.id}`);
+          } else {
+            const hasRedirect = !!(result as any).payment_url;
+            if (!hasRedirect) {
+              router.push(`/my-account/orders/${result.order.id}`);
+            }
+          }
         } else {
           router.push(ROUTES.ORDER);
         }
@@ -245,111 +269,27 @@ const CheckoutForm: React.FC = () => {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* STEP 1: LOGIN */}
-      <div className="border border-gray-200 rounded-md overflow-hidden bg-white shadow-sm">
-        <div className="flex items-center justify-between bg-gray-50 px-5 py-4 border-b border-gray-150">
-          <div className="flex items-center gap-3">
-            <span className="bg-gray-200 text-gray-700 w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs">
-              1
-            </span>
-            <h3 className="font-bold text-sm md:text-base text-gray-500 uppercase tracking-wider">
-              LOGIN
-            </h3>
-            {activeStep > 1 && (
-              <span className="text-emerald-600 font-bold text-xs flex items-center gap-1">
-                ✓
-              </span>
-            )}
-          </div>
-          {activeStep > 1 && (
-            <button
-              type="button"
-              onClick={() => setActiveStep(1)}
-              className="text-xs font-bold text-[#C7844B] uppercase hover:underline"
-            >
-              Change
-            </button>
-          )}
-        </div>
-        {activeStep === 1 ? (
-          <div className="p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
-              <div className="text-sm font-semibold text-heading font-body">
-                {customerQuery.data?.first_name} {customerQuery.data?.last_name}
-              </div>
-              <div className="text-xs text-gray-500 mt-1 font-body">{customerQuery.data?.email}</div>
-            </div>
-            <Button
-              type="button"
-              className="h-10 px-5 text-xs font-bold font-body"
-              onClick={() => setActiveStep(2)}
-            >
-              Continue Checkout
-            </Button>
-          </div>
-        ) : (
-          <div className="px-5 py-3 text-xs md:text-sm font-semibold text-heading flex gap-6">
-            <span>
-              {customerQuery.data?.first_name} {customerQuery.data?.last_name}
-            </span>
-            <span className="text-gray-400 font-normal">{customerQuery.data?.email}</span>
-          </div>
-        )}
-      </div>
-
       {/* STEP 2: DELIVERY ADDRESS */}
-      <div className="border border-gray-200 rounded-md overflow-hidden bg-white shadow-sm">
-        <div className="flex items-center justify-between bg-gray-50 px-5 py-4 border-b border-gray-150">
-          <div className="flex items-center gap-3">
-            <span className="bg-gray-200 text-gray-700 w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs">
-              2
-            </span>
-            <h3 className="font-bold text-sm md:text-base text-gray-500 uppercase tracking-wider">
-              DELIVERY ADDRESS
-            </h3>
-            {activeStep > 2 && (
-              <span className="text-emerald-600 font-bold text-xs flex items-center gap-1">
-                ✓
-              </span>
-            )}
-          </div>
-          {activeStep > 2 && (
+      {activeStep === 2 && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between pb-2">
+            <h2 className="text-sm md:text-base font-bold text-[#1C5E39] uppercase tracking-wider font-body">
+              {showAddAddress ? "ADD NEW ADDRESS" : "DELIVERY ADDRESS"}
+            </h2>
             <button
               type="button"
-              onClick={() => setActiveStep(2)}
-              className="text-xs font-bold text-[#C7844B] uppercase hover:underline"
+              onClick={() => setShowAddAddress(!showAddAddress)}
+              className="text-xs md:text-sm font-bold text-[#1C5E39] hover:underline transition font-body"
             >
-              Change
+              {showAddAddress ? "← Back to address list" : "+ Add new address"}
             </button>
-          )}
-        </div>
+          </div>
 
-        {activeStep === 2 ? (
-          <div className="p-5 space-y-4">
-            {/* Search Placeholder & Add New Toggle */}
-            <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between pb-3 border-b border-gray-100">
-              <div className="relative flex-1">
-                <input
-                  type="text"
-                  placeholder="Search by area, street name, PIN code..."
-                  className="w-full h-10 pl-9 pr-4 text-xs md:text-sm rounded border border-gray-300 focus:outline-none focus:border-heading bg-gray-50 cursor-not-allowed font-body"
-                  disabled
-                />
-                <span className="absolute left-3 top-2.5 text-gray-400 text-sm">🔍</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowAddAddress(!showAddAddress)}
-                className="text-xs md:text-sm font-bold text-[#C7844B] hover:text-amber-800 transition whitespace-nowrap self-end sm:self-auto font-body"
-              >
-                {showAddAddress ? "← Back to address list" : "+ Add new address"}
-              </button>
-            </div>
-
-            {showAddAddress ? (
-              /* Inline form for new address creation */
+          {showAddAddress ? (
+            /* Form container */
+            <div className="border border-gray-200 rounded-md p-5 bg-white shadow-sm">
               <form
-                className="space-y-4 pt-2"
+                className="space-y-4"
                 onSubmit={handleSubmitNewAddress((input) => createAddressMutation.mutate(input))}
                 noValidate
               >
@@ -434,244 +374,261 @@ const CheckoutForm: React.FC = () => {
                   </Button>
                 </div>
               </form>
-            ) : (
-              /* Inline Address radio selector cards */
-              <div className="space-y-3">
-                {addresses.length ? (
-                  addresses.map((a: any) => {
-                    const id = String(a?.id ?? '');
-                    const name = `${String(a?.first_name ?? '').trim()} ${String(a?.last_name ?? '').trim()}`.trim();
-                    const cc = String(a?.country_code ?? '').toUpperCase();
-                    const line = [a?.address_1, a?.address_2, a?.city, a?.province, a?.postal_code, cc]
-                      .map((x) => String(x ?? '').trim())
-                      .filter(Boolean)
-                      .join(', ');
-                    const checked = selectedAddressId === id;
-                    return (
-                      <div
-                        key={id || line}
-                        onClick={() => {
-                          setSelectedAddressId(id);
-                          setSelectedAddress(a);
-                          applyAddressToForm(a);
-                        }}
-                        className={`border rounded-md p-4 cursor-pointer flex flex-col gap-3 relative transition ${
-                          checked ? 'border-heading bg-gray-50/50 shadow-sm' : 'border-gray-200 bg-white hover:bg-gray-50/20'
-                        }`}
-                      >
-                        <div className="flex items-start gap-3">
-                          <input
-                            type="radio"
-                            name="checkout_shipping_address"
-                            className="form-radio w-5 h-5 mt-1 border border-gray-300 text-heading rounded-full cursor-pointer focus:ring-0"
-                            value={id}
-                            checked={checked}
-                            onChange={() => {}}
-                          />
-                          <div className="min-w-0 flex-1 pr-8">
-                            <div className="text-sm text-heading font-bold flex items-center gap-2 font-body">
-                              <span>{name || 'Address'}</span>
-                              <span className="text-[10px] bg-gray-150 text-gray-600 px-1.5 py-0.5 rounded font-normal uppercase tracking-wide">
-                                {a?.is_default_shipping ? 'Default' : 'Saved'}
-                              </span>
-                            </div>
-                            <div className="mt-1.5 text-xs md:text-sm text-body leading-relaxed">{line || '-'}</div>
-                            {a?.phone && <div className="mt-1.5 text-xs md:text-sm text-body font-semibold">{String(a.phone)}</div>}
-                          </div>
-                        </div>
-
-                        {/* Delete inline button */}
-                        <button
-                          type="button"
-                          className="absolute top-3 right-3 p-1.5 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 transition"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            if (!id) return;
-                            if (typeof window !== 'undefined' && !window.confirm('Delete this address?')) return;
-                            deleteAddressMutation.mutate(id);
-                          }}
-                          disabled={deleteAddressMutation.isPending}
-                          aria-label="Delete address"
-                        >
-                          <IoTrashOutline className="text-lg" />
-                        </button>
-
-                        {/* Deliver Here Inline Action */}
-                        {checked && (
-                          <div className="pt-3 border-t border-gray-100 flex justify-start">
-                            <Button
-                              type="button"
-                              className="h-10 px-6 font-bold uppercase tracking-wider text-xs font-body"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActiveStep(3);
-                              }}
-                            >
-                              Deliver Here
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })
-                ) : (
-                  <div className="text-sm text-body py-4 text-center">No saved addresses yet. Click "+ Add new address" to create one.</div>
-                )}
-              </div>
-            )}
-          </div>
-        ) : (
-          /* Collapsed Step 2 address summary information */
-          <div className="px-5 py-3 text-xs md:text-sm font-semibold text-heading flex justify-between items-center">
-            <div className="min-w-0 flex-1">
-              {selectedAddress ? (
-                <div>
-                  <span className="font-bold mr-2">
-                    {selectedAddress.first_name} {selectedAddress.last_name}
-                  </span>
-                  <span className="text-gray-500 font-normal">
-                    {[selectedAddress.address_1, selectedAddress.city, selectedAddress.province].filter(Boolean).join(', ')}
-                  </span>
-                </div>
-              ) : (
-                <span className="text-gray-400 font-normal">No address selected</span>
-              )}
             </div>
-          </div>
-        )}
-      </div>
-
-      {/* STEP 3: ORDER SUMMARY */}
-      <div className="border border-gray-200 rounded-md overflow-hidden bg-white shadow-sm">
-        <div className="flex items-center justify-between bg-gray-50 px-5 py-4 border-b border-gray-150">
-          <div className="flex items-center gap-3">
-            <span className="bg-gray-200 text-gray-700 w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs">
-              3
-            </span>
-            <h3 className="font-bold text-sm md:text-base text-gray-500 uppercase tracking-wider">
-              ORDER SUMMARY
-            </h3>
-          </div>
-        </div>
-
-        {activeStep === 3 && (
-          <div className="p-5 space-y-6">
-            {/* List of checkout items with thumbnails */}
-            <div className="space-y-4">
-              {items && items.length ? (
-                items.map((item) => {
-                  const itemPrice = (() => {
-                    const amount = item.price;
-                    const currencyCode = "AED";
-                    return formatPrice({ amount, currencyCode, locale: 'en' });
-                  })();
+          ) : (
+            /* Address cards list */
+            <div className="space-y-3">
+              {addresses.length ? (
+                addresses.map((a: any) => {
+                  const id = String(a?.id ?? '');
+                  const name = `${String(a?.first_name ?? '').trim()} ${String(a?.last_name ?? '').trim()}`.trim();
+                  const cc = String(a?.country_code ?? '').toUpperCase();
+                  const line = [a?.address_1, a?.address_2, a?.city, a?.province, a?.postal_code, cc]
+                    .map((x) => String(x ?? '').trim())
+                    .filter(Boolean)
+                    .join(', ');
+                  const checked = selectedAddressId === id;
                   return (
-                    <div key={item.id} className="flex gap-4 items-center justify-between pb-4 border-b border-gray-100 last:border-b-0 last:pb-0">
-                      <div className="flex items-center gap-3">
-                        <div className="w-14 h-14 rounded border border-gray-200 overflow-hidden bg-white flex items-center justify-center p-1 shadow-sm">
-                          <img
-                            src={item.image || "/assets/placeholder/order-product.svg"}
-                            alt={item.name}
-                            className="object-contain max-h-full max-w-full"
-                          />
+                    <div
+                      key={id || line}
+                      onClick={() => {
+                        setSelectedAddressId(id);
+                        setSelectedAddress(a);
+                        applyAddressToForm(a);
+                      }}
+                      className={`border rounded-lg p-5 cursor-pointer flex flex-col gap-4 relative transition ${
+                        checked ? 'border-[#1C5E39] bg-white shadow-sm' : 'border-gray-200 bg-white hover:bg-gray-50/20'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition ${
+                          checked ? 'border-[#1C5E39]' : 'border-gray-300'
+                        }`}>
+                          {checked && <div className="w-2.5 h-2.5 rounded-full bg-[#1C5E39]" />}
                         </div>
-                        <div className="min-w-0">
-                          <span className="text-sm font-semibold text-heading line-clamp-1 leading-normal font-body">{item.name}</span>
-                          <span className="text-xs text-gray-400 mt-0.5 block font-body">Qty: {item.quantity}</span>
+                        <div className="min-w-0 flex-1 pr-8">
+                          <div className="text-sm text-heading font-bold flex items-center gap-2 font-body">
+                            <span>{name || 'Address'}</span>
+                            <span className="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded font-semibold uppercase tracking-wide">
+                              SAVED
+                            </span>
+                          </div>
+                          <div className="mt-1.5 text-xs md:text-sm text-gray-600 leading-relaxed font-body">{line || '-'}</div>
+                          {a?.phone && <div className="mt-1.5 text-xs md:text-sm text-gray-600 font-normal font-body">{String(a.phone)}</div>}
                         </div>
                       </div>
-                      <span className="text-sm font-bold text-heading font-body">{itemPrice}</span>
+
+                      {/* Delete inline button */}
+                      <button
+                        type="button"
+                        className="absolute top-4 right-4 p-1.5 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 transition"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          if (!id) return;
+                          if (typeof window !== 'undefined' && !window.confirm('Delete this address?')) return;
+                          deleteAddressMutation.mutate(id);
+                        }}
+                        disabled={deleteAddressMutation.isPending}
+                        aria-label="Delete address"
+                      >
+                        <IoTrashOutline className="text-lg" />
+                      </button>
+
+                      {/* Deliver Here Inline Action */}
+                      {checked && (
+                        <div className="pt-2 flex justify-start">
+                          <button
+                            type="button"
+                            className="h-10 px-6 font-bold uppercase tracking-wider text-xs font-body bg-[#1D1D1D] hover:bg-black text-white rounded transition duration-200"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveStep(3);
+                            }}
+                          >
+                            Deliver Here
+                          </button>
+                        </div>
+                      )}
                     </div>
                   );
                 })
               ) : (
-                <p className="text-red-500 py-2">Your cart is empty.</p>
+                <div className="text-sm text-body py-4 text-center">No saved addresses yet. Click "+ Add new address" to create one.</div>
               )}
             </div>
+          )}
+        </div>
+      )}
 
-            {/* Hidden Input mapping form bindings */}
-            <form
-              id="checkout-shipping-form"
-              onSubmit={handleSubmit(onSubmit)}
-              className="w-full flex flex-col gap-5 pt-4 border-t border-gray-100"
-              noValidate
+
+      {/* STEP 3: SELECT PAYMENT METHOD */}
+      {/* STEP 3: SELECT PAYMENT METHOD */}
+      {activeStep === 3 && (
+        <div className="flex flex-col gap-3">
+          {/* Back button */}
+          <button
+            type="button"
+            onClick={() => setActiveStep(2)}
+            className="flex items-center gap-1.5 text-xs font-bold text-heading hover:opacity-80 transition font-body self-start"
+          >
+            <span className="text-sm">←</span> Back
+          </button>
+
+          {/* Heading */}
+          <h2 className="text-sm md:text-base font-bold text-[#1C5E39] uppercase tracking-wider font-body mt-1">
+            Select Payment Method
+          </h2>
+
+          <form
+            id="checkout-shipping-form"
+            onSubmit={handleSubmit(onSubmit)}
+            className="w-full flex flex-col gap-3.5"
+            noValidate
+          >
+            {formError ? <Alert message={formError} /> : null}
+
+            {/* Hidden controls representing the saved shipping parameters */}
+            <div className="hidden">
+              <input type="hidden" {...register('firstName')} />
+              <input type="hidden" {...register('lastName')} />
+              <input type="hidden" {...register('phone')} />
+              <input type="hidden" {...register('email')} />
+              <input type="hidden" {...register('city')} />
+              <input type="hidden" {...register('state')} />
+              <input type="hidden" {...register('zipCode')} />
+            </div>
+
+            {/* Cash on Delivery Card */}
+            <div
+              onClick={() => setSelectedPaymentProvider('pp_system_default')}
+              className={`border rounded-lg p-4 cursor-pointer flex flex-col gap-3 transition bg-white ${
+                selectedPaymentProvider === 'pp_system_default'
+                  ? 'border-[#1C5E39]'
+                  : 'border-gray-200 hover:bg-gray-50/20'
+              }`}
             >
-              {formError ? <Alert message={formError} /> : null}
-
-              {/* Hidden controls representing the saved shipping parameters */}
-              <div className="hidden">
-                <input {...register('firstName')} />
-                <input {...register('lastName')} />
-                <input {...register('phone')} />
-                <input {...register('email')} />
-                <input {...register('city')} />
-                <input {...register('state')} />
-                <input {...register('zipCode')} />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input
-                  type="email"
-                  labelKey="Confirmation Email Address"
-                  {...register('email', {
-                    required: 'forms:email-required',
-                    pattern: {
-                      value:
-                        /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/,
-                      message: 'forms:email-error',
-                    },
-                  })}
-                  errorKey={errors.email?.message}
-                  variant="solid"
-                />
-                <Input
-                  type="tel"
-                  labelKey="Contact Phone Number"
-                  inputMode="numeric"
-                  {...register('phone', {
-                    required: 'forms:phone-required',
-                    pattern: { value: PHONE_ONLY_REGEX, message: 'forms:phone-invalid' },
-                  })}
-                  errorKey={errors.phone?.message}
-                  variant="solid"
-                />
-              </div>
-
-              <TextArea
-                labelKey="Add Delivery Instructions / Order Notes"
-                {...register('note')}
-                placeholderKey="e.g. leave at front door, call before delivery..."
-                className="relative"
-              />
-
-              {shippingOptions.length ? (
-                <div className="flex flex-col gap-2.5">
-                  <span className="text-sm font-semibold text-heading font-body">Shipping Method</span>
-                  <div className="border rounded-md p-4 border-heading bg-gray-50 flex items-center justify-between">
-                    <div>
-                      <span className="text-sm font-bold text-heading font-body">Standard Shipping</span>
-                      <span className="text-xs text-gray-500 block mt-0.5 font-body">Estimated Delivery: 7–20 Days</span>
-                    </div>
-                    <span className="text-sm font-bold text-heading font-body">AED 0</span>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded bg-[#EBF5EE] flex items-center justify-center flex-shrink-0">
+                    {/* Hand with banknote icon */}
+                    <svg
+                      className="w-5 h-5 text-[#1C5E39]"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <rect x="7" y="6" width="14" height="8" rx="1.5" strokeWidth="1.5" />
+                      <circle cx="14" cy="10" r="1.8" strokeWidth="1.5" />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="1.5"
+                        d="M3 12h3.5l2.5 3h7.5c.8 0 1.5-.7 1.5-1.5v-.5M3 12v3.5A1.5 1.5 0 004.5 17h2.5"
+                      />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-xs md:text-sm font-semibold text-heading font-body">
+                      Cash on Delivery
+                    </h3>
+                    <p className="text-[11px] md:text-xs text-gray-400 font-body mt-0.5">
+                      Pay in cash when you receive your order.
+                    </p>
                   </div>
                 </div>
-              ) : null}
-
-              <div className="pt-2">
-                <Button
-                  type="submit"
-                  className="w-full md:w-auto md:px-8 h-12 uppercase font-bold tracking-wider font-body bg-[#C7844B] hover:bg-amber-800 text-white"
-                  loading={submitting}
-                  disabled={submitting || isEmpty}
+                <div
+                  className={`w-4 h-4 rounded-full border flex items-center justify-center flex-shrink-0 transition ${
+                    selectedPaymentProvider === 'pp_system_default'
+                      ? 'border-[#1C5E39]'
+                      : 'border-gray-300'
+                  }`}
                 >
-                  Place Order
-                </Button>
+                  {selectedPaymentProvider === 'pp_system_default' && (
+                    <div className="w-2 h-2 rounded-full bg-[#1C5E39]" />
+                  )}
+                </div>
               </div>
-            </form>
-          </div>
-        )}
-      </div>
+            </div>
+
+            {/* Pay Now Card */}
+            <div
+              onClick={() => setSelectedPaymentProvider('pp_ngenius_ngenius')}
+              className={`border rounded-lg p-4 cursor-pointer flex flex-col gap-3 transition bg-white ${
+                selectedPaymentProvider === 'pp_ngenius_ngenius'
+                  ? 'border-[#1C5E39]'
+                  : 'border-gray-200 hover:bg-gray-50/20'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded bg-gray-100 flex items-center justify-center flex-shrink-0">
+                    {/* Card icon with lock */}
+                    <svg
+                      className="w-5 h-5 text-gray-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <rect x="3" y="5" width="18" height="13" rx="2" strokeWidth="1.5" />
+                      <path d="M3 9h18" strokeWidth="1.5" />
+                      <rect x="13" y="12" width="6" height="5" rx="1" strokeWidth="1.5" />
+                      <path d="M15 12V10a1 1 0 012 0v2" strokeWidth="1.5" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-xs md:text-sm font-semibold text-heading font-body">
+                      Pay Now
+                    </h3>
+                    <p className="text-[11px] md:text-xs text-gray-400 font-body mt-0.5">
+                      Pay securely using your card or other available methods.
+                    </p>
+                  </div>
+                </div>
+                <div
+                  className={`w-4 h-4 rounded-full border flex items-center justify-center flex-shrink-0 transition ${
+                    selectedPaymentProvider === 'pp_ngenius_ngenius'
+                      ? 'border-[#1C5E39]'
+                      : 'border-gray-300'
+                  }`}
+                >
+                  {selectedPaymentProvider === 'pp_ngenius_ngenius' && (
+                    <div className="w-2 h-2 rounded-full bg-[#1C5E39]" />
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* CTA Button and Disclaimer */}
+            <div className="pt-3 flex flex-col gap-2.5">
+              <Button
+                type="submit"
+                className="w-full h-10 font-bold uppercase tracking-wider text-xs font-body bg-[#1D1D1D] hover:bg-black text-white rounded transition duration-200"
+                loading={submitting}
+                disabled={submitting || isEmpty}
+              >
+                {selectedPaymentProvider === 'pp_system_default'
+                  ? 'Place Order'
+                  : 'Continue to Payment'}
+              </Button>
+              <div className="flex items-center justify-center gap-1.5 text-[10px] text-gray-400 font-body">
+                <svg
+                  className="w-3.5 h-3.5"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                <span>Your payment information is secure and encrypted.</span>
+              </div>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 };

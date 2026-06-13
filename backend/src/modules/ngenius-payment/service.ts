@@ -41,11 +41,25 @@ export class NGeniusPaymentService extends AbstractPaymentProvider<any> {
       const customerEmail = context?.email || context?.customer?.email;
 
       // N-Genius creates the order, returning order details and the hosted checkout payment_url
+      const cartId = data?.cart_id || data?.order_id || context?.cart_id || context?.cart?.id || input.cart_id || (context?.resource_id?.startsWith("cart_") ? context.resource_id : undefined) || (input.resource_id?.startsWith("cart_") ? input.resource_id : undefined);
+      
+      let redirectParam = "";
+      if (cartId) {
+        if (cartId.startsWith("ord_")) {
+          redirectParam = `id=${cartId}`;
+        } else {
+          redirectParam = `cart_id=${cartId}`;
+        }
+      } else {
+        redirectParam = `ref=${orderReference}`;
+      }
+
       const orderResponse = await this.client.createOrder(
         parsedAmount,
         currency_code,
         orderReference,
-        customerEmail
+        customerEmail,
+        redirectParam
       );
 
       const paymentUrl = orderResponse._links?.payment?.href;
@@ -328,14 +342,58 @@ export class NGeniusPaymentService extends AbstractPaymentProvider<any> {
   }
 
   /**
-   * Process webhook events.
-   * TODO: Map actual webhook events to Medusa actions once payloads are documented.
+   * Process webhook events received from the N-Genius gateway.
+   * Maps payment status updates to Medusa's internal PaymentActions.
    */
   async getWebhookActionAndData(input: any): Promise<any> {
-    this.logger.info(`[N-Genius Service] Webhook event received: ${JSON.stringify(input)}`);
+    this.logger.info(`[N-Genius Service] getWebhookActionAndData input: ${JSON.stringify(input)}`);
+    
+    // Medusa passes request payload/body to input
+    const payload = input?.body || input || {};
+    
+    // Extract N-Genius order reference (UUID)
+    const reference = payload.data?.order?.reference || payload.order?.reference || payload.reference || payload.orderReference || payload.order_reference;
+    
+    // Extract amount details
+    const amountObj = payload.data?.order?.amount || payload.amount;
+    let amount = 0;
+    if (typeof amountObj === "object" && amountObj !== null) {
+      amount = amountObj.value || amountObj.amount || 0;
+    } else if (typeof amountObj === "number") {
+      amount = amountObj;
+    }
+
+    if (!reference) {
+      this.logger.warn("[N-Genius Service] Webhook received without valid order reference.");
+      return {
+        action: "not_supported",
+        data: {},
+      };
+    }
+
+    // Determine the event type
+    const event = String(payload.event || payload.type || payload.status || "").toLowerCase();
+    this.logger.info(`[N-Genius Service] Processing webhook event: ${event} for reference: ${reference}`);
+
+    let action = "not_supported";
+    if (event.includes("captured") || event.includes("purchased") || event.includes("success")) {
+      action = "captured";
+    } else if (event.includes("authorized") || event.includes("auth")) {
+      action = "authorized";
+    } else if (event.includes("failed") || event.includes("declined") || event.includes("rejected")) {
+      action = "failed";
+    } else if (event.includes("cancelled") || event.includes("canceled")) {
+      action = "canceled";
+    } else if (event.includes("pending")) {
+      action = "pending";
+    }
+
     return {
-      action: "not_supported",
-      data: {},
+      action,
+      data: {
+        session_id: reference,
+        amount,
+      },
     };
   }
 

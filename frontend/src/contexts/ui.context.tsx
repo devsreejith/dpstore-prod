@@ -1,9 +1,11 @@
 import React from "react";
 import { CartProvider } from "./cart/cart.context";
 import http from "@framework/utils/http";
+import { getToken } from "@framework/utils/get-token";
 
 export interface State {
   isAuthorized: boolean;
+  checkingAuth: boolean;
   displaySidebar: boolean;
   displayFilter: boolean;
   displayModal: boolean;
@@ -18,6 +20,7 @@ export interface State {
 
 const initialState = {
   isAuthorized: false,
+  checkingAuth: true,
   displaySidebar: false,
   displayFilter: false,
   displayModal: false,
@@ -112,12 +115,14 @@ function uiReducer(state: State, action: Action) {
       return {
         ...state,
         isAuthorized: true,
+        checkingAuth: false,
       };
     }
     case "SET_UNAUTHORIZED": {
       return {
         ...state,
         isAuthorized: false,
+        checkingAuth: false,
       };
     }
     case "OPEN_SIDEBAR": {
@@ -274,7 +279,6 @@ export const UIProvider: React.FC = (props) => {
     let mounted = true;
     (async () => {
       try {
-        const { getToken } = require("@framework/utils/get-token");
         const token = getToken();
         if (!token) {
           if (mounted) unauthorize();

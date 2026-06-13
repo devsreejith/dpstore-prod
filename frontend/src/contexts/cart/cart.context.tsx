@@ -29,7 +29,7 @@ interface CartProviderState extends State {
     billing_address?: any;
     shipping_option_id?: string;
     payment_provider_id?: string;
-  }) => Promise<{ type: "order" | "cart"; order?: any; cart?: any; error?: any }>;
+  }) => Promise<{ type: "order" | "cart"; order?: any; cart?: any; error?: any; payment_url?: string }>;
 }
 export const cartContext = React.createContext<CartProviderState | undefined>(
   undefined
@@ -442,11 +442,22 @@ export const CartProvider: React.FC = (props) => {
         }
       }
 
+      let paymentUrl = "";
       if (paymentCollectionId && providerId) {
-        await http.post(`/store/payment-collections/${paymentCollectionId}/payment-sessions`, {
+        const resSession = await http.post(`/store/payment-collections/${paymentCollectionId}/payment-sessions`, {
           provider_id: providerId,
-          data: {},
+          data: {
+            cart_id: c.id
+          },
         });
+        const pc = resSession?.data?.payment_collection ?? resSession?.data?.paymentCollection ?? resSession?.data;
+        const sessions = Array.isArray(pc?.payment_sessions) ? pc.payment_sessions : [];
+        const ngeniusSession = sessions.find(
+          (s: any) => s.provider_id === "pp_ngenius_ngenius" || s.provider_id === "pp_ngenius" || s.provider_id === "ngenius" || s.data?.payment_url
+        );
+        if (ngeniusSession?.data?.payment_url) {
+          paymentUrl = ngeniusSession.data.payment_url;
+        }
       }
 
       const resComplete = await http.post(`/store/carts/${c.id}/complete`, {});
@@ -460,10 +471,11 @@ export const CartProvider: React.FC = (props) => {
         const ngeniusSession = sessions.find(
           (s: any) => s.provider_id === "pp_ngenius_ngenius" || s.provider_id === "pp_ngenius" || s.provider_id === "ngenius" || s.data?.payment_url
         );
-        if (ngeniusSession?.data?.payment_url && typeof window !== "undefined") {
-          window.location.href = ngeniusSession.data.payment_url;
+        const finalPaymentUrl = ngeniusSession?.data?.payment_url || paymentUrl;
+        if (finalPaymentUrl && typeof window !== "undefined") {
+          window.location.href = finalPaymentUrl;
         }
-        return { type: "order" as const, order };
+        return { type: "order" as const, order, payment_url: finalPaymentUrl };
       }
       const errMsg = String(resComplete?.data?.error?.message ?? "").trim();
       if (errMsg) throw new Error(errMsg);

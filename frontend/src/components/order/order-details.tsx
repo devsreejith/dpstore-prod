@@ -136,10 +136,11 @@ const OrderDetails: React.FC<{ className?: string }> = ({
   className = 'pt-6',
 }) => {
   const {
-    query: { id },
+    query: { id, cart_id },
   } = useRouter();
   const router = useRouter();
-  const { data: order, isLoading } = useOrderQuery(id?.toString()!);
+  const orderIdentifier = (id || cart_id)?.toString()!;
+  const { data: order, isLoading } = useOrderQuery(orderIdentifier);
   const [paying, setPaying] = useState(false);
   const [payError, setPayError] = useState<string | null>(null);
   const [canceling, setCanceling] = useState(false);
@@ -167,19 +168,18 @@ const OrderDetails: React.FC<{ className?: string }> = ({
   const isCancelled =
     Boolean((order as any)?.canceled_at) || String((order as any)?.status ?? '').toLowerCase() === 'canceled' || String((order as any)?.status ?? '').toLowerCase() === 'cancelled';
   const paymentStatus = String((order as any)?.payment_status ?? '').toLowerCase();
-  const isPaymentPaid = paymentStatus === 'captured' || paymentStatus === 'paid';
-  const isPaymentPending = !isPaymentPaid && !isCancelled;
+  
+  const isOnlinePayment = paymentProvider && paymentProvider !== 'pp_system_default';
+  const capturedAmount =
+    Array.isArray(order?.payment_collections) && order.payment_collections.length
+      ? Number(order.payment_collections[0]?.captured_amount ?? 0)
+      : 0;
 
-  // Premium status label styling
-  let paymentLabel = 'Payment Pending';
-  let paymentLabelColor = 'text-[#D97706]';
-  if (isCancelled) {
-    paymentLabel = 'Cancelled';
-    paymentLabelColor = 'text-red-600';
-  } else if (isPaymentPaid) {
-    paymentLabel = 'Paid';
-    paymentLabelColor = 'text-green-600';
-  }
+  const isPaymentPaid = isOnlinePayment
+    ? capturedAmount > 0
+    : (paymentStatus === 'captured' || paymentStatus === 'paid' || paymentStatus === 'authorized');
+  
+  const isPaymentPending = !isPaymentPaid && !isCancelled;
 
   const display = order?.display_id ?? order?.custom_display_id ?? order?.id;
   const title = display ? `Order #000${display}` : `Order #000${String(order?.id ?? '')}`;
@@ -226,7 +226,9 @@ const OrderDetails: React.FC<{ className?: string }> = ({
       // 1. Create the payment session on the backend
       const res = await http.post(`/store/payment-collections/${paymentCollectionId}/payment-sessions`, {
         provider_id: providerId,
-        data: {},
+        data: {
+          order_id: order.id
+        },
       });
       const pc = (res as any)?.data?.payment_collection ?? (res as any)?.data?.paymentCollection ?? (res as any)?.data;
       const sessions = Array.isArray(pc?.payment_sessions) ? pc.payment_sessions : [];
@@ -276,8 +278,8 @@ const OrderDetails: React.FC<{ className?: string }> = ({
   const sellerName = String((order as any)?.metadata?.seller_name || 'HouseHoldProduct');
   const paymentMethodName = paymentProvider === 'pp_system_default' || !paymentProvider ? 'Cash On Delivery' : 'Online Payment Card';
 
-  const originalSubtotal = Math.round(subtotalAmount * 1.25);
-  const discountAmount = originalSubtotal - subtotalAmount;
+  const originalSubtotal = subtotalAmount;
+  const discountAmount = 0;
 
   return (
     <div className={`${className} bg-transparent min-h-screen pb-12 font-body`}>
@@ -285,7 +287,7 @@ const OrderDetails: React.FC<{ className?: string }> = ({
         <IoArrowBackOutline className="text-base" /> Back to Orders
       </Link>
 
-      {isPaymentPending && !isCancelled && (
+      {isOnlinePayment && isPaymentPending && !isCancelled && (
         <div className="mb-5 font-body">
           <div className="bg-[#FEFBF7] border border-[#FFE8C5] rounded-md p-4 flex flex-col sm:flex-row justify-between items-center gap-3.5 font-body">
             <span className="text-xs md:text-sm text-heading font-medium">
@@ -313,7 +315,6 @@ const OrderDetails: React.FC<{ className?: string }> = ({
         <div className="lg:col-span-8 space-y-4">
           {items.map((it: any) => {
             const itemThumb = pickOrderItemThumb(it);
-            const itemOriginalPrice = fmt(it.unit_price * 1.25, currency);
             const itemPrice = fmt(it.unit_price, currency);
 
             return (
@@ -326,8 +327,6 @@ const OrderDetails: React.FC<{ className?: string }> = ({
                     <h3 className="text-sm md:text-base font-bold text-heading truncate">{it.title || it.product_title}</h3>
                     <div className="flex items-center gap-2 mt-2">
                       <span className="text-sm font-bold text-heading font-mono">{itemPrice}</span>
-                      <span className="text-xs text-gray-500 line-through font-mono">{itemOriginalPrice}</span>
-                      <span className="text-xs text-emerald-600 font-semibold">20% off</span>
                     </div>
                   </div>
                 </div>
@@ -451,39 +450,42 @@ const OrderDetails: React.FC<{ className?: string }> = ({
           </div>
 
           <div className="border border-gray-200 rounded-md bg-white p-5">
-            <h3 className="font-bold text-sm text-heading border-b border-gray-100 pb-2.5 mb-3.5 uppercase tracking-wider">
+            <h3 className="font-bold text-sm text-heading border-b border-gray-100 pb-2.5 mb-3.5 uppercase tracking-wider font-body">
               Price details
             </h3>
 
-            <div className="space-y-3.5 text-xs md:text-sm text-heading font-medium">
+            <div className="space-y-4 text-xs md:text-sm text-heading font-medium font-body">
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">Listing Price</span>
-                <span className="line-through text-gray-400 font-mono">{fmt(originalSubtotal, currency)}</span>
+                <span className="text-gray-700 font-normal">Price ({items.length} item{items.length > 1 ? "s" : ""})</span>
+                <span className="font-mono text-heading font-semibold">{fmt(subtotalAmount, currency)}</span>
               </div>
 
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">Special Price</span>
-                <span className="font-mono text-heading">{fmt(subtotalAmount, currency)}</span>
+                <span className="text-gray-700 font-normal">Discount</span>
+                <span className="text-[#1C5E39] font-mono font-semibold">AED 00.00</span>
               </div>
 
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">Total fees</span>
-                <span className="text-emerald-600 uppercase font-bold text-xs">Free</span>
+                <span className="text-gray-700 font-normal">Delivery Charges</span>
+                <span className="text-[#1C5E39] uppercase font-bold text-10px">Free</span>
               </div>
 
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Other discount</span>
-                <span className="text-emerald-600 font-semibold font-mono">-{fmt(discountAmount, currency)}</span>
-              </div>
-
-              <div className="border-t border-gray-150 pt-3 flex justify-between items-center font-bold text-base text-heading">
-                <span>Total amount</span>
+              <div className="border-t border-gray-150 pt-4 flex justify-between items-center font-bold text-sm md:text-base text-heading">
+                <span>Total Amount</span>
                 <span className="font-mono">{fmt(totalAmount, currency)}</span>
               </div>
             </div>
 
-            <div className="bg-emerald-50 border border-emerald-100 rounded p-2.5 mt-4 text-xs text-emerald-700 font-bold text-center">
-              Paid By {paymentMethodName}
+            <div className={`rounded p-2.5 mt-4 text-xs font-bold text-center border ${
+              isPaymentPaid && paymentProvider !== 'pp_system_default'
+                ? 'bg-emerald-50 border-emerald-100 text-emerald-700'
+                : 'bg-amber-50 border-amber-100 text-[#D97706]'
+            }`}>
+              {isPaymentPaid && paymentProvider !== 'pp_system_default'
+                ? `Paid By ${paymentMethodName}`
+                : (paymentProvider === 'pp_system_default' || !paymentProvider
+                    ? 'Cash On Delivery'
+                    : 'Pending Payment')}
             </div>
           </div>
         </div>

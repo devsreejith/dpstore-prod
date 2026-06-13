@@ -1,9 +1,18 @@
 import http from "@framework/utils/http";
 import { useQuery } from "@tanstack/react-query";
 
+const orderFields = "id,display_id,created_at,email,total,subtotal,tax_total,shipping_total,currency_code,payment_status,fulfillment_status,status,canceled_at,updated_at,metadata," +
+  "shipping_address.first_name,shipping_address.last_name,shipping_address.address_1,shipping_address.address_2,shipping_address.city,shipping_address.province,shipping_address.postal_code,shipping_address.country_code,shipping_address.phone," +
+  "billing_address.first_name,billing_address.last_name,billing_address.address_1,billing_address.address_2,billing_address.city,billing_address.province,billing_address.postal_code,billing_address.country_code,billing_address.phone," +
+  "shipping_methods.name,shipping_methods.price," +
+  "items.id,items.title,items.quantity,items.unit_price,items.thumbnail,items.variant.id,items.variant.sku,items.variant.product.thumbnail,items.variant.product.images.url," +
+  "payment_collections.id,payment_collections.payment_sessions.id,payment_collections.payment_sessions.provider_id,payment_collections.payment_sessions.status,payment_collections.payment_sessions.data";
+
 export const fetchOrder = async (_id: string) => {
   try {
-    const { data } = await http.get(`/store/orders/${_id}`);
+    const { data } = await http.get(`/store/orders/${_id}`, {
+      params: { fields: orderFields }
+    });
     return (data?.order ?? data) as any;
   } catch (e: any) {
     const status = e?.response?.status;
@@ -15,9 +24,41 @@ export const fetchOrder = async (_id: string) => {
     throw e;
   }
 };
+
+export const fetchOrderByCartId = async (cartId: string) => {
+  try {
+    const { data } = await http.get(`/store/orders`, {
+      params: { cart_id: cartId, fields: "id" }
+    });
+    const orders = data?.orders || [];
+    const orderId = orders[0]?.id;
+    if (orderId) {
+      return await fetchOrder(orderId);
+    }
+    return null;
+  } catch (e: any) {
+    const status = e?.response?.status;
+    const msg = String(e?.response?.data?.message ?? e?.message ?? "");
+    if (status === 400 && msg.toLowerCase().includes("unrecognized fields")) {
+      const { data } = await http.get(`/store/orders`, {
+        params: { cart_id: cartId }
+      });
+      const orders = data?.orders || [];
+      return orders[0] || null;
+    }
+    throw e;
+  }
+};
+
 export const useOrderQuery = (id: string) => {
   return useQuery<any, Error>({
     queryKey: ["store.order", id],
-    queryFn: () => fetchOrder(id)
+    queryFn: () => {
+      if (id && id.startsWith("cart_")) {
+        return fetchOrderByCartId(id);
+      }
+      return fetchOrder(id);
+    },
+    enabled: !!id,
   });
 };

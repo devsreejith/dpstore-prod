@@ -11,14 +11,16 @@ const AccountLayout: React.FunctionComponent<{
   children: React.ReactNode;
   requireAuth?: boolean;
   wrapChildrenInCard?: boolean;
-}> = ({ children, requireAuth = true, wrapChildrenInCard = false }) => {
-  const { isAuthorized } = useUI();
+  showSubscription?: boolean;
+}> = ({ children, requireAuth = true, wrapChildrenInCard = false, showSubscription = false }) => {
+  const { isAuthorized, checkingAuth } = useUI();
 
   useEffect(() => {
+    if (checkingAuth) return;
     if (requireAuth && !isAuthorized) {
       Router.push(`/signin?redirect=${encodeURIComponent(Router.asPath)}`);
     }
-  }, [isAuthorized, requireAuth]);
+  }, [isAuthorized, requireAuth, checkingAuth]);
 
   const customerQuery = useQuery({
     queryKey: ["store.customer.me.sidebar"],
@@ -57,7 +59,7 @@ const AccountLayout: React.FunctionComponent<{
           </div>
         </div>
 
-				<Subscription />
+				{showSubscription && <Subscription />}
 			</Container>
 		</>
 	);

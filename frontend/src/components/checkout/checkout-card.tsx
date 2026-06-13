@@ -2,21 +2,26 @@ import usePrice from "@framework/product/use-price";
 import { useCart } from "@contexts/cart/cart.context";
 import { useEffect, useState } from "react";
 
-const CheckoutCard: React.FC = () => {
+interface CheckoutCardProps {
+  activeStep: 1 | 2 | 3;
+  setActiveStep: React.Dispatch<React.SetStateAction<1 | 2 | 3>>;
+  selectedAddress: any;
+}
+
+const CheckoutCard: React.FC<CheckoutCardProps> = ({
+  activeStep,
+  setActiveStep,
+  selectedAddress,
+}) => {
   const [mounted, setMounted] = useState(false);
   const { items, total, isEmpty } = useCart();
 
-  // Dynamic original price simulation to display realistic savings
-  const originalAmount = Math.round(total * 1.25);
-  const discountAmount = originalAmount - total;
+  // Keep the real price and display discount as AED 00.00 for now
+  const originalAmount = total;
+  const discountAmount = 0;
 
   const { price: priceOriginal } = usePrice({
     amount: originalAmount,
-    currencyCode: "AED",
-  });
-
-  const { price: priceDiscount } = usePrice({
-    amount: discountAmount,
     currencyCode: "AED",
   });
 
@@ -35,48 +40,79 @@ const CheckoutCard: React.FC = () => {
 
   return (
     <div className="pt-0 lg:pt-0 ltr:2xl:pl-4 rtl:2xl:pr-4">
+      {/* DELIVERY ADDRESS summary block (Step 3 only) */}
+      {activeStep === 3 && (
+        <div className="border border-gray-200 rounded-md bg-white p-5 mb-5 shadow-sm flex justify-between items-start">
+          <div className="min-w-0 flex-1">
+            <h2 className="text-xs md:text-sm font-bold text-[#1C5E39] uppercase tracking-wider font-body mb-2.5">
+              DELIVERY ADDRESS
+            </h2>
+            {selectedAddress ? (
+              <div className="text-xs md:text-sm text-gray-600 font-body space-y-1 leading-relaxed">
+                <div className="font-bold text-heading text-xs md:text-sm">
+                  {selectedAddress.first_name} {selectedAddress.last_name}
+                </div>
+                <div>
+                  {[selectedAddress.address_1, selectedAddress.city, selectedAddress.province, selectedAddress.postal_code]
+                    .filter(Boolean)
+                    .join(', ')}
+                </div>
+                {selectedAddress.phone && (
+                  <div className="text-gray-500 font-normal text-xs">{selectedAddress.phone}</div>
+                )}
+              </div>
+            ) : (
+              <span className="text-gray-400 font-normal text-xs">No address selected</span>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => setActiveStep(2)}
+            className="text-[10px] md:text-xs font-bold text-[#1C5E39] uppercase hover:underline ml-4 flex-shrink-0"
+          >
+            Change
+          </button>
+        </div>
+      )}
       <div className="border border-gray-200 rounded-md bg-white overflow-hidden shadow-sm flex flex-col">
         {/* Price details header */}
-        <div className="border-b border-gray-150 px-5 py-4 bg-gray-50/50">
-          <h2 className="text-xs md:text-sm font-bold text-gray-400 uppercase tracking-wider font-body">
+        <div className="px-5 pt-5 pb-2">
+          <h2 className="text-sm md:text-base font-bold text-heading uppercase tracking-wider font-body">
             PRICE DETAILS
           </h2>
         </div>
 
         {/* Details list */}
-        <div className="p-5 space-y-4 text-xs md:text-sm text-heading font-medium font-body">
+        <div className="p-5 pt-2 space-y-4 text-xs md:text-sm text-heading font-medium font-body">
           <div className="flex justify-between items-center">
-            <span className="text-gray-500">Price ({items.length} item{items.length > 1 ? "s" : ""})</span>
-            <span>{priceOriginal}</span>
+            <span className="text-gray-700 font-normal">Price ({items.length} item{items.length > 1 ? "s" : ""})</span>
+            <span className="font-mono text-heading font-semibold">{priceOriginal}</span>
           </div>
 
           <div className="flex justify-between items-center">
-            <span className="text-gray-500">Discount</span>
-            <span className="text-emerald-600">-{priceDiscount}</span>
+            <span className="text-gray-700 font-normal">Discount</span>
+            <span className="text-[#1C5E39] font-mono font-semibold">AED 00.00</span>
           </div>
 
           <div className="flex justify-between items-center">
-            <span className="text-gray-500">Delivery Charges</span>
-            <span className="text-emerald-600 uppercase font-bold text-10px">Free</span>
+            <span className="text-gray-700 font-normal">Delivery Charges</span>
+            <span className="text-[#1C5E39] uppercase font-bold text-10px">Free</span>
           </div>
 
-          <div className="border-t border-gray-150 pt-4 flex justify-between items-center font-bold text-base">
+          <div className="border-t border-gray-150 pt-4 flex justify-between items-center font-bold text-sm md:text-base text-heading">
             <span>Total Amount</span>
-            <span>{priceTotal}</span>
+            <span className="font-mono">{priceTotal}</span>
           </div>
         </div>
-
-        {/* Savings banner */}
-        {discountAmount > 0 && (
-          <div className="bg-emerald-50 border-t border-emerald-100 px-5 py-3 text-xs md:text-sm text-emerald-700 font-bold font-body text-center">
-            You will save {priceDiscount} on this order
-          </div>
-        )}
       </div>
 
       {/* Security note */}
-      <div className="mt-4 flex items-center justify-center gap-2 text-[10px] md:text-xs text-gray-400 font-bold uppercase tracking-wider text-center">
-        🔒 Safe and Secure Payments. 100% Authentic products.
+      <div className="mt-5 px-1 flex items-start gap-2.5 text-[10px] md:text-xs text-gray-500 font-normal uppercase tracking-wider">
+        <span className="text-xl text-gray-400 mt-0.5">🛡️</span>
+        <div className="flex flex-col text-left leading-normal font-body">
+          <span>Safe and Secure Payments.</span>
+          <span>100% Authentic products.</span>
+        </div>
       </div>
     </div>
   );

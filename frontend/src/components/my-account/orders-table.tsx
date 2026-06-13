@@ -4,12 +4,126 @@ import Link from '@components/ui/link';
 import { useTranslation } from 'next-i18next';
 import { useOrdersQuery } from '@framework/order/get-all-orders';
 import { formatPrice } from '@framework/product/use-price';
-import Button from '@components/ui/button';
+import { useState } from 'react';
+
+const normalizeMediaSrc = (src: any) => {
+  const v = String(src ?? '').trim();
+  if (!v) return '';
+
+  const backend = String(process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL ?? 'http://localhost:9000').trim().replace(/\/$/, '');
+
+  if (/^https?:\/\//i.test(v)) {
+    if (backend && v.startsWith(backend)) {
+      return v;
+    }
+    return v;
+  }
+
+  if (v.startsWith('uploads/') || v.startsWith('/uploads/') || v.startsWith('static/') || v.startsWith('/static/')) {
+    const cleanPath = v.startsWith('/') ? v : `/${v}`;
+    return `${backend}${cleanPath}`;
+  }
+
+  if (v.startsWith('/assets/')) return v;
+  if (!v.startsWith('/')) return `/${v}`;
+  return v;
+};
+
+const pickOrderItemThumb = (it: any) => {
+  const candidates = [
+    it?.thumbnail,
+    it?.variant?.product?.thumbnail,
+    it?.variant?.product?.images?.[0]?.url,
+    it?.variant?.product?.images?.[0]?.src,
+    it?.product?.thumbnail,
+    it?.product?.images?.[0]?.url,
+    it?.product?.images?.[0]?.src,
+  ];
+  for (const c of candidates) {
+    const n = normalizeMediaSrc(c);
+    if (n) return n;
+  }
+  return '';
+};
+
+const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
+  let bgClass = '';
+  let textClass = '';
+  let borderClass = '';
+  let icon = null;
+
+  switch (status) {
+    case 'Payment Pending':
+      bgClass = 'bg-[#FEF6EC]';
+      textClass = 'text-[#C2782F]';
+      borderClass = 'border-[#FCE6CD]';
+      icon = (
+        <svg className="w-3.5 h-3.5 mr-1 flex-shrink-0 text-[#C2782F]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      );
+      break;
+    case 'Cancelled':
+    case 'Canceled':
+      bgClass = 'bg-[#FFF5F5]';
+      textClass = 'text-[#E02424]';
+      borderClass = 'border-[#FDE8E8]';
+      icon = (
+        <svg className="w-3.5 h-3.5 mr-1 flex-shrink-0 text-[#E02424]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      );
+      break;
+    case 'Delivered':
+      bgClass = 'bg-[#EDFDF5]';
+      textClass = 'text-[#10B981]';
+      borderClass = 'border-[#D1FAE5]';
+      icon = (
+        <svg className="w-3.5 h-3.5 mr-1 flex-shrink-0 text-[#10B981]" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+        </svg>
+      );
+      break;
+    case 'Shipped':
+    case 'Out for Delivery':
+    case 'Out For Delivery':
+      bgClass = 'bg-[#EEF2FF]';
+      textClass = 'text-[#4F46E5]';
+      borderClass = 'border-[#E0E7FF]';
+      icon = (
+        <svg className="w-3.5 h-3.5 mr-1 flex-shrink-0 text-[#4F46E5]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125a1.125 1.125 0 001.125-1.125V9.75M8.25 13.875h7.5M8.25 9.75h7.5" />
+        </svg>
+      );
+      break;
+    case 'Processing':
+    default:
+      bgClass = 'bg-[#EFF6FF]';
+      textClass = 'text-[#2563EB]';
+      borderClass = 'border-[#DBEAFE]';
+      icon = (
+        <svg className="w-3.5 h-3.5 mr-1 flex-shrink-0 text-[#2563EB]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12a7.5 7.5 0 0015 0m-15 0a7.5 7.5 0 1115 0m-15 0H3m16.5 0h1.5m-1.5 0a7.5 7.5 0 100-15M12 4.5V3m0 16.5V21" />
+        </svg>
+      );
+      break;
+  }
+
+  return (
+    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border ${bgClass} ${textClass} ${borderClass}`}>
+      {icon}
+      {status}
+    </span>
+  );
+};
 
 const OrdersTable: React.FC = () => {
   const { t } = useTranslation('common');
   const { data, isLoading, error } = useOrdersQuery({});
-  
+  const [activeTab, setActiveTab] = useState('All Orders');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+
   const orders = Array.isArray(data?.orders)
     ? [...data.orders].sort((a, b) => {
         const dateA = a?.created_at ? new Date(a.created_at).getTime() : 0;
@@ -55,14 +169,87 @@ const OrdersTable: React.FC = () => {
     return 'Processing';
   };
 
-  const fmtDate = (v: any) => {
+  const getFormattedOrderId = (o: any) => {
+    const orderDate = o?.created_at ? new Date(o.created_at) : new Date();
+    const yy = String(orderDate.getFullYear()).slice(-2);
+    const mm = String(orderDate.getMonth() + 1).padStart(2, '0');
+    const dd = String(orderDate.getDate()).padStart(2, '0');
+    const displayIdStr = String(o?.display_id ?? '1').padStart(3, '0');
+    return `DP${yy}${mm}${dd}${displayIdStr}`;
+  };
+
+  const fmtDateOnly = (v: any) => {
     const d = new Date(v);
     return Number.isFinite(d.getTime()) ? d.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
   };
 
+  const fmtTimeOnly = (v: any) => {
+    const d = new Date(v);
+    if (!Number.isFinite(d.getTime())) return '';
+    return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+  };
+
+  // Filter orders by active tab
+  const filteredOrders = orders.filter((order) => {
+    const status = getDisplayStatus(order);
+    if (activeTab === 'All Orders') return true;
+    if (activeTab === 'Payment Pending') return status === 'Payment Pending';
+    if (activeTab === 'Processing') return status === 'Processing';
+    if (activeTab === 'Shipped') return status === 'Shipped' || status === 'Out for Delivery';
+    if (activeTab === 'Delivered') return status === 'Delivered';
+    if (activeTab === 'Cancelled') return status === 'Cancelled';
+    return true;
+  });
+
+  const totalPages = Math.ceil(filteredOrders.length / itemsPerPage) || 1;
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, filteredOrders.length);
+  const paginatedOrders = filteredOrders.slice(startIndex, endIndex);
+
+  const showingText = filteredOrders.length > 0
+    ? `Showing ${startIndex + 1} to ${endIndex} of ${filteredOrders.length} orders`
+    : `Showing 0 to 0 of 0 orders`;
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) setCurrentPage(currentPage - 1);
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) setCurrentPage(currentPage + 1);
+  };
+
+  const tabs = ['All Orders', 'Payment Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled'];
+
   return (
     <div className="w-full">
-      <h2 className="text-xl md:text-2xl font-bold text-heading mb-6 font-body">Orders</h2>
+      <div className="mb-6 font-body">
+        <h2 className="text-2xl md:text-3xl font-bold text-heading mb-1">Orders</h2>
+        <p className="text-sm text-gray-500">Track, view and manage your orders</p>
+      </div>
+
+      <div className="flex border-b border-gray-200 mb-6 overflow-x-auto no-scrollbar scroll-smooth font-body">
+        <div className="flex gap-6 md:gap-8 min-w-max pb-0.5">
+          {tabs.map((tab) => {
+            const isActive = activeTab === tab;
+            return (
+              <button
+                key={tab}
+                onClick={() => {
+                  setActiveTab(tab);
+                  setCurrentPage(1);
+                }}
+                className={`text-xs md:text-sm font-semibold whitespace-nowrap pb-3 border-b-2 transition duration-200 ${
+                  isActive
+                    ? 'border-[#1C5E39] text-[#1C5E39]'
+                    : 'border-transparent text-gray-500 hover:text-black'
+                }`}
+              >
+                {tab}
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
       <motion.div
         layout
@@ -77,59 +264,122 @@ const OrdersTable: React.FC = () => {
           <div className="text-sm text-body py-10 text-center font-body">{t('text-loading')}</div>
         ) : error ? (
           <div className="text-sm text-red-600 py-10 text-center font-body">{errorText}</div>
-        ) : orders.length ? (
-          <div className="w-full overflow-x-auto border border-gray-200 rounded-md">
-            <table className="w-full text-left border-collapse font-body">
-              <thead>
-                <tr className="bg-gray-50 border-b border-gray-200 text-xs md:text-sm text-heading font-bold">
-                  <th className="py-4 px-5 font-bold">Order</th>
-                  <th className="py-4 px-5 font-bold">Date</th>
-                  <th className="py-4 px-5 font-bold">Status</th>
-                  <th className="py-4 px-5 font-bold">Total</th>
-                  <th className="py-4 px-5 font-bold text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-150 text-xs md:text-sm text-body">
-                {orders.map((order: any) => {
-                  const displayId = order?.display_id ?? order?.custom_display_id ?? order?.id;
-                  const orderDate = fmtDate(order.created_at);
-                  const orderStatus = getDisplayStatus(order);
-                  const totalItems = Array.isArray(order?.items)
-                    ? order.items.reduce((sum: number, it: any) => sum + (it.quantity || 0), 0)
-                    : 0;
-                  const orderTotal = fmt(order.total, order.currency_code);
-                  
+        ) : filteredOrders.length ? (
+          <div className="w-full bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm flex flex-col">
+            <div className="w-full overflow-x-auto">
+              <table className="w-full text-left border-collapse font-body min-w-[500px]">
+                <thead>
+                  <tr className="border-b border-gray-200 text-xs md:text-sm text-gray-500">
+                    <th className="py-4 px-5 font-semibold">Product</th>
+                    <th className="py-4 px-5 font-semibold">Date</th>
+                    <th className="py-4 px-5 font-semibold">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-150 text-xs md:text-sm text-body">
+                  {paginatedOrders.map((order: any) => {
+                    const formattedId = getFormattedOrderId(order);
+                    const orderDateStr = fmtDateOnly(order.created_at);
+                    const orderTimeStr = fmtTimeOnly(order.created_at);
+                    const orderStatus = getDisplayStatus(order);
+                    const totalItems = Array.isArray(order?.items)
+                      ? order.items.reduce((sum: number, it: any) => sum + (it.quantity || 0), 0)
+                      : 0;
+                    const orderTotal = fmt(order.total, order.currency_code);
+                    
+                    const firstItem = Array.isArray(order?.items) && order.items.length > 0 ? order.items[0] : null;
+                    const itemThumb = firstItem ? pickOrderItemThumb(firstItem) : '';
+                    const itemTitle = firstItem ? (firstItem.title || firstItem.product_title) : 'Product';
+
+                    return (
+                      <tr key={order.id} className="hover:bg-gray-50/30 transition duration-150">
+                        <td className="py-4 px-5">
+                          <Link
+                            href={`/my-account/orders/${order.id}`}
+                            className="flex gap-4 items-center group cursor-pointer"
+                          >
+                            <div className="w-12 h-12 rounded border border-gray-150 overflow-hidden bg-white p-1 flex items-center justify-center flex-shrink-0 group-hover:border-gray-300 transition">
+                              {itemThumb ? (
+                                <img src={itemThumb} alt="" className="object-contain max-h-full max-w-full" />
+                              ) : (
+                                <div className="w-full h-full bg-gray-100 flex items-center justify-center text-[9px] text-gray-400">No Image</div>
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <h4 className="text-xs md:text-sm font-semibold text-heading truncate max-w-[150px] md:max-w-[220px] group-hover:text-[#1C5E39] transition">
+                                {itemTitle}
+                              </h4>
+                              <span className="text-[10px] md:text-xs text-gray-500 block mt-0.5">
+                                Order ID: {formattedId}
+                              </span>
+                            </div>
+                          </Link>
+                        </td>
+                        <td className="py-4 px-5">
+                          <div className="text-xs md:text-sm text-heading font-medium">{orderDateStr}</div>
+                          <div className="text-[10px] md:text-xs text-gray-500 mt-0.5">{orderTimeStr}</div>
+                        </td>
+                        <td className="py-4 px-5">
+                          <StatusBadge status={orderStatus} />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination Footer */}
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-4 px-5 py-4 border-t border-gray-150 bg-white font-body">
+              <div className="text-xs md:text-sm text-gray-500 font-medium">
+                {showingText}
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={handlePrevPage}
+                  disabled={currentPage === 1}
+                  className={`w-8 h-8 rounded border flex items-center justify-center text-xs font-semibold transition ${
+                    currentPage === 1
+                      ? 'border-gray-150 text-gray-300 cursor-not-allowed bg-gray-50/50'
+                      : 'border-gray-200 text-heading hover:bg-gray-50'
+                  }`}
+                >
+                  &lt;
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => {
+                  const isPageActive = currentPage === p;
                   return (
-                    <tr key={order.id} className="hover:bg-gray-50/50 transition">
-                      <td className="py-4 px-5 font-semibold text-heading">
-                        <Link href={`/my-account/orders/${order.id}`} className="underline hover:text-black">
-                          #{displayId}
-                        </Link>
-                      </td>
-                      <td className="py-4 px-5">{orderDate}</td>
-                      <td className="py-4 px-5 font-medium">{orderStatus}</td>
-                      <td className="py-4 px-5">
-                        {orderTotal} for {totalItems} item{totalItems !== 1 ? 's' : ''}
-                      </td>
-                      <td className="py-4 px-5 text-right">
-                        <Link
-                          href={`/my-account/orders/${order.id}`}
-                          className="inline-flex items-center justify-center bg-heading text-white hover:bg-gray-600 rounded px-4 py-1.5 text-xs font-semibold font-body transition duration-150"
-                        >
-                          view
-                        </Link>
-                      </td>
-                    </tr>
+                    <button
+                      key={p}
+                      onClick={() => setCurrentPage(p)}
+                      className={`w-8 h-8 rounded flex items-center justify-center text-xs font-semibold transition ${
+                        isPageActive
+                          ? 'bg-[#1C5E39] text-white border border-[#1C5E39]'
+                          : 'border border-gray-200 text-heading hover:bg-gray-50'
+                      }`}
+                    >
+                      {p}
+                    </button>
                   );
                 })}
-              </tbody>
-            </table>
+                <button
+                  onClick={handleNextPage}
+                  disabled={currentPage === totalPages}
+                  className={`w-8 h-8 rounded border flex items-center justify-center text-xs font-semibold transition ${
+                    currentPage === totalPages
+                      ? 'border-gray-150 text-gray-300 cursor-not-allowed bg-gray-50/50'
+                      : 'border-gray-200 text-heading hover:bg-gray-50'
+                  }`}
+                >
+                  &gt;
+                </button>
+              </div>
+            </div>
           </div>
         ) : (
           <div className="border border-gray-200 rounded-md p-8 bg-gray-50/50 text-center py-12 font-body">
             <div className="text-base text-heading font-semibold">No orders found</div>
             <p className="mt-1 text-sm text-gray-400 max-w-sm mx-auto">
-              You haven't placed any orders yet.
+              No orders found in the "{activeTab}" category.
             </p>
           </div>
         )}
