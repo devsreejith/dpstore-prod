@@ -1,5 +1,4 @@
 require('dotenv').config();
-const { NGeniusClient } = require('./node_modules/ts-node') ? require('./helpers/medusa-client') : {}; 
 const axios = require('axios');
 
 async function main() {
