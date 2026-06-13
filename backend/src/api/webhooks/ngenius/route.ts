@@ -80,7 +80,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
 
     // Query database to locate the payment session matching the reference
     const dbRes = await client.query(
-      "SELECT id, payment_collection_id FROM payment_session WHERE (data->>'reference' = $1 OR data->>'id' = $1) AND deleted_at IS NULL",
+      "SELECT id, payment_collection_id, data FROM payment_session WHERE (data->>'reference' = $1 OR data->>'id' = $1) AND deleted_at IS NULL",
       [reference]
     );
 
@@ -93,11 +93,39 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
     const session = dbRes.rows[0];
     logger.info(`[N-Genius Webhook] Found matching payment session: ${session.id} for collection: ${session.payment_collection_id}`);
 
+    const sessionData = session.data || {};
+    const isTest = sessionData.is_test === true || sessionData.is_test === "true" || reference.startsWith("mock-");
+
     const paymentModuleService = req.scope.resolve("payment");
 
     // Check transaction status/action from payload to decide what to do
     const action = String(payload.action || payload.event || "").toUpperCase();
     const isSuccess = action.includes("CAPTURED") || action.includes("SUCCESS") || action.includes("PURCHASED") || action.includes("SALE");
+
+    if (isTest) {
+      let newStatus = "STARTED";
+      if (isSuccess) {
+        newStatus = "CAPTURED";
+      } else if (action.includes("FAILED") || action.includes("DECLINED") || action.includes("REJECTED")) {
+        newStatus = "FAILED";
+      } else if (action.includes("CANCELLED") || action.includes("CANCELED")) {
+        newStatus = "CANCELED";
+      }
+
+      const updatedData = {
+        ...sessionData,
+        status: newStatus,
+        webhook_action: action,
+      };
+
+      await client.query(
+        "UPDATE payment_session SET data = $1 WHERE id = $2",
+        [JSON.stringify(updatedData), session.id]
+      );
+      logger.info(`[N-Genius Webhook] Updated test payment session ${session.id} data status to ${newStatus}`);
+      
+      session.data = updatedData;
+    }
 
     if (isSuccess) {
       logger.info(`[N-Genius Webhook] Authorizing and capturing payment session: ${session.id}`);

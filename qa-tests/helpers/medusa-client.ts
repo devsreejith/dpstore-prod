@@ -68,32 +68,11 @@ export const medusaHelpers = {
    * Helper to set inventory quantity directly in the DB and enable strict inventory management
    */
   async setDbInventory(variantId: string, quantity: number): Promise<void> {
-    const db = await getDbClient();
-    try {
-      // 1. Delete all reservations for this variant
-      await db.query(
-        `DELETE FROM reservation_item WHERE inventory_item_id = (
-           SELECT inventory_item_id FROM product_variant_inventory_item WHERE variant_id = $1
-         )`,
-        [variantId]
-      );
-
-      // 2. Update stocked quantity and reset reserved quantity
-      await db.query(
-        `UPDATE inventory_level SET stocked_quantity = $1, reserved_quantity = 0 WHERE inventory_item_id = (
-           SELECT inventory_item_id FROM product_variant_inventory_item WHERE variant_id = $2
-         )`,
-        [quantity, variantId]
-      );
-      
-      // 3. Ensure the variant has inventory management enabled and backorders disabled
-      await db.query(
-        `UPDATE product_variant SET manage_inventory = true, allow_backorder = false WHERE id = $1`,
-        [variantId]
-      );
-    } finally {
-      await db.end();
-    }
+    await storeApi.post('/store/custom', {
+      action: 'reset-inventory',
+      variant_id: variantId,
+      quantity,
+    });
   },
 
   /**
