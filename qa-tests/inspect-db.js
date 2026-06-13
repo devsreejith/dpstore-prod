@@ -51,6 +51,42 @@ async function main() {
       console.log("\nCould not fetch payment collections:", pcErr.message);
     }
 
+    // 5. Query the test product variant details
+    try {
+      const axios = require('axios');
+      const medusaUrl = process.env.MEDUSA_BACKEND_URL;
+      const pubKey = apiKeysRes.rows[0]?.token;
+      if (pubKey && medusaUrl) {
+        const resProducts = await axios.get(`${medusaUrl}/store/products`, {
+          headers: { 'x-publishable-api-key': pubKey }
+        });
+        const firstProduct = resProducts.data.products?.[0];
+        const firstVariant = firstProduct?.variants?.[0];
+        if (firstVariant) {
+          console.log(`\n--- Test Product Variant Details (${firstVariant.title}) ---`);
+          console.log(`Variant ID: ${firstVariant.id}`);
+          
+          const variantDb = await client.query(
+            "SELECT id, manage_inventory, allow_backorder FROM product_variant WHERE id = $1",
+            [firstVariant.id]
+          );
+          console.log("DB Variant Info:", variantDb.rows[0]);
+
+          const inventoryDb = await client.query(
+            `SELECT id, stocked_quantity, reserved_quantity, location_id 
+             FROM inventory_level 
+             WHERE inventory_item_id = (
+               SELECT inventory_item_id FROM product_variant_inventory_item WHERE variant_id = $1
+             )`,
+            [firstVariant.id]
+          );
+          console.log("DB Inventory levels:", inventoryDb.rows);
+        }
+      }
+    } catch (err) {
+      console.log("\nCould not fetch test product variant details:", err.message);
+    }
+
     if (apiKeysRes.rows.length && regionsRes.rows.length) {
       console.log("\n==================================================");
       console.log("RECOMMENDED CONFIGURATION FOR YOUR qa-tests/.env FILE:");
