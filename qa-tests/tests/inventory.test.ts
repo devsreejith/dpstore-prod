@@ -110,6 +110,7 @@ describe('Medusa.js v2 Inventory & Concurrency Tests', () => {
   });
 
   test('Double-Click Place Order Simulation - Multiple duplicate completions must fail gracefully', async () => {
+    await medusaHelpers.setDbInventory(variantId, 10);
     const cart = await medusaHelpers.createCart();
     await medusaHelpers.addToCart(cart.id, variantId, 1);
     await medusaHelpers.setShippingAddress(cart.id);

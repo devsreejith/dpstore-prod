@@ -23,9 +23,9 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
 
   logger.info(`[N-Genius Webhook] Received webhook payload: ${JSON.stringify(payload)}`);
 
-  // Store payloads for developer inspection inside backend/webhook-logs
+  // Store payloads for developer inspection inside backend/.medusa/webhook-logs
   try {
-    const logDir = path.join(process.cwd(), "webhook-logs");
+    const logDir = path.join(process.cwd(), ".medusa", "webhook-logs");
     if (!fs.existsSync(logDir)) {
       fs.mkdirSync(logDir, { recursive: true });
     }
@@ -127,23 +127,86 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
       session.data = updatedData;
     }
 
-    if (isSuccess) {
-      logger.info(`[N-Genius Webhook] Authorizing and capturing payment session: ${session.id}`);
-      
-      // Authorize
-      const payment = await paymentModuleService.authorizePaymentSession(session.id, {});
-      if (payment && payment.id) {
-        // Capture
-        await paymentModuleService.capturePayment({
-          payment_id: payment.id,
-          amount: payment.amount,
-        });
-        logger.info(`[N-Genius Webhook] Successfully authorized and captured payment ${payment.id} for reference: ${reference}`);
+    // Check if a payment record already exists for this collection (e.g. from completeCart)
+    const paymentRes = await client.query(
+      "SELECT id, amount, captured_at FROM payment WHERE payment_collection_id = $1 AND deleted_at IS NULL LIMIT 1",
+      [session.payment_collection_id]
+    );
+
+    if (paymentRes.rows.length > 0) {
+      let payment = paymentRes.rows[0];
+      if (isSuccess) {
+        if (payment.captured_at) {
+          logger.info(`[N-Genius Webhook] Payment ${payment.id} already captured. Ignoring duplicate capture request.`);
+        } else {
+          logger.info(`[N-Genius Webhook] Capturing existing payment: ${payment.id}`);
+          // Copy session.data to payment.data to ensure capturePayment has the N-Genius reference
+          await client.query(
+            "UPDATE payment SET data = $1 WHERE id = $2",
+            [JSON.stringify(session.data || {}), payment.id]
+          );
+          await paymentModuleService.capturePayment({
+            payment_id: payment.id,
+            amount: payment.amount,
+          });
+          logger.info(`[N-Genius Webhook] Successfully captured payment ${payment.id} for reference: ${reference}`);
+        }
       } else {
-        logger.warn(`[N-Genius Webhook] Authorization returned no payment object for session: ${session.id}`);
+        const isCancellation = action.includes("CANCELLED") || action.includes("CANCELED");
+        if (isCancellation) {
+          logger.info(`[N-Genius Webhook] Transaction was cancelled by user. Keeping order pending for retry.`);
+        } else {
+          logger.info(`[N-Genius Webhook] Transaction failed. Releasing reservations and canceling order for payment collection ${session.payment_collection_id}`);
+          // Find order associated with this payment collection
+          const orderRes = await client.query(
+            "SELECT order_id FROM order_payment_collection WHERE payment_collection_id = $1 AND deleted_at IS NULL",
+            [session.payment_collection_id]
+          );
+          if (orderRes.rows.length > 0) {
+            const orderId = orderRes.rows[0].order_id;
+            logger.info(`[N-Genius Webhook] Canceling order ${orderId} due to payment failure.`);
+            await client.query(
+              "UPDATE \"order\" SET status = 'canceled', canceled_at = NOW() WHERE id = $1",
+              [orderId]
+            );
+
+            // Find line items of this order to locate reservations
+            const lineItemsRes = await client.query(
+              "SELECT item_id FROM order_item WHERE order_id = $1 AND deleted_at IS NULL",
+              [orderId]
+            );
+            const lineItemIds = lineItemsRes.rows.map((r: any) => r.item_id);
+            if (lineItemIds.length > 0) {
+              const reservationsRes = await client.query(
+                "SELECT id FROM reservation_item WHERE line_item_id = ANY($1) AND deleted_at IS NULL",
+                [lineItemIds]
+              );
+              const reservationIds = reservationsRes.rows.map((r: any) => r.id);
+              if (reservationIds.length > 0) {
+                logger.info(`[N-Genius Webhook] Deleting ${reservationIds.length} reservation items: ${JSON.stringify(reservationIds)}`);
+                const inventoryService = req.scope.resolve("inventory");
+                await inventoryService.deleteReservationItems(reservationIds);
+              }
+            }
+          }
+        }
       }
     } else {
-      logger.info(`[N-Genius Webhook] Transaction action was not a capture success: ${action}. Ignoring lifecycle transition.`);
+      if (isSuccess) {
+        logger.info(`[N-Genius Webhook] No payment exists yet. Authorizing and capturing payment session: ${session.id}`);
+        const paymentObj = await paymentModuleService.authorizePaymentSession(session.id, {});
+        if (paymentObj && paymentObj.id) {
+          await paymentModuleService.capturePayment({
+            payment_id: paymentObj.id,
+            amount: paymentObj.amount,
+          });
+          logger.info(`[N-Genius Webhook] Successfully authorized and captured payment ${paymentObj.id} for reference: ${reference}`);
+        } else {
+          logger.warn(`[N-Genius Webhook] Authorization returned no payment object for session: ${session.id}`);
+        }
+      } else {
+        logger.info(`[N-Genius Webhook] Transaction action was not a capture success: ${action} and no payment exists. Ignoring.`);
+      }
     }
 
   } catch (err: any) {

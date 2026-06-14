@@ -1,14 +1,17 @@
 import { AbstractPaymentProvider } from "@medusajs/framework/utils";
 import { NGeniusClient } from "./ngenius-client";
 import { NGeniusConfig } from "./types";
+import pg from "pg";
 
 export class NGeniusPaymentService extends AbstractPaymentProvider<any> {
   static identifier = "ngenius";
   protected client: NGeniusClient;
   protected logger: any;
+  protected container: any;
 
   constructor(container: any, options: NGeniusConfig) {
     super(container, options);
+    this.container = container;
     this.logger = container.logger || console;
     this.client = new NGeniusClient(options, this.logger);
   }
@@ -38,7 +41,36 @@ export class NGeniusPaymentService extends AbstractPaymentProvider<any> {
       // resource_id represents the cart ID or payment collection ID
       // N-Genius order reference must match "[a-zA-Z0-9\-]{1,37}" (no underscores allowed)
       const orderReference = String(resourceId).replace(/_/g, "-");
-      const customerEmail = context?.email || context?.customer?.email;
+      
+      const cartId = data?.cart_id || data?.order_id || context?.cart_id || context?.cart?.id || input.cart_id || (context?.resource_id?.startsWith("cart_") ? context.resource_id : undefined) || (input.resource_id?.startsWith("cart_") ? input.resource_id : undefined);
+
+      let customerEmail = context?.email || context?.customer?.email;
+      if (!customerEmail && cartId) {
+        let dbClient: any;
+        try {
+          dbClient = new pg.Client({
+            connectionString: process.env.DATABASE_URL,
+          });
+          await dbClient.connect();
+          const cartRes = await dbClient.query(
+            "SELECT email FROM cart WHERE id = $1 AND deleted_at IS NULL",
+            [cartId]
+          );
+          if (cartRes.rows.length > 0 && cartRes.rows[0].email) {
+            customerEmail = cartRes.rows[0].email;
+            this.logger.info(`[N-Genius Service] Retrieved customer email from cart database: ${customerEmail}`);
+          }
+        } catch (dbErr: any) {
+          this.logger.warn(`[N-Genius Service] Failed to retrieve cart email from database: ${dbErr.message}`);
+        } finally {
+          if (dbClient) {
+            try {
+              await dbClient.end();
+            } catch {}
+          }
+        }
+      }
+
       const isTestEmail = customerEmail && (customerEmail.includes("example.com") || customerEmail.includes("test"));
 
       if (isTestEmail) {
@@ -61,7 +93,6 @@ export class NGeniusPaymentService extends AbstractPaymentProvider<any> {
       }
 
       // N-Genius creates the order, returning order details and the hosted checkout payment_url
-      const cartId = data?.cart_id || data?.order_id || context?.cart_id || context?.cart?.id || input.cart_id || (context?.resource_id?.startsWith("cart_") ? context.resource_id : undefined) || (input.resource_id?.startsWith("cart_") ? input.resource_id : undefined);
       
       let redirectParam = "";
       if (cartId) {
@@ -203,7 +234,7 @@ export class NGeniusPaymentService extends AbstractPaymentProvider<any> {
       if (isTest) {
         this.logger.info(`[N-Genius Service] Bypassing capture API check for test reference: ${reference}`);
         statusResponse = {
-          status: sessionData.status || "CAPTURED",
+          status: "CAPTURED",
           _embedded: sessionData._embedded,
         };
       } else {

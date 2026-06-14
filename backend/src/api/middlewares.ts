@@ -1,6 +1,7 @@
 import { defineMiddlewares } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 import { authenticate } from "@medusajs/medusa"
+import pg from "pg"
 import helmet from "helmet"
 import rateLimit from "express-rate-limit"
 import express from "express"
@@ -253,8 +254,92 @@ async function enforceSingleProductCategory(req: any, res: any, next: any) {
   })
 }
 
+const activeCompletions = new Set<string>()
+
+async function preventDuplicateCartCompletion(req: any, res: any, next: any) {
+  console.log(`[Concurrency Control Debug] Middleware triggered. Method: ${req?.method}, Path: ${req?.path}, OriginalUrl: ${req?.originalUrl}`)
+  const method = String(req?.method || "").toUpperCase()
+  if (method !== "POST") return next()
+
+  const pathName = String(req?.originalUrl || "")
+  const match = pathName.match(/(?:^|\/)carts\/([^/]+)\/complete(?:\/|$)/)
+  if (!match) return next()
+
+  const cartId = match[1]
+  const logger = req.scope?.resolve("logger") || console
+
+  if (activeCompletions.has(cartId)) {
+    logger.warn(`[Concurrency Control] Blocked concurrent cart completion request for cart: ${cartId}`)
+    res.status(409).json({ message: "Cart completion is already in progress." })
+    return
+  }
+
+  // Acquire lock synchronously
+  activeCompletions.add(cartId)
+  logger.info(`[Concurrency Control] Acquired lock for cart completion: ${cartId}`)
+
+  // Setup cleanup listener
+  const cleanup = () => {
+    if (activeCompletions.has(cartId)) {
+      activeCompletions.delete(cartId)
+      logger.info(`[Concurrency Control] Released lock for cart completion: ${cartId}`)
+    }
+  }
+
+  res.on("finish", cleanup)
+  res.on("close", cleanup)
+
+  // Check database to see if the cart is already completed
+  let client: any
+  try {
+    client = new pg.Client({
+      connectionString: process.env.DATABASE_URL,
+    })
+    await client.connect()
+    
+    const dbRes = await client.query(
+      "SELECT completed_at FROM cart WHERE id = $1 LIMIT 1",
+      [cartId]
+    )
+    
+    if (dbRes.rows.length > 0 && dbRes.rows[0].completed_at !== null) {
+      logger.warn(`[Concurrency Control] Blocked cart completion request because cart is already completed: ${cartId}`)
+      cleanup() // Release lock
+      res.status(409).json({ message: "Cart is already completed." })
+      return
+    }
+  } catch (err: any) {
+    logger.error(`[Concurrency Control] Database check failed: ${err.message}`)
+    cleanup() // Release lock on error
+    res.status(500).json({ message: "Internal server error during concurrency check." })
+    return
+  } finally {
+    if (client) {
+      try {
+        await client.end()
+      } catch (e: any) {
+        logger.error(`[Concurrency Control] Failed to close DB client: ${e.message}`)
+      }
+    }
+  }
+
+  next()
+}
+
 export default defineMiddlewares({
   routes: [
+    {
+      matcher: "/v1/store/carts/*",
+      middlewares: [preventDuplicateCartCompletion],
+    },
+    {
+      matcher: "/api/v1/store/carts/*",
+      middlewares: [preventDuplicateCartCompletion],
+    },
+    {
+      matcher: "/store/carts/*",
+      middlewares: [preventDuplicateCartCompletion],
+    },
     {
       matcher: "/store",
       middlewares: [requireCustomerAuth],
