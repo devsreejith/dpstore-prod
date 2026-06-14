@@ -173,7 +173,7 @@ export const footerContemporary = {
       id: 0,
       isCompanyIntroduction: true,
       description:
-        'The Authorized  online store for all Dubai Police merchandise Official merchandise , proudly representing excellence.',
+        'The Authorized online store for all Dubai Police Official merchandise, proudly representing excellence.',
 
       lists: [
 

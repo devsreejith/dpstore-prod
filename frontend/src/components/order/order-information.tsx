@@ -1,11 +1,45 @@
 import OrderDetails from '@components/order/order-details';
 import { useOrderQuery } from '@framework/order/get-order';
 import { useRouter } from 'next/router';
-import usePrice from '@framework/product/use-price';
+import usePrice, { formatPrice } from '@framework/product/use-price';
 import { useTranslation } from 'next-i18next';
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import http from '@framework/utils/http';
+import {
+  IoArrowBackOutline,
+  IoDocumentTextOutline,
+  IoWalletOutline,
+  IoAlertCircleOutline,
+  IoLockClosedOutline,
+  IoTrashOutline,
+  IoShieldCheckmarkOutline,
+  IoCalendarOutline
+} from 'react-icons/io5';
+
+const fmt = (amount: any, currencyCode: any = 'AED') => {
+  const n = typeof amount === 'number' ? amount : Number(amount);
+  const code = String(currencyCode || 'AED').toUpperCase();
+  if (!Number.isFinite(n)) return '';
+  return formatPrice({ amount: n, currencyCode: code, locale: 'en' });
+};
+
+const fmtOrderDateTime = (dateVal: any) => {
+  const d = new Date(dateVal);
+  if (!Number.isFinite(d.getTime())) return '';
+  const dateStr = d.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  });
+  let hours = d.getHours();
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12;
+  hours = hours ? hours : 12;
+  const timeStr = `${hours}:${minutes} ${ampm}`;
+  return `${dateStr} • ${timeStr}`;
+};
 
 export default function OrderInformation() {
   const {
@@ -17,16 +51,40 @@ export default function OrderInformation() {
   const [verifying, setVerifying] = useState(false);
   const [verificationDone, setVerificationDone] = useState(false);
   const [verificationFailed, setVerificationFailed] = useState(false);
+  const [canceling, setCanceling] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
+
+  const cancelOrder = async () => {
+    if (isCancelled) return;
+    if (typeof window !== 'undefined' && !window.confirm('Are you sure you want to cancel this order?')) return;
+    setCancelError(null);
+    setCanceling(true);
+    try {
+      if (!data?.id) throw new Error('Order not found');
+      await http.post(`/store/orders/${data.id}/cancel`, { email: data?.email });
+      refetch();
+    } catch (e: any) {
+      const msg = String(e?.response?.data?.message ?? e?.message ?? 'Failed to cancel order');
+      setCancelError(msg);
+    } finally {
+      setCanceling(false);
+    }
+  };
 
   const { t } = useTranslation('common');
   const orderIdentifier = (id || cart_id)?.toString()!;
   const { data, isLoading, refetch } = useOrderQuery(orderIdentifier);
-  const { price: total } = usePrice(
-    data && {
-      amount: Number(data?.total ?? 0) || 0,
-      currencyCode: 'AED',
-    }
-  );
+  const totalAmount = Number(data?.total ?? 0) || 0;
+  const shippingAmount = Number(data?.shipping_total ?? 0) || 0;
+  const subtotalAmount = totalAmount - shippingAmount;
+  const discountAmount = 0; // Hide all discount tags, badges, and rows
+  const totalItemsCount = data?.items?.reduce((acc: number, item: any) => acc + (item.quantity ?? 0), 0) ?? 0;
+
+  const currency = String(data?.currency_code || 'AED').toUpperCase();
+  const subtotal = fmt(subtotalAmount, currency);
+  const discount = fmt(discountAmount, currency);
+  const shipping = fmt(shippingAmount, currency);
+  const total = fmt(totalAmount, currency);
 
   const paymentCollectionId = useMemo(() => {
     const fromArray =
@@ -58,7 +116,7 @@ export default function OrderInformation() {
   const paymentMethodName =
     paymentProvider === 'pp_system_default' || !paymentProvider
       ? 'Cash on Delivery'
-      : 'Online Payment Card';
+      : 'Online';
 
   const paymentStatus = String(data?.payment_status ?? '').toLowerCase();
   const isOnlinePayment = paymentProvider && paymentProvider !== 'pp_system_default';
@@ -72,12 +130,12 @@ export default function OrderInformation() {
     ? capturedAmount > 0
     : (paymentStatus === 'captured' || paymentStatus === 'paid' || paymentStatus === 'authorized');
   
-  const isPaymentFailed = isOnlinePayment && (!isPaid || verificationFailed);
-
   const isCancelled =
     Boolean(data?.canceled_at) ||
     String(data?.status ?? '').toLowerCase() === 'canceled' ||
     String(data?.status ?? '').toLowerCase() === 'cancelled';
+
+  const isPaymentFailed = !data || isCancelled || (isOnlinePayment && (!isPaid || verificationFailed));
 
   useEffect(() => {
     if (!data || !paymentCollectionId || !isOnlinePayment || capturedAmount > 0 || verificationDone || verifying) {
@@ -164,184 +222,363 @@ export default function OrderInformation() {
           <OrderDetails className="p-0" />
         </div>
       ) : (
-        /* Outer Card Box */
-        <div className="border border-gray-150 rounded-xl bg-white p-8 md:p-10 shadow-sm max-w-2xl mx-auto flex flex-col items-center">
-          <div className="relative mb-6">
-            {/* Confetti sparkles (4-pointed stars) - only show if payment succeeded or is COD and order is not cancelled */}
-            {!isPaymentFailed && !isCancelled && (
-              <>
-                <span className="absolute -top-2 -left-3 text-sm text-[#1C5E39] font-bold">✦</span>
-                <span className="absolute -top-3 -right-3 text-xs text-[#1C5E39] font-bold">✦</span>
-                <span className="absolute bottom-1 -left-4 text-xs text-[#1C5E39] font-bold">✦</span>
-                <span className="absolute -bottom-1 -right-3 text-sm text-[#1C5E39] font-bold">✦</span>
-              </>
-            )}
+        /* If payment failed, show the split-panel view */
+        isPaymentFailed ? (
+          <div className="flex flex-col w-full">
+            {/* Back to Orders */}
+            <Link
+              href="/my-account/orders"
+              className="inline-flex items-center text-sm font-semibold text-gray-600 hover:text-black transition gap-2 mb-5 font-body self-start"
+            >
+              <IoArrowBackOutline className="text-base" /> Back to Orders
+            </Link>
 
-            {/* Check Circle, Warning Exclamation, or Cancelled Cross */}
-            {isCancelled ? (
-              <div className="w-16 h-16 rounded-full bg-rose-500 flex items-center justify-center shadow-sm">
-                <svg
-                  className="w-8 h-8 text-white"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="3"
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
+            {/* Split Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start w-full max-w-[960px] mx-auto">
+              {/* Main Content Column (Left) */}
+              <div className="lg:col-span-2 w-full bg-white border border-gray-150 rounded-xl p-5 md:p-8 shadow-sm flex flex-col items-center">
+                {/* Red Circle "X" Icon with concentric circles */}
+                <div className="relative mb-5 flex items-center justify-center">
+                  <div className="absolute w-24 h-24 border border-red-100 rounded-full opacity-60 animate-ping duration-1000"></div>
+                  <div className="absolute w-20 h-20 border border-dashed border-red-200 rounded-full"></div>
+                  <span className="absolute -top-1 -left-2 w-1.5 h-1.5 bg-red-300 rounded-full"></span>
+                  <span className="absolute -bottom-1 -right-2 w-1.5 h-1.5 bg-red-200 rounded-full"></span>
+                  <span className="absolute top-2 -right-3 w-1.5 h-1.5 bg-red-300 rounded-full"></span>
+                  <span className="absolute bottom-3 -left-3 w-1.5 h-1.5 bg-red-200 rounded-full"></span>
+                  
+                  <div className="w-12 h-12 rounded-full bg-red-500 flex items-center justify-center shadow-sm relative z-10">
+                    <svg
+                      className="w-6 h-6 text-white"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="3.5"
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </div>
+                </div>
+
+                <h1 className="text-lg md:text-xl font-bold text-heading font-body mb-1 text-center">
+                  Payment Unsuccessful
+                </h1>
+                <p className="text-xs md:text-sm text-gray-500 font-body mb-6 text-center max-w-md">
+                  Your payment could not be completed at this time.
+                </p>
+
+                {/* Order ID & Total Amount Card */}
+                <div className="w-full border border-gray-150 rounded-xl overflow-hidden mb-5 bg-gray-50/30">
+                  <div className="flex justify-between items-center px-4 py-2.5 border-b border-gray-150">
+                    <div className="flex items-center gap-2.5 text-xs md:text-sm text-gray-500 font-body">
+                      <IoDocumentTextOutline className="text-base text-gray-400" />
+                      <span>Order ID</span>
+                    </div>
+                    <span className="text-xs md:text-sm font-bold text-heading font-body">
+                      {formattedOrderNumber}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center px-4 py-2.5">
+                    <div className="flex items-center gap-2.5 text-xs md:text-sm text-gray-500 font-body">
+                      <IoWalletOutline className="text-base text-gray-400" />
+                      <span>Total Amount</span>
+                    </div>
+                    <span className="text-xs md:text-sm font-bold text-heading font-body">
+                      {total}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Red Warning Banner */}
+                <div className="w-full bg-red-50 border border-red-100 rounded-xl p-3.5 mb-6 flex gap-2.5">
+                  <IoAlertCircleOutline className="text-lg text-red-500 flex-shrink-0 mt-0.5" />
+                  <div className="text-xs text-red-600 font-semibold font-body leading-relaxed text-left">
+                    The order has not been confirmed. Please try again using the same or a different payment method.
+                  </div>
+                </div>
+
+                {cancelError && (
+                  <div className="w-full bg-red-50 border border-red-200 text-red-600 rounded-lg p-3.5 text-xs font-semibold mb-6 flex items-center gap-2 font-body">
+                    <span>⚠️</span> {cancelError}
+                  </div>
+                )}
+
+                {payError && (
+                  <div className="w-full bg-red-50 border border-red-200 text-red-600 rounded-lg p-3.5 text-xs font-semibold mb-6 flex items-center gap-2 font-body">
+                    <span>⚠️</span> {payError}
+                  </div>
+                )}
+
+                {/* Stacked Button Actions */}
+                <div className="flex flex-col gap-3 w-full mb-6">
+                  {isCancelled ? (
+                    <div className="w-full text-center py-2.5 bg-gray-100 border border-gray-200 text-gray-600 font-bold rounded-lg text-xs md:text-sm font-body">
+                      This order has been cancelled.
+                    </div>
+                  ) : (
+                    <>
+                      {/* Retry Payment (Full Width) */}
+                      <button
+                        type="button"
+                        onClick={continuePayment}
+                        disabled={paying || canceling}
+                        className="w-full h-11 bg-[#1D1D1D] hover:bg-black text-white font-bold text-xs md:text-sm rounded-lg transition duration-200 flex items-center justify-center font-body"
+                      >
+                        <span>{paying ? 'Loading...' : 'Retry Payment'}</span>
+                      </button>
+
+                      {/* Continue Shopping & Cancel Order side-by-side */}
+                      <div className="grid grid-cols-2 gap-3 w-full">
+                        <Link
+                          href="/"
+                          className="h-11 border border-gray-300 hover:bg-gray-50 text-heading font-bold text-xs md:text-sm rounded-lg transition duration-200 flex items-center justify-center font-body"
+                        >
+                          Continue Shopping
+                        </Link>
+
+                        <button
+                          type="button"
+                          onClick={cancelOrder}
+                          disabled={paying || canceling}
+                          className="h-11 border border-red-200 hover:bg-red-50 text-red-500 font-bold text-xs md:text-sm rounded-lg transition duration-200 flex items-center justify-center gap-1.5 font-body"
+                        >
+                          <IoTrashOutline className="text-base" />
+                          <span>{canceling ? 'Cancelling...' : 'Cancel Order'}</span>
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* Footer lock note */}
+                <div className="flex items-start gap-1.5 text-center text-[10px] md:text-xs text-gray-400 font-body max-w-sm mt-1 justify-center leading-relaxed">
+                  <IoLockClosedOutline className="text-xs flex-shrink-0 mt-0.5 text-gray-400" />
+                  <span>
+                    If the amount was deducted, it will typically be reversed by your bank within a few business days.
+                  </span>
+                </div>
               </div>
-            ) : isPaymentFailed ? (
-              <div className="w-16 h-16 rounded-full bg-[#D97706]/10 border border-[#D97706]/30 flex items-center justify-center shadow-sm">
-                <svg
-                  className="w-8 h-8 text-[#D97706]"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2.5"
-                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                  />
-                </svg>
+
+              {/* Sidebar Column (Right) */}
+              <div className="lg:col-span-1 w-full flex flex-col gap-6">
+                {/* PRICE DETAILS Card */}
+                <div className="w-full bg-white border border-gray-150 rounded-xl p-5 shadow-sm">
+                  <h2 className="text-xs font-bold text-heading font-body mb-4 uppercase tracking-wider text-left">
+                    Price Details
+                  </h2>
+                  
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center text-xs md:text-sm font-body text-gray-600">
+                      <span>Price ({totalItemsCount} {totalItemsCount === 1 ? 'item' : 'items'})</span>
+                      <span className="text-heading font-medium">{subtotal}</span>
+                    </div>
+
+                    {discountAmount > 0 && (
+                      <div className="flex justify-between items-center text-xs md:text-sm font-body text-emerald-600">
+                        <span>Discount</span>
+                        <span className="font-semibold">-{discount}</span>
+                      </div>
+                    )}
+
+                    <div className="flex justify-between items-center text-xs md:text-sm font-body text-emerald-600">
+                      <span>Delivery Charges</span>
+                      <span className="font-semibold">{shippingAmount === 0 ? 'FREE' : shipping}</span>
+                    </div>
+
+                    <div className="border-t border-gray-150 pt-3 flex justify-between items-center text-sm md:text-base font-bold text-heading font-body">
+                      <span>Total Amount</span>
+                      <span>{total}</span>
+                    </div>
+                  </div>
+
+                  {/* Failed Payment Warning Box */}
+                  <div className="w-full bg-red-50/50 border border-red-100 rounded-xl p-3 mt-4 flex gap-2.5">
+                    <IoAlertCircleOutline className="text-lg text-red-500 flex-shrink-0 mt-0.5" />
+                    <div className="text-left font-body">
+                      <div className="text-xs font-bold text-red-600">Payment failed</div>
+                      <div className="text-[10px] text-red-600/80 mt-0.5">No amount has been charged.</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Secure Payments Badge */}
+                <div className="flex items-center gap-2.5 text-left font-body text-gray-400 py-1.5 px-0.5">
+                  <IoShieldCheckmarkOutline className="text-xl text-gray-400 flex-shrink-0" />
+                  <span className="text-[9px] md:text-[10px] font-bold leading-normal tracking-wide uppercase">
+                    SAFE AND SECURE PAYMENTS. 100% AUTHENTIC PRODUCTS.
+                  </span>
+                </div>
               </div>
-            ) : (
-              <div className="w-16 h-16 rounded-full bg-[#1C5E39] flex items-center justify-center shadow-sm">
-                <svg
-                  className="w-8 h-8 text-white"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="3.5"
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
+            </div>
+          </div>
+        ) : (
+          /* If payment succeeded, show the split-panel success view */
+          <div className="flex flex-col w-full">
+            {/* Back to Orders */}
+            <Link
+              href="/my-account/orders"
+              className="inline-flex items-center text-sm font-semibold text-gray-600 hover:text-black transition gap-2 mb-5 font-body self-start"
+            >
+              <IoArrowBackOutline className="text-base" /> Back to Orders
+            </Link>
+
+            {/* Split Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start w-full max-w-[960px] mx-auto">
+              {/* Main Content Column (Left) */}
+              <div className="lg:col-span-2 w-full bg-white border border-gray-150 rounded-xl p-5 md:p-8 shadow-sm flex flex-col items-center">
+                {/* Green Circle Check Icon with concentric circles */}
+                <div className="relative mb-5 flex items-center justify-center">
+                  <div className="absolute w-24 h-24 border border-emerald-100 rounded-full opacity-60 animate-ping duration-1000"></div>
+                  <div className="absolute w-20 h-20 border border-dashed border-emerald-200 rounded-full"></div>
+                  <span className="absolute -top-1 -left-2 w-1.5 h-1.5 bg-emerald-300 rounded-full"></span>
+                  <span className="absolute -bottom-1 -right-2 w-1.5 h-1.5 bg-emerald-200 rounded-full"></span>
+                  <span className="absolute top-2 -right-3 w-1.5 h-1.5 bg-emerald-300 rounded-full"></span>
+                  <span className="absolute bottom-3 -left-3 w-1.5 h-1.5 bg-emerald-200 rounded-full"></span>
+                  
+                  <div className="w-12 h-12 rounded-full bg-emerald-500 flex items-center justify-center shadow-sm relative z-10">
+                    <svg
+                      className="w-6 h-6 text-white"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="4"
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                  </div>
+                </div>
+
+                <h1 className="text-lg md:text-xl font-bold text-heading font-body mb-1 text-center">
+                  Payment Successful!
+                </h1>
+                <p className="text-xs md:text-sm text-gray-500 font-body mb-1 text-center">
+                  Your payment has been completed successfully.
+                </p>
+                <p className="text-xs md:text-sm text-gray-500 font-body mb-6 text-center">
+                  Thank you for your order.
+                </p>
+
+                {/* Order ID & Order Date Card */}
+                <div className="w-full border border-gray-150 rounded-xl overflow-hidden mb-5 bg-gray-50/30">
+                  <div className="flex justify-between items-center px-4 py-2.5 border-b border-gray-150">
+                    <div className="flex items-center gap-2.5 text-xs md:text-sm text-gray-500 font-body">
+                      <IoDocumentTextOutline className="text-base text-gray-400" />
+                      <span>Order ID</span>
+                    </div>
+                    <span className="text-xs md:text-sm font-bold text-heading font-body">
+                      {formattedOrderNumber}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center px-4 py-2.5">
+                    <div className="flex items-center gap-2.5 text-xs md:text-sm text-gray-500 font-body">
+                      <IoCalendarOutline className="text-base text-gray-400" />
+                      <span>Order Date</span>
+                    </div>
+                    <span className="text-xs md:text-sm font-bold text-heading font-body">
+                      {fmtOrderDateTime(data?.created_at)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Green Discount Banner */}
+                {discountAmount > 0 && (
+                  <div className="w-full bg-emerald-50/50 border border-emerald-100 rounded-xl p-3.5 mb-5 flex items-center gap-2.5 text-xs md:text-sm text-emerald-700 font-semibold font-body">
+                    <svg className="w-4 h-4 text-emerald-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.504 1.172a3 3 0 012.121.879l8.313 8.314a3 3 0 010 4.243l-5.657 5.656a3 3 0 01-4.243 0L1.724 11.95A3 3 0 01.845 9.83V3a2 2 0 012-2h6.659zM5 5a1 1 0 100-2 1 1 0 000 2z" />
+                    </svg>
+                    <span>You will save {discount} on this order</span>
+                  </div>
+                )}
+
+                {/* Stacked Button Actions */}
+                <div className="flex flex-col gap-3 w-full mb-6">
+                  <button
+                    type="button"
+                    onClick={() => setShowDetails(true)}
+                    className="w-full h-11 bg-[#1D1D1D] hover:bg-black text-white font-bold text-xs md:text-sm rounded-lg transition duration-200 flex items-center justify-center font-body"
+                  >
+                    View Order Details
+                  </button>
+
+                  <Link
+                    href="/"
+                    className="w-full h-11 border border-gray-300 hover:bg-gray-50 text-heading font-bold text-xs md:text-sm rounded-lg transition duration-200 flex items-center justify-center font-body"
+                  >
+                    Continue Shopping
+                  </Link>
+                </div>
+
+                {/* Footer confirmation email */}
+                <div className="flex items-start gap-2.5 text-center text-xs text-gray-400 font-body max-w-sm mt-1 justify-center leading-relaxed">
+                  <IoLockClosedOutline className="text-base flex-shrink-0 mt-0.5 text-gray-400" />
+                  <div className="flex flex-col items-center">
+                    <span>A confirmation email has been sent to</span>
+                    <span className="font-bold text-heading mt-0.5">{data?.email}</span>
+                  </div>
+                </div>
               </div>
-            )}
-          </div>
 
-          <h1 className="text-xl md:text-2xl font-bold text-heading font-body mb-2">
-            {isCancelled ? 'Order Cancelled!' : isPaymentFailed ? 'Payment Awaiting!' : 'Order Received!'}
-          </h1>
-          <div className="text-xs md:text-sm text-gray-500 font-body mb-8 space-y-1 text-center">
-            {isCancelled ? (
-              <>
-                <p>This order has been cancelled.</p>
-              </>
-            ) : isPaymentFailed ? (
-              <>
-                <p>Your order has been registered.</p>
-                <p className="text-[#D97706] font-semibold">Payment was unsuccessful or is pending.</p>
-              </>
-            ) : (
-              <>
-                <p>Thank you for your purchase.</p>
-                <p>Your order has been successfully placed.</p>
-              </>
-            )}
-          </div>
+              {/* Sidebar Column (Right) */}
+              <div className="lg:col-span-1 w-full flex flex-col gap-6">
+                {/* PRICE DETAILS Card */}
+                <div className="w-full bg-white border border-gray-150 rounded-xl p-5 shadow-sm">
+                  <h2 className="text-xs font-bold text-heading font-body mb-4 uppercase tracking-wider text-left">
+                    Price Details
+                  </h2>
+                  
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center text-xs md:text-sm font-body text-gray-600">
+                      <span>Price ({totalItemsCount} {totalItemsCount === 1 ? 'item' : 'items'})</span>
+                      <span className="text-heading font-medium">{subtotal}</span>
+                    </div>
 
-          {/* Metadata Details Horizontal Banner */}
-          <div className="w-full border border-gray-150 rounded-xl py-6 px-4 bg-white mb-8 grid grid-cols-3 text-center">
-            {/* Column 1: Order Number */}
-            <div className="border-r border-dashed border-gray-300 flex flex-col justify-center px-1">
-              <span className="text-[10px] md:text-xs text-gray-400 font-semibold uppercase tracking-wider block mb-1 font-body">
-                Order Number
-              </span>
-              <span className="text-xs md:text-sm font-bold text-[#1C5E39] block font-body">
-                #{formattedOrderNumber}
-              </span>
-            </div>
+                    {discountAmount > 0 && (
+                      <div className="flex justify-between items-center text-xs md:text-sm font-body text-emerald-600">
+                        <span>Discount</span>
+                        <span className="font-semibold">-{discount}</span>
+                      </div>
+                    )}
 
-            {/* Column 2: Payment Method */}
-            <div className="border-r border-dashed border-gray-300 flex flex-col justify-center px-1">
-              <span className="text-[10px] md:text-xs text-gray-400 font-semibold uppercase tracking-wider block mb-1 font-body">
-                Payment Method
-              </span>
-              <span className="text-xs md:text-sm font-bold text-heading block font-body">
-                {paymentMethodName}
-              </span>
-            </div>
+                    <div className="flex justify-between items-center text-xs md:text-sm font-body text-emerald-600">
+                      <span>Delivery Charges</span>
+                      <span className="font-semibold">{shippingAmount === 0 ? 'FREE' : shipping}</span>
+                    </div>
 
-            {/* Column 3: Total */}
-            <div className="flex flex-col justify-center px-1">
-              <span className="text-[10px] md:text-xs text-gray-400 font-semibold uppercase tracking-wider block mb-1 font-body">
-                Total
-              </span>
-              <span className="text-xs md:text-sm font-bold text-[#1C5E39] block font-body">
-                {total}
-              </span>
+                    <div className="border-t border-gray-150 pt-3 flex justify-between items-center text-sm md:text-base font-bold text-heading font-body">
+                      <span>Total Amount</span>
+                      <span>{total}</span>
+                    </div>
+                  </div>
+
+                  {/* Green discount banner inside price details */}
+                  {discountAmount > 0 && (
+                    <div className="w-full bg-emerald-50/50 border border-emerald-100 rounded-xl p-3 mt-4 flex items-center gap-2.5 text-xs text-emerald-700 font-semibold font-body">
+                      <svg className="w-4 h-4 text-emerald-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.504 1.172a3 3 0 012.121.879l8.313 8.314a3 3 0 010 4.243l-5.657 5.656a3 3 0 01-4.243 0L1.724 11.95A3 3 0 01.845 9.83V3a2 2 0 012-2h6.659zM5 5a1 1 0 100-2 1 1 0 000 2z" />
+                      </svg>
+                      <span>You will save {discount} on this order</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Secure Payments Badge */}
+                <div className="flex items-center gap-2.5 text-left font-body text-gray-400 py-1.5 px-0.5">
+                  <IoShieldCheckmarkOutline className="text-xl text-gray-400 flex-shrink-0" />
+                  <span className="text-[9px] md:text-[10px] font-bold leading-normal tracking-wide uppercase">
+                    SAFE AND SECURE PAYMENTS. 100% AUTHENTIC PRODUCTS.
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
-
-          {payError && (
-            <div className="w-full bg-red-50 border border-red-200 text-red-600 rounded-md p-3.5 text-xs font-semibold mb-6 flex items-center gap-2 font-body">
-              <span>⚠️</span> {payError}
-            </div>
-          )}
-
-          {isPaymentFailed ? (
-            <div className="flex flex-col sm:flex-row gap-4 w-full justify-center">
-              <button
-                type="button"
-                onClick={continuePayment}
-                disabled={paying}
-                className="h-10 px-6 bg-[#1C5E39] hover:bg-[#123d25] text-white font-bold text-xs uppercase tracking-wider rounded transition duration-200 flex items-center justify-center gap-1.5"
-              >
-                <span>{paying ? 'Loading...' : 'Pay Now'}</span>
-                <span className="text-sm font-normal">&gt;</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setShowDetails(true)}
-                className="h-10 px-6 bg-[#1D1D1D] hover:bg-black text-white font-bold text-xs uppercase tracking-wider rounded transition duration-200 flex items-center justify-center gap-1.5"
-              >
-                <span>View Details</span>
-              </button>
-            </div>
-          ) : (
-            <div className="flex flex-col sm:flex-row gap-4 w-full justify-center">
-              <button
-                type="button"
-                onClick={() => setShowDetails(true)}
-                className="h-10 px-6 bg-[#1D1D1D] hover:bg-black text-white font-bold text-xs uppercase tracking-wider rounded transition duration-200 flex items-center justify-center gap-1.5"
-              >
-                <span>View Order Details</span>
-                <span className="text-sm font-normal">&gt;</span>
-              </button>
-
-              <Link
-                href="/"
-                className="h-10 px-6 border border-[#1C5E39] text-[#1C5E39] hover:bg-[#1C5E39]/5 font-bold text-xs uppercase tracking-wider rounded transition duration-200 flex items-center justify-center gap-2"
-              >
-                <svg
-                  className="w-4 h-4 text-[#1C5E39]"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
-                  />
-                </svg>
-                <span>Back to Home</span>
-              </Link>
-            </div>
-          )}
-        </div>
+        )
       )}
     </div>
   );

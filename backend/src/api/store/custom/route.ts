@@ -5,7 +5,20 @@ export async function GET(
   req: MedusaRequest,
   res: MedusaResponse
 ) {
-  res.sendStatus(200);
+  const query = req.scope.resolve(ContainerRegistrationKeys.QUERY);
+  try {
+    const { data: orders } = await query.graph({
+      entity: "order",
+      fields: [
+        "id", "display_id", "created_at", "email", "currency_code", "status",
+        "summary.*",
+        "items.*"
+      ],
+    });
+    res.status(200).json({ orders });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
 }
 
 export async function POST(

@@ -30,6 +30,8 @@ interface CartProviderState extends State {
     shipping_option_id?: string;
     payment_provider_id?: string;
   }) => Promise<{ type: "order" | "cart"; order?: any; cart?: any; error?: any; payment_url?: string }>;
+  inventoryMap: Record<string, number>;
+  isCartValid: boolean;
 }
 export const cartContext = React.createContext<CartProviderState | undefined>(
   undefined
@@ -55,6 +57,7 @@ export const CartProvider: React.FC = (props) => {
 
   const [cart, setCart] = React.useState<any>(null);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [inventoryMap, setInventoryMap] = React.useState<Record<string, number>>({});
 
   const setCartId = (id: string | null) => {
     try {
@@ -281,6 +284,55 @@ export const CartProvider: React.FC = (props) => {
     });
   }, [cart?.items, pickLineItemImage]);
 
+  React.useEffect(() => {
+    if (items.length === 0) {
+      setInventoryMap({});
+      return;
+    }
+    const slugs = items.map((it: any) => it.slug).filter(Boolean);
+    let active = true;
+
+    async function fetchInventory() {
+      try {
+        const res = await http.get(`/api/v1/products`, {
+          params: {
+            handle: slugs.join(","),
+            limit: 100,
+          }
+        });
+        const products = Array.isArray(res?.data?.products) ? res.data.products : [];
+        const newMap: Record<string, number> = {};
+        for (const p of products) {
+          if (Array.isArray(p.variants)) {
+            for (const v of p.variants) {
+              if (v.id) {
+                newMap[v.id] = Number(v.inventory_quantity ?? 0);
+              }
+            }
+          }
+        }
+        if (active) {
+          setInventoryMap(newMap);
+        }
+      } catch (err) {
+        console.error("Error fetching cart items inventory:", err);
+      }
+    }
+
+    fetchInventory();
+    return () => {
+      active = false;
+    };
+  }, [items]);
+
+  const isCartValid = React.useMemo(() => {
+    return items.every((item: any) => {
+      const stock = inventoryMap[item.variant_id];
+      if (stock === undefined) return true;
+      return stock >= item.quantity;
+    });
+  }, [items, inventoryMap]);
+
   const totalItems = React.useMemo(() => {
     return items.reduce((sum: number, it: any) => sum + (Number(it?.quantity ?? 0) || 0), 0);
   }, [items]);
@@ -501,6 +553,8 @@ export const CartProvider: React.FC = (props) => {
       cart,
       placeOrder,
       isLoading,
+      inventoryMap,
+      isCartValid,
     }),
     [
       items,
@@ -516,6 +570,8 @@ export const CartProvider: React.FC = (props) => {
       cart,
       placeOrder,
       isLoading,
+      inventoryMap,
+      isCartValid,
     ]
   );
 

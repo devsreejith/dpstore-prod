@@ -1,6 +1,6 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
-import { mapMedusaProductToFrontend } from "../../_shared/frontend"
+import { mapMedusaProductToFrontend, populateProductsInventory } from "../../_shared/frontend"
 
 export async function GET(req: MedusaRequest, res: MedusaResponse) {
   const slug = String(req.params.slug ?? "").trim()
@@ -24,6 +24,7 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
       "images.*",
       "variants.*",
       "variants.prices.*",
+      "variants.inventory_items.inventory_item_id",
       "tags.*",
       "categories.*",
       "collection.id",
@@ -40,6 +41,9 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
     res.status(404).json({ message: "Product not found" })
     return
   }
+
+  // Populate inventory levels
+  await populateProductsInventory([product], query)
 
   res.json(mapMedusaProductToFrontend(product))
 }

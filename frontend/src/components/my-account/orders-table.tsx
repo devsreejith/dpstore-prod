@@ -224,7 +224,7 @@ const OrdersTable: React.FC = () => {
     <div className="w-full">
       <div className="mb-6 font-body">
         <h2 className="text-2xl md:text-3xl font-bold text-heading mb-1">Orders</h2>
-        <p className="text-sm text-gray-500">Track, view and manage your orders</p>
+        <p className="text-sm text-gray-700">Track, view and manage your orders</p>
       </div>
 
       <div className="flex border-b border-gray-200 mb-6 overflow-x-auto no-scrollbar scroll-smooth font-body">
@@ -241,7 +241,7 @@ const OrdersTable: React.FC = () => {
                 className={`text-xs md:text-sm font-semibold whitespace-nowrap pb-3 border-b-2 transition duration-200 ${
                   isActive
                     ? 'border-[#1C5E39] text-[#1C5E39]'
-                    : 'border-transparent text-gray-500 hover:text-black'
+                    : 'border-transparent text-gray-700 hover:text-black'
                 }`}
               >
                 {tab}
@@ -269,10 +269,10 @@ const OrdersTable: React.FC = () => {
             <div className="w-full overflow-x-auto">
               <table className="w-full text-left border-collapse font-body min-w-[500px]">
                 <thead>
-                  <tr className="border-b border-gray-200 text-xs md:text-sm text-gray-500">
-                    <th className="py-4 px-5 font-semibold">Product</th>
-                    <th className="py-4 px-5 font-semibold">Date</th>
-                    <th className="py-4 px-5 font-semibold">Status</th>
+                  <tr className="border-b border-gray-200 text-xs md:text-sm text-gray-800">
+                    <th className="py-4 px-5 font-bold">Product</th>
+                    <th className="py-4 px-5 font-bold">Date</th>
+                    <th className="py-4 px-5 font-bold">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-150 text-xs md:text-sm text-body">
@@ -308,7 +308,7 @@ const OrdersTable: React.FC = () => {
                               <h4 className="text-xs md:text-sm font-semibold text-heading truncate max-w-[150px] md:max-w-[220px] group-hover:text-[#1C5E39] transition">
                                 {itemTitle}
                               </h4>
-                              <span className="text-[10px] md:text-xs text-gray-500 block mt-0.5">
+                              <span className="text-[10px] md:text-xs text-gray-700 font-medium block mt-0.5">
                                 Order ID: {formattedId}
                               </span>
                             </div>
@@ -316,7 +316,7 @@ const OrdersTable: React.FC = () => {
                         </td>
                         <td className="py-4 px-5">
                           <div className="text-xs md:text-sm text-heading font-medium">{orderDateStr}</div>
-                          <div className="text-[10px] md:text-xs text-gray-500 mt-0.5">{orderTimeStr}</div>
+                          <div className="text-[10px] md:text-xs text-gray-700 font-medium mt-0.5">{orderTimeStr}</div>
                         </td>
                         <td className="py-4 px-5">
                           <StatusBadge status={orderStatus} />
@@ -330,7 +330,7 @@ const OrdersTable: React.FC = () => {
 
             {/* Pagination Footer */}
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4 px-5 py-4 border-t border-gray-150 bg-white font-body">
-              <div className="text-xs md:text-sm text-gray-500 font-medium">
+              <div className="text-xs md:text-sm text-gray-700 font-semibold">
                 {showingText}
               </div>
               <div className="flex items-center gap-1.5">

@@ -17,7 +17,7 @@ export default function Cart() {
   const { t } = useTranslation('common');
   const { closeCart, isAuthorized } = useUI();
   const router = useRouter();
-  const { items, total, isEmpty } = useCart();
+  const { items, total, isEmpty, isCartValid } = useCart();
   const { price: cartTotal } = usePrice({
     amount: total,
     currencyCode: 'AED',
@@ -66,10 +66,10 @@ export default function Cart() {
         className="flex flex-col px-5 pt-2 pb-5 md:px-7 md:pb-7"
       >
         <Link
-          href={isEmpty === false ? ROUTES.CHECKOUT : '/'}
+          href={isEmpty === false && isCartValid === true ? ROUTES.CHECKOUT : '/'}
           onClick={(e) => {
-            if (isEmpty) {
-              closeCart();
+            if (isEmpty || !isCartValid) {
+              e.preventDefault();
               return;
             }
             if (!isAuthorized) {
@@ -82,7 +82,7 @@ export default function Cart() {
           }}
           className={cn(
             'w-full px-5 py-3 md:py-4 flex items-center justify-center rounded-md text-sm sm:text-base text-white focus:outline-none transition duration-300 ',
-            isEmpty
+            (isEmpty || !isCartValid)
               ? 'cursor-not-allowed bg-gray-400 hover:bg-gray-400'
               : 'bg-heading hover:bg-gray-600'
           )}

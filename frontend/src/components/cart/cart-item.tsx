@@ -15,7 +15,10 @@ type CartItemProps = {
 
 const CartItem: React.FC<CartItemProps> = ({ item }) => {
   const { t } = useTranslation('common');
-  const { addItemToCart, removeItemFromCart, clearItemFromCart } = useCart();
+  const { addItemToCart, removeItemFromCart, clearItemFromCart, inventoryMap } = useCart();
+  const stock = inventoryMap[item.variant_id];
+  const isOutOfStock = stock !== undefined && stock <= 0;
+  const isInsufficientStock = stock !== undefined && stock > 0 && stock < item.quantity;
   const { price } = usePrice({
     amount: item.price,
     currencyCode: 'AED',
@@ -68,12 +71,23 @@ const CartItem: React.FC<CartItemProps> = ({ item }) => {
         <span className="text-sm text-gray-400 mb-2.5">
           {t('text-unit-price')} : &nbsp; {price}
         </span>
+        {isOutOfStock && (
+          <span className="text-xs text-red-500 font-semibold mb-2 block -mt-1.5">
+            Out of stock
+          </span>
+        )}
+        {isInsufficientStock && (
+          <span className="text-xs text-red-500 font-semibold mb-2 block -mt-1.5">
+            Only {stock} left in stock
+          </span>
+        )}
 
         <div className="flex items-end justify-between">
           <Counter
             quantity={item.quantity}
             onIncrement={() => addItemToCart(item, 1)}
             onDecrement={() => removeItemFromCart(item.id)}
+            disableIncrement={stock !== undefined && item.quantity >= stock}
             variant="dark"
           />
           <span className="text-sm font-semibold leading-5 md:text-base text-heading">

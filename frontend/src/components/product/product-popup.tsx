@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import cn from "classnames";
 import { useRouter } from "next/router";
 import { ROUTES } from "@utils/routes";
 import { useUI } from "@contexts/ui.context";
@@ -26,6 +27,16 @@ export default function ProductPopup() {
   const [viewCartBtn, setViewCartBtn] = useState<boolean>(false);
   const [addToCartLoader, setAddToCartLoader] = useState<boolean>(false);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+
+  const isOutOfStock = data && typeof data.quantity === "number" ? data.quantity <= 0 : false;
+
+  useEffect(() => {
+    if (data && typeof data.quantity === "number" && data.quantity <= 0) {
+      setQuantity(0);
+    } else if (data && typeof data.quantity === "number" && data.quantity > 0 && quantity === 0) {
+      setQuantity(1);
+    }
+  }, [data]);
 
   // Mobile Touch Swipe Handlers
   const [touchStart, setTouchStart] = useState<number | null>(null);
@@ -253,15 +264,20 @@ export default function ProductPopup() {
                 onDecrement={() =>
                   setQuantity((prev) => (prev !== 1 ? prev - 1 : 1))
                 }
-                disableDecrement={quantity === 1}
+                disableDecrement={quantity <= 1 || isOutOfStock}
+                disableIncrement={isOutOfStock}
               />
               <Button
                 onClick={addToCart}
                 variant="flat"
-                className="w-full h-11 md:h-12 px-1.5"
+                className={cn(
+                  "w-full h-11 md:h-12 px-1.5",
+                  isOutOfStock && "bg-gray-300 hover:bg-gray-300 text-gray-400 cursor-not-allowed"
+                )}
                 loading={addToCartLoader}
+                disabled={isOutOfStock}
               >
-                {t("text-add-to-cart")}
+                {isOutOfStock ? "Out of stock" : t("text-add-to-cart")}
               </Button>
             </div>
 

@@ -4,6 +4,7 @@ import {
   ProductListQuerySchema,
   buildPaginatorInfo,
   mapMedusaProductToFrontend,
+  populateProductsInventory,
 } from "../_shared/frontend"
 
 async function resolveCategoryDescendantIdsByHandles(query: any, handles: string[]): Promise<string[]> {
@@ -70,7 +71,14 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
   const filters: Record<string, unknown> = {}
   if (q) filters.q = q
   if (featured !== undefined) filters.metadata = { ...(filters.metadata as any), featured }
-  if (handle) filters.handle = handle
+  if (handle) {
+    const handles = handle.split(",").map((h) => h.trim()).filter(Boolean)
+    if (handles.length > 1) {
+      filters.handle = handles
+    } else if (handles.length === 1) {
+      filters.handle = handles[0]
+    }
+  }
   if (collection_id) filters.collection_id = collection_id
   if (category) {
     const handles = category.split(",").map((h) => h.trim()).filter(Boolean)
@@ -128,38 +136,10 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
     context: region_id ? { region_id } : undefined,
   })
 
-  // Extract all variant inventory_item_ids
-  const allItemIds: string[] = []
-  for (const p of products ?? []) {
-    for (const v of p.variants ?? []) {
-      const links = Array.isArray((v as any).inventory_items) ? (v as any).inventory_items : []
-      for (const link of links) {
-        if (link?.inventory_item_id) {
-          allItemIds.push(link.inventory_item_id)
-        }
-      }
-    }
-  }
+  // Populate real inventory levels on variants
+  await populateProductsInventory(products, query)
 
-  // Fetch inventory levels for those inventory items
-  const stockMap = new Map<string, number>()
-  if (allItemIds.length > 0) {
-    const { data: levels } = await query.graph({
-      entity: "inventory_level",
-      fields: ["inventory_item_id", "stocked_quantity"],
-      filters: { inventory_item_id: allItemIds },
-      pagination: { skip: 0, take: 5000 },
-    })
-    for (const lvl of levels ?? []) {
-      const itemId = lvl?.inventory_item_id
-      const qty = Number(lvl?.stocked_quantity ?? 0)
-      if (itemId) {
-        stockMap.set(itemId, (stockMap.get(itemId) ?? 0) + qty)
-      }
-    }
-  }
-
-  // Calculate prices and real inventory levels on variants
+  // Calculate prices on variants
   for (const product of products ?? []) {
     for (const variant of product.variants ?? []) {
       const v = variant as any
@@ -173,19 +153,6 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
       v.calculated_price = {
         ...v.calculated_price,
         calculated_amount: price
-      }
-
-      if (v.manage_inventory === false) {
-        v.inventory_quantity = 999999
-      } else {
-        const links = Array.isArray(v.inventory_items) ? v.inventory_items : []
-        let stock = 0
-        for (const link of links) {
-          if (link?.inventory_item_id) {
-            stock += stockMap.get(link.inventory_item_id) ?? 0
-          }
-        }
-        v.inventory_quantity = stock
       }
     }
   }

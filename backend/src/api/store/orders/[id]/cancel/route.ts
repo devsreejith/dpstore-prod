@@ -9,17 +9,13 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
 
   // 1. Resolve Customer ID from session (cast to any for TS compiler)
   const actorId = (req as any).auth_context?.actor_id;
-  if (!actorId || !actorId.startsWith("cus_")) {
-    res.status(401).json({ message: "Please login to cancel the order." });
-    return;
-  }
 
   try {
     // 2. Fetch the order to verify ownership
     const query = req.scope.resolve(ContainerRegistrationKeys.QUERY);
     const { data: orders } = await query.graph({
       entity: "order",
-      fields: ["id", "customer_id", "status"],
+      fields: ["id", "customer_id", "status", "email", "payment_status"],
       filters: { id: orderId },
     });
 
@@ -30,9 +26,20 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
     }
 
     // 3. Enforce that customer owns this order
-    if (order.customer_id !== actorId) {
-      res.status(403).json({ message: "You are not authorized to cancel this order." });
-      return;
+    if (order.customer_id) {
+      if (actorId && actorId.startsWith("cus_")) {
+        if (order.customer_id !== actorId) {
+          res.status(403).json({ message: "You are not authorized to cancel this order." });
+          return;
+        }
+      } else {
+        const bodyEmail = String((req.body as any)?.email ?? "").trim().toLowerCase();
+        const orderEmail = String(order.email ?? "").trim().toLowerCase();
+        if (!bodyEmail || bodyEmail !== orderEmail) {
+          res.status(401).json({ message: "Please login to cancel this order, or provide the correct order email." });
+          return;
+        }
+      }
     }
 
     // 4. Enforce that the order is not already canceled (using string conversion for strict enums)

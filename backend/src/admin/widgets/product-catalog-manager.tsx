@@ -1,7 +1,7 @@
 import { defineWidgetConfig } from "@medusajs/admin-sdk"
 import { Container, Heading, Button, Input, Textarea } from "@medusajs/ui"
 import type { DetailWidgetProps, AdminProduct } from "@medusajs/framework/types"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { sdk } from "../lib/sdk"
 
@@ -89,11 +89,59 @@ const ProductCatalogManager = ({ data }: DetailWidgetProps<AdminProduct>) => {
   const metadata = ((data as any)?.metadata ?? {}) as Record<string, unknown>
   const firstVariantId = safeString(((data as any)?.variants?.[0] as any)?.id).trim()
 
+  useEffect(() => {
+    function processNode(node: Node) {
+      if (node.nodeType !== Node.ELEMENT_NODE) return
+      const el = node as HTMLElement
+
+      const textContainers = el.querySelectorAll("label, span, p, button")
+      textContainers.forEach((item) => {
+        const text = (item.textContent || "").trim().toLowerCase()
+        if (text === "allow backorders" || text === "allow backorder" || text === "backorder") {
+          const container = item.closest("div.flex, div.grid, label")
+          if (container) {
+            (container as HTMLElement).style.setProperty("display", "none", "important")
+            const controls = container.querySelectorAll("button[role='switch'], input[type='checkbox']")
+            controls.forEach((ctrl) => {
+              ctrl.setAttribute("disabled", "true")
+              if (ctrl.getAttribute("aria-checked") === "true") {
+                (ctrl as HTMLElement).click()
+              }
+              if (ctrl instanceof HTMLInputElement && ctrl.checked) {
+                ctrl.checked = false
+                ctrl.dispatchEvent(new Event("change", { bubbles: true }))
+              }
+            })
+          }
+        }
+      })
+    }
+
+    processNode(document.body)
+
+    const observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        mutation.addedNodes.forEach((node) => {
+          processNode(node)
+        })
+      }
+    })
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+    })
+
+    return () => {
+      observer.disconnect()
+    }
+  }, [])
+
   const [itemCode, setItemCode] = useState(safeString(metadata.item_code))
   const [shortDescription, setShortDescription] = useState(safeString(metadata.short_description))
   const [retailPrice, setRetailPrice] = useState(safeNumber(metadata.retail_price))
   const [salePrice, setSalePrice] = useState(safeNumber(metadata.sale_price))
-  const [backorder, setBackorder] = useState(safeBool(metadata.backorder))
+  const [backorder, setBackorder] = useState(false)
   const [lowStockAlert, setLowStockAlert] = useState(safeNumber(metadata.low_stock_alert))
   const [featured, setFeatured] = useState(safeBool(metadata.featured))
   const [newArrival, setNewArrival] = useState(safeBool(metadata.isNewArrival))
@@ -166,7 +214,7 @@ const ProductCatalogManager = ({ data }: DetailWidgetProps<AdminProduct>) => {
         short_description: shortDescription.trim() || undefined,
         retail_price: retailPrice.trim() ? Number(retailPrice) : undefined,
         sale_price: salePrice.trim() ? Number(salePrice) : undefined,
-        backorder,
+        backorder: false,
         low_stock_alert: lowStockAlert.trim() ? Number(lowStockAlert) : undefined,
         featured,
         isNewArrival: newArrival,
@@ -289,18 +337,7 @@ const ProductCatalogManager = ({ data }: DetailWidgetProps<AdminProduct>) => {
                 />
                 <div />
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div />
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={backorder}
-                    onChange={(e) => setBackorder(e.target.checked)}
-                  />
-                  <span>Backorder</span>
-                </label>
-                <div />
-              </div>
+              {/* Backorder option disabled and hidden */}
             </div>
           ) : null}
         </div>

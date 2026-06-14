@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import cn from "classnames";
 import Button from "@components/ui/button";
 import Counter from "@components/common/counter";
 import { useRouter } from "next/router";
@@ -36,6 +37,16 @@ const ProductSingleDetails: React.FC = () => {
   const [attributes, setAttributes] = useState<{ [key: string]: string }>({});
   const [quantity, setQuantity] = useState(1);
   const [addToCartLoader, setAddToCartLoader] = useState<boolean>(false);
+
+  const isOutOfStock = data && typeof data.quantity === "number" ? data.quantity <= 0 : false;
+
+  useEffect(() => {
+    if (data && typeof data.quantity === "number" && data.quantity <= 0) {
+      setQuantity(0);
+    } else if (data && typeof data.quantity === "number" && data.quantity > 0 && quantity === 0) {
+      setQuantity(1);
+    }
+  }, [data]);
   const { price, basePrice, discount } = usePrice(
     data && {
       amount: (data.sale_price ? data.sale_price : data.price) * quantity,
@@ -175,15 +186,22 @@ const ProductSingleDetails: React.FC = () => {
             onDecrement={() =>
               setQuantity((prev) => (prev !== 1 ? prev - 1 : 1))
             }
-            disableDecrement={quantity === 1}
+            disableDecrement={quantity <= 1 || isOutOfStock}
+            disableIncrement={isOutOfStock}
           />
           <Button
             onClick={addToCart}
             variant="slim"
-            className="w-full md:w-6/12 xl:w-full"
+            className={cn(
+              "w-full md:w-6/12 xl:w-full",
+              isOutOfStock && "bg-gray-300 hover:bg-gray-300 text-gray-400 cursor-not-allowed"
+            )}
             loading={addToCartLoader}
+            disabled={isOutOfStock}
           >
-            <span className="py-2 3xl:px-8">Add to cart</span>
+            <span className="py-2 3xl:px-8">
+              {isOutOfStock ? "Out of stock" : "Add to cart"}
+            </span>
           </Button>
         </div>
         <div className="py-6">

@@ -138,6 +138,11 @@ const ProductCard: FC<ProductProps> = ({
           />
         </div>
         <div className="absolute top-3.5 ltr:left-3.5 rtl:right-3.5 ltr:sm:left-5 rtl:sm:right-5 flex flex-col gap-y-1.5">
+          {product.quantity <= 0 && (
+            <span className="bg-[#EF4444] text-white text-10px md:text-xs leading-5 rounded-md inline-block px-1.5 sm:px-1.5 xl:px-2 py-0.5 sm:py-1 font-semibold">
+              <p>Out of stock</p>
+            </span>
+          )}
           {discount && (
             <span className="bg-[#EF4444] text-white text-10px md:text-xs leading-5 rounded-md inline-block px-1.5 sm:px-1.5 xl:px-2 py-0.5 sm:py-1 font-semibold">
               <p>

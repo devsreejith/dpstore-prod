@@ -327,3 +327,52 @@ export function buildPaginatorInfo(input: {
   }
 }
 
+export async function populateProductsInventory(products: any[], query: any) {
+  const allItemIds: string[] = []
+  for (const p of products ?? []) {
+    for (const v of p.variants ?? []) {
+      const links = Array.isArray((v as any).inventory_items) ? (v as any).inventory_items : []
+      for (const link of links) {
+        if (link?.inventory_item_id) {
+          allItemIds.push(link.inventory_item_id)
+        }
+      }
+    }
+  }
+
+  const stockMap = new Map<string, number>()
+  if (allItemIds.length > 0) {
+    const { data: levels } = await query.graph({
+      entity: "inventory_level",
+      fields: ["inventory_item_id", "stocked_quantity", "reserved_quantity"],
+      filters: { inventory_item_id: allItemIds },
+      pagination: { skip: 0, take: 5000 },
+    })
+    for (const lvl of levels ?? []) {
+      const itemId = lvl?.inventory_item_id
+      const qty = Math.max(0, Number(lvl?.stocked_quantity ?? 0) - Number(lvl?.reserved_quantity ?? 0))
+      if (itemId) {
+        stockMap.set(itemId, (stockMap.get(itemId) ?? 0) + qty)
+      }
+    }
+  }
+
+  for (const product of products ?? []) {
+    for (const variant of product.variants ?? []) {
+      const v = variant as any
+      if (v.manage_inventory === false) {
+        v.inventory_quantity = 999999
+      } else {
+        const links = Array.isArray(v.inventory_items) ? v.inventory_items : []
+        let stock = 0
+        for (const link of links) {
+          if (link?.inventory_item_id) {
+            stock += stockMap.get(link.inventory_item_id) ?? 0
+          }
+        }
+        v.inventory_quantity = stock
+      }
+    }
+  }
+}
+

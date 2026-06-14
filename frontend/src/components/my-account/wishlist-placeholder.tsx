@@ -1,7 +1,7 @@
 import Link from "@components/ui/link";
 import { ROUTES } from "@utils/routes";
 import { useWishlist } from "@utils/use-wishlist";
-import usePrice from "@framework/product/use-price";
+import { formatVariantPrice, formatPrice } from "@framework/product/use-price";
 import { IoTrashOutline } from "react-icons/io5";
 
 const normalizeMediaSrc = (src: any) => {
@@ -33,7 +33,7 @@ export default function WishlistPlaceholder() {
       <div className="flex items-center justify-between gap-4 border-b border-gray-100 pb-5 mb-6">
         <div>
           <h2 className="text-xl md:text-2xl font-bold text-heading font-body">Wishlist / Favorites</h2>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 text-sm text-gray-700">
             Manage your saved products and add them directly to your cart.
           </p>
         </div>
@@ -69,11 +69,14 @@ export default function WishlistPlaceholder() {
                 return "/assets/placeholder/order-product.svg";
               })();
 
-              const { price, basePrice, discount } = usePrice({
-                amount: product.sale_price ? product.sale_price : product.price,
-                baseAmount: product.price,
-                currencyCode: "AED",
-              });
+              const amount = product.sale_price ? Number(product.sale_price) : Number(product.price ?? 0);
+              const baseAmount = product.price ? Number(product.price) : undefined;
+              const currencyCode = "AED";
+              const locale = "en";
+
+              const { price, basePrice, discount } = baseAmount
+                ? formatVariantPrice({ amount, baseAmount, currencyCode, locale })
+                : { price: formatPrice({ amount, currencyCode, locale }), basePrice: null, discount: null };
 
               const isOutOfStock = typeof product.quantity === "number" && product.quantity <= 0;
 
@@ -137,7 +140,7 @@ export default function WishlistPlaceholder() {
       ) : (
         <div className="border border-gray-200 rounded-xl p-6 bg-gray-50/50 text-center py-10">
           <div className="text-base text-heading font-semibold font-body">No favorites yet</div>
-          <p className="mt-1.5 text-sm text-gray-400 font-medium max-w-md mx-auto">
+          <p className="mt-1.5 text-sm text-gray-600 font-medium max-w-md mx-auto">
             Add products to your wishlist to quickly find them later and add them to your cart.
           </p>
         </div>
