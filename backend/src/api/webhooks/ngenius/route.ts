@@ -78,6 +78,27 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
     });
     await client.connect();
 
+    const restoreOrderIfCanceled = async (paymentCollectionId: string) => {
+      const orderRes = await client.query(
+        "SELECT order_id FROM order_payment_collection WHERE payment_collection_id = $1 AND deleted_at IS NULL",
+        [paymentCollectionId]
+      );
+      if (orderRes.rows.length > 0) {
+        const orderId = orderRes.rows[0].order_id;
+        const orderCheck = await client.query(
+          "SELECT status, canceled_at FROM \"order\" WHERE id = $1",
+          [orderId]
+        );
+        if (orderCheck.rows.length > 0 && orderCheck.rows[0].status === 'canceled') {
+          logger.info(`[N-Genius Webhook] Restoring previously canceled order ${orderId} because payment is now successful.`);
+          await client.query(
+            "UPDATE \"order\" SET status = 'pending', canceled_at = NULL WHERE id = $1",
+            [orderId]
+          );
+        }
+      }
+    };
+
     // Query database to locate the payment session matching the reference
     const dbRes = await client.query(
       "SELECT id, payment_collection_id, data FROM payment_session WHERE (data->>'reference' = $1 OR data->>'id' = $1) AND deleted_at IS NULL",
@@ -136,6 +157,9 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
     if (paymentRes.rows.length > 0) {
       let payment = paymentRes.rows[0];
       if (isSuccess) {
+        // Restore order if previously canceled by a payment failure webhook
+        await restoreOrderIfCanceled(session.payment_collection_id);
+
         if (payment.captured_at) {
           logger.info(`[N-Genius Webhook] Payment ${payment.id} already captured. Ignoring duplicate capture request.`);
         } else {
@@ -201,6 +225,9 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
             amount: paymentObj.amount,
           });
           logger.info(`[N-Genius Webhook] Successfully authorized and captured payment ${paymentObj.id} for reference: ${reference}`);
+
+          // Restore order if previously canceled by a payment failure webhook
+          await restoreOrderIfCanceled(session.payment_collection_id);
         } else {
           logger.warn(`[N-Genius Webhook] Authorization returned no payment object for session: ${session.id}`);
         }

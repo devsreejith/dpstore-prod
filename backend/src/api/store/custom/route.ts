@@ -1,5 +1,6 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils";
+import pg from "pg";
 
 export async function GET(
   req: MedusaRequest,
@@ -31,6 +32,58 @@ export async function POST(
 
   try {
     const { action, variant_id, quantity } = req.body as any;
+
+    if (action === "clear-pending-reservations") {
+      logger.info("[Custom API] Clearing reservations for pending payment/abandoned carts...");
+      const client = new pg.Client({
+        connectionString: process.env.DATABASE_URL,
+      });
+      await client.connect();
+      try {
+        const findRes = await client.query(`
+          SELECT r.id, r.line_item_id, r.quantity, cli.cart_id
+          FROM reservation_item r
+          JOIN cart_line_item cli ON r.line_item_id = cli.id
+          LEFT JOIN order_cart oc ON cli.cart_id = oc.cart_id
+          WHERE r.deleted_at IS NULL
+            AND oc.order_id IS NULL
+        `);
+
+        const pendingReservations = findRes.rows;
+        logger.info(`[Custom API] Found ${pendingReservations.length} active reservations belonging to pending payment/abandoned carts.`);
+
+        if (pendingReservations.length > 0) {
+          const idsToDelete = pendingReservations.map((r: any) => r.id);
+          await client.query(`
+            UPDATE reservation_item
+            SET deleted_at = NOW(), updated_at = NOW()
+            WHERE id = ANY($1)
+          `, [idsToDelete]);
+
+          await client.query(`
+            UPDATE inventory_level il
+            SET reserved_quantity = COALESCE(
+              (
+                SELECT SUM(quantity)
+                FROM reservation_item r
+                WHERE r.inventory_item_id = il.inventory_item_id
+                  AND r.deleted_at IS NULL
+              ),
+              0
+            )
+          `);
+          logger.info("[Custom API] Successfully deleted pending reservations and recalculated inventory levels.");
+        }
+        res.status(200).json({
+          success: true,
+          clearedCount: pendingReservations.length,
+          clearedItems: pendingReservations,
+        });
+        return;
+      } finally {
+        await client.end();
+      }
+    }
 
     if (action !== "reset-inventory") {
       res.status(400).json({ message: "Unsupported action" });
