@@ -1,5 +1,6 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
+import pg from "pg";
 
 export async function GET(req: MedusaRequest, res: MedusaResponse) {
   const actorId = (req as any).auth_context?.actor_id;
@@ -46,12 +47,32 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
   }
 
   try {
+    let targetOrderId = orderId;
+    if (orderId.startsWith("cart_")) {
+      const client = new pg.Client({
+        connectionString: process.env.DATABASE_URL,
+      });
+      await client.connect();
+      try {
+        const orderCartRes = await client.query(
+          "SELECT order_id FROM order_cart WHERE cart_id = $1 AND deleted_at IS NULL LIMIT 1",
+          [orderId]
+        );
+        if (orderCartRes.rows.length === 0) {
+          res.status(404).json({ message: `No order found for cart: ${orderId}` });
+          return;
+        }
+        targetOrderId = orderCartRes.rows[0].order_id;
+      } finally {
+        await client.end();
+      }
+    }
+
     const query = req.scope.resolve(ContainerRegistrationKeys.QUERY);
-    const filters = orderId.startsWith("cart_") ? { cart_id: orderId } : { id: orderId };
     const { data: orders } = await query.graph({
       entity: "order",
       fields,
-      filters,
+      filters: { id: targetOrderId },
     });
 
     const order = orders?.[0];

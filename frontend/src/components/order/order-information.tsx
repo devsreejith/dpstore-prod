@@ -121,13 +121,16 @@ export default function OrderInformation() {
   const paymentStatus = String(data?.payment_status ?? '').toLowerCase();
   const isOnlinePayment = paymentProvider && paymentProvider !== 'pp_system_default';
   
-  const capturedAmount =
-    Array.isArray(data?.payment_collections) && data.payment_collections.length
-      ? Number(data.payment_collections[0]?.captured_amount ?? 0)
-      : 0;
+  const paymentCollection = Array.isArray(data?.payment_collections) && data.payment_collections.length
+    ? data.payment_collections[0]
+    : null;
+
+  const capturedAmount = paymentCollection ? Number(paymentCollection.captured_amount ?? 0) : 0;
+  const authorizedAmount = paymentCollection ? Number(paymentCollection.authorized_amount ?? 0) : 0;
+  const paymentCollectionStatus = String(paymentCollection?.status ?? '').toLowerCase();
 
   const isPaid = isOnlinePayment
-    ? capturedAmount > 0
+    ? (capturedAmount > 0 || authorizedAmount > 0 || paymentCollectionStatus === 'captured' || paymentCollectionStatus === 'authorized')
     : (paymentStatus === 'captured' || paymentStatus === 'paid' || paymentStatus === 'authorized');
   
   const isCancelled =
@@ -138,7 +141,8 @@ export default function OrderInformation() {
   const isPaymentFailed = !data || isCancelled || (isOnlinePayment && (!isPaid || verificationFailed));
 
   useEffect(() => {
-    if (!data || !paymentCollectionId || !isOnlinePayment || capturedAmount > 0 || verificationDone || verifying) {
+    const isAlreadyPaid = capturedAmount > 0 || authorizedAmount > 0 || paymentCollectionStatus === 'authorized' || paymentCollectionStatus === 'captured';
+    if (!data || !paymentCollectionId || !isOnlinePayment || isAlreadyPaid || verificationDone || verifying) {
       return;
     }
 

@@ -230,13 +230,16 @@ const OrderDetails: React.FC<{ className?: string }> = ({
   const paymentStatus = String((order as any)?.payment_status ?? '').toLowerCase();
   
   const isOnlinePayment = paymentProvider && paymentProvider !== 'pp_system_default';
-  const capturedAmount =
-    Array.isArray(order?.payment_collections) && order.payment_collections.length
-      ? Number(order.payment_collections[0]?.captured_amount ?? 0)
-      : 0;
+  const paymentCollection = Array.isArray(order?.payment_collections) && order.payment_collections.length
+    ? order.payment_collections[0]
+    : null;
+
+  const capturedAmount = paymentCollection ? Number(paymentCollection.captured_amount ?? 0) : 0;
+  const authorizedAmount = paymentCollection ? Number(paymentCollection.authorized_amount ?? 0) : 0;
+  const paymentCollectionStatus = String(paymentCollection?.status ?? '').toLowerCase();
 
   const isPaymentPaid = isOnlinePayment
-    ? capturedAmount > 0
+    ? (capturedAmount > 0 || authorizedAmount > 0 || paymentCollectionStatus === 'captured' || paymentCollectionStatus === 'authorized')
     : (paymentStatus === 'captured' || paymentStatus === 'paid' || paymentStatus === 'authorized');
   
   const isPaymentPending = !isPaymentPaid && !isCancelled;
