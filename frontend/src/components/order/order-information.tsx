@@ -138,11 +138,12 @@ export default function OrderInformation() {
     String(data?.status ?? '').toLowerCase() === 'canceled' ||
     String(data?.status ?? '').toLowerCase() === 'cancelled';
 
-  const isPaymentFailed = !data || isCancelled || (isOnlinePayment && (!isPaid || verificationFailed));
+  const isPaymentFailed = !data || (isCancelled && !isPaid) || (isOnlinePayment && (!isPaid || verificationFailed));
 
   useEffect(() => {
     const isAlreadyPaid = capturedAmount > 0 || authorizedAmount > 0 || paymentCollectionStatus === 'authorized' || paymentCollectionStatus === 'captured';
-    if (!data || !paymentCollectionId || !isOnlinePayment || isAlreadyPaid || verificationDone || verifying) {
+    const shouldSkip = isAlreadyPaid && !isCancelled;
+    if (!data || !paymentCollectionId || !isOnlinePayment || shouldSkip || verificationDone || verifying) {
       return;
     }
 

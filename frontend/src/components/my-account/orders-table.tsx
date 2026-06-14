@@ -152,6 +152,7 @@ const OrdersTable: React.FC = () => {
   const getDisplayStatus = (o: any) => {
     const canceled = Boolean(o?.canceled_at) || String(o?.status ?? '').toLowerCase() === 'cancelled' || String(o?.status ?? '').toLowerCase() === 'canceled';
     if (canceled) return 'Cancelled';
+
     const fulfillment = String(o?.fulfillment_status ?? '').toLowerCase();
     if (fulfillment === 'delivered') return 'Delivered';
     if (fulfillment === 'out_for_delivery') return 'Out for Delivery';
@@ -159,11 +160,9 @@ const OrdersTable: React.FC = () => {
     if (fulfillment === 'partial_shipped' || fulfillment === 'fulfilled') {
       return 'Processing';
     }
+
     const payment = String(o?.payment_status ?? '').toLowerCase();
-    if (
-      String(o?.status ?? '').toLowerCase() === 'pending' ||
-      (payment && payment !== 'captured' && payment !== 'paid')
-    ) {
+    if (payment !== 'captured' && payment !== 'paid' && payment !== 'authorized') {
       return 'Payment Pending';
     }
     return 'Processing';
@@ -193,8 +192,6 @@ const OrdersTable: React.FC = () => {
   const filteredOrders = orders.filter((order) => {
     const status = getDisplayStatus(order);
     if (activeTab === 'All Orders') return true;
-    if (activeTab === 'Payment Pending') return status === 'Payment Pending';
-    if (activeTab === 'Processing') return status === 'Processing';
     if (activeTab === 'Shipped') return status === 'Shipped' || status === 'Out for Delivery';
     if (activeTab === 'Delivered') return status === 'Delivered';
     if (activeTab === 'Cancelled') return status === 'Cancelled';
@@ -218,7 +215,7 @@ const OrdersTable: React.FC = () => {
     if (currentPage < totalPages) setCurrentPage(currentPage + 1);
   };
 
-  const tabs = ['All Orders', 'Payment Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled'];
+  const tabs = ['All Orders', 'Shipped', 'Delivered', 'Cancelled'];
 
   return (
     <div className="w-full">
