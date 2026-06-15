@@ -130,7 +130,7 @@ export default function OrderInformation() {
   const paymentCollectionStatus = String(paymentCollection?.status ?? '').toLowerCase();
 
   const isPaid = isOnlinePayment
-    ? (capturedAmount > 0 || authorizedAmount > 0 || paymentCollectionStatus === 'captured' || paymentCollectionStatus === 'authorized')
+    ? (capturedAmount > 0 || paymentCollectionStatus === 'captured')
     : (paymentStatus === 'captured' || paymentStatus === 'paid' || paymentStatus === 'authorized');
   
   const isCancelled =
@@ -141,7 +141,7 @@ export default function OrderInformation() {
   const isPaymentFailed = !data || (isCancelled && !isPaid) || (isOnlinePayment && (!isPaid || verificationFailed));
 
   useEffect(() => {
-    const isAlreadyPaid = capturedAmount > 0 || authorizedAmount > 0 || paymentCollectionStatus === 'authorized' || paymentCollectionStatus === 'captured';
+    const isAlreadyPaid = capturedAmount > 0 || paymentCollectionStatus === 'captured';
     const shouldSkip = isAlreadyPaid && !isCancelled;
     if (!data || !paymentCollectionId || !isOnlinePayment || shouldSkip || verificationDone || verifying) {
       return;
@@ -165,7 +165,9 @@ export default function OrderInformation() {
     verifyPayment();
   }, [data, paymentCollectionId, isOnlinePayment, capturedAmount, verificationDone, verifying, refetch]);
 
-  if (isLoading || verifying) {
+  const isVerificationPending = isOnlinePayment && !isPaid && !verificationDone;
+
+  if (isLoading || verifying || isVerificationPending) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[450px] py-16 text-center">
         <div className="relative mb-6 flex items-center justify-center">

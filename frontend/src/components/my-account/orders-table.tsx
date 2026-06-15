@@ -149,6 +149,35 @@ const OrdersTable: React.FC = () => {
     return formatPrice({ amount: n, currencyCode: code, locale: 'en' });
   };
 
+  const isOrderPaid = (o: any) => {
+    const paymentStatus = String(o?.payment_status ?? '').toLowerCase();
+    
+    // Check if it is an online payment provider
+    let paymentProvider = '';
+    if (Array.isArray(o?.payment_collections) && o.payment_collections.length) {
+      const col = o.payment_collections[0];
+      if (Array.isArray(col.payments) && col.payments.length) {
+        const p = col.payments.find((py: any) => py.provider_id && py.provider_id !== 'pp_system_default');
+        paymentProvider = p ? String(p.provider_id) : String(col.payments[0].provider_id ?? '');
+      } else if (Array.isArray(col.payment_sessions) && col.payment_sessions.length) {
+        const s = col.payment_sessions.find((sn: any) => sn.provider_id && sn.provider_id !== 'pp_system_default');
+        paymentProvider = s ? String(s.provider_id) : String(col.payment_sessions[0].provider_id ?? '');
+      }
+    }
+
+    const isOnlinePayment = paymentProvider && paymentProvider !== 'pp_system_default';
+    const paymentCollection = Array.isArray(o?.payment_collections) && o.payment_collections.length
+      ? o.payment_collections[0]
+      : null;
+    const capturedAmount = paymentCollection ? Number(paymentCollection.captured_amount ?? 0) : 0;
+    const paymentCollectionStatus = String(paymentCollection?.status ?? '').toLowerCase();
+
+    if (isOnlinePayment) {
+      return capturedAmount > 0 || paymentCollectionStatus === 'captured';
+    }
+    return paymentStatus === 'captured' || paymentStatus === 'paid' || paymentStatus === 'authorized';
+  };
+
   const getDisplayStatus = (o: any) => {
     const canceled = Boolean(o?.canceled_at) || String(o?.status ?? '').toLowerCase() === 'cancelled' || String(o?.status ?? '').toLowerCase() === 'canceled';
     if (canceled) return 'Cancelled';
@@ -161,8 +190,7 @@ const OrdersTable: React.FC = () => {
       return 'Processing';
     }
 
-    const payment = String(o?.payment_status ?? '').toLowerCase();
-    if (payment !== 'captured' && payment !== 'paid' && payment !== 'authorized') {
+    if (!isOrderPaid(o)) {
       return 'Payment Pending';
     }
     return 'Processing';
