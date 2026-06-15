@@ -105,6 +105,7 @@ export class NGeniusClient {
           "Content-Type": "application/vnd.ni-identity.v1+json",
           "Accept": "application/vnd.ni-identity.v1+json",
         },
+        signal: AbortSignal.timeout(10000),
       });
 
       if (!response.ok) {
@@ -165,6 +166,7 @@ export class NGeniusClient {
           "Accept": "application/vnd.ni-payment.v2+json",
         },
         body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(10000),
       });
 
       if (!response.ok) {
@@ -196,6 +198,7 @@ export class NGeniusClient {
           "Authorization": `Bearer ${token}`,
           "Accept": "application/vnd.ni-payment.v2+json",
         },
+        signal: AbortSignal.timeout(10000),
       });
 
       if (!response.ok) {
@@ -245,6 +248,7 @@ export class NGeniusClient {
           "Accept": "application/vnd.ni-payment.v2+json",
         },
         body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(10000),
       });
 
       if (!response.ok) {

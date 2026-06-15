@@ -226,17 +226,23 @@ export default function OrderInformation() {
       let verifiedSuccess = false;
       let orderWasCancelled = false;
 
+      // 1. Authorize Call (with 8s timeout)
       try {
         if (['authorized', 'captured', 'canceled', 'error'].includes(paymentCollectionStatus)) {
           console.log(`[Order Info] Payment collection status is already '${paymentCollectionStatus}'. Skipping authorize call to avoid 400 error.`);
         } else {
           console.log(`[Order Info] Calling authorize endpoint once...`);
-          await http.post(`/store/payment-collections/${paymentCollectionId}/authorize`);
+          await http.post(`/store/payment-collections/${paymentCollectionId}/authorize`, {}, { timeout: 8000 });
         }
+      } catch (authErr: any) {
+        console.error(`[Order Info] Authorize call failed or timed out:`, authErr.message || authErr);
+      }
 
-        if (!isMounted) return;
-        console.log(`[Order Info] Proceeding to refetch polling...`);
+      if (!isMounted) return;
 
+      // 2. Polling Loop
+      console.log(`[Order Info] Proceeding to refetch polling...`);
+      try {
         for (let refetchAttempt = 1; refetchAttempt <= maxRetries; refetchAttempt++) {
           const updated = await refetch();
           if (!isMounted) return;
@@ -266,11 +272,10 @@ export default function OrderInformation() {
             await new Promise((resolve) => setTimeout(resolve, delayMs));
           }
         }
-      } catch (e: any) {
-        console.error(`[Order Info] Authorize call failed:`, e);
-        if (!isMounted) return;
+      } catch (pollErr: any) {
+        console.error(`[Order Info] Polling check failed:`, pollErr.message || pollErr);
 
-        // Final fallback refetch check
+        // Fallback single refetch attempt
         try {
           const updated = await refetch();
           if (!isMounted) return;
@@ -290,8 +295,8 @@ export default function OrderInformation() {
           } else if (freshIsCancelled) {
             orderWasCancelled = true;
           }
-        } catch (refetchErr) {
-          console.error(`[Order Info] Fallback refetch check failed:`, refetchErr);
+        } catch (fallbackErr) {
+          console.error(`[Order Info] Fallback refetch check failed:`, fallbackErr);
         }
       }
 
