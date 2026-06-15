@@ -66,6 +66,25 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
       } finally {
         await client.end();
       }
+    } else if (orderId.startsWith("pay_col_") || orderId.startsWith("pay-col-")) {
+      const normalizedPayColId = orderId.replace(/-/g, "_");
+      const client = new pg.Client({
+        connectionString: process.env.DATABASE_URL,
+      });
+      await client.connect();
+      try {
+        const orderPaymentColRes = await client.query(
+          "SELECT order_id FROM order_payment_collection WHERE payment_collection_id = $1 AND deleted_at IS NULL LIMIT 1",
+          [normalizedPayColId]
+        );
+        if (orderPaymentColRes.rows.length === 0) {
+          res.status(404).json({ message: `No order found for payment collection: ${orderId}` });
+          return;
+        }
+        targetOrderId = orderPaymentColRes.rows[0].order_id;
+      } finally {
+        await client.end();
+      }
     }
 
     const query = req.scope.resolve(ContainerRegistrationKeys.QUERY);

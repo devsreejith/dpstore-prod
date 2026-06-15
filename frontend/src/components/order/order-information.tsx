@@ -93,7 +93,7 @@ const isPaymentSuccessful = (collection: any) => {
 
 export default function OrderInformation() {
   const {
-    query: { id, cart_id },
+    query: { id, cart_id, ref },
   } = useRouter();
   const [showDetails, setShowDetails] = useState(false);
   const [paying, setPaying] = useState(false);
@@ -132,7 +132,7 @@ export default function OrderInformation() {
   };
 
   const { t } = useTranslation('common');
-  const orderIdentifier = (id || cart_id)?.toString()!;
+  const orderIdentifier = (id || cart_id || ref)?.toString()!;
   const { data, isLoading, refetch } = useOrderQuery(orderIdentifier);
   const totalAmount = Number(data?.total ?? 0) || 0;
   const shippingAmount = Number(data?.shipping_total ?? 0) || 0;
@@ -343,6 +343,19 @@ export default function OrderInformation() {
         <p className="text-xs md:text-sm text-gray-500 font-body max-w-sm px-4 leading-relaxed">
           Please wait while we confirm your payment transaction. Do not refresh or close this page.
         </p>
+        <div className="mt-8 p-4 bg-gray-50 border border-gray-200 rounded-lg text-left font-mono text-[11px] text-gray-600 max-w-md mx-auto space-y-1">
+          <div className="font-bold border-b border-gray-200 pb-1 mb-2 text-xs text-gray-700">Debug Information:</div>
+          <div><strong>Router Query:</strong> {JSON.stringify({ id, cart_id })}</div>
+          <div><strong>Order Identifier:</strong> {orderIdentifier || 'undefined'}</div>
+          <div><strong>React Query isLoading:</strong> {String(isLoading)}</div>
+          <div><strong>Order Data loaded:</strong> {String(!!data)}</div>
+          <div><strong>Is Online Payment:</strong> {String(isOnlinePayment)}</div>
+          <div><strong>verifyingStatus:</strong> {verifyingStatus}</div>
+          <div><strong>verificationDone:</strong> {String(verificationDone)}</div>
+          <div><strong>verifying:</strong> {String(verifying)}</div>
+          <div><strong>paymentCollectionId:</strong> {paymentCollectionId || 'none'}</div>
+          <div><strong>paymentCollectionStatus:</strong> {paymentCollectionStatus || 'none'}</div>
+        </div>
       </div>
     );
   }
