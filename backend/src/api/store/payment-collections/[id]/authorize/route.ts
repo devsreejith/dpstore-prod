@@ -16,7 +16,13 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
     return
   }
 
-  const session = paymentCollection.payment_sessions?.[0]
+  const sessions = paymentCollection.payment_sessions || []
+  sessions.sort((a: any, b: any) => {
+    const dateA = a.created_at ? new Date(a.created_at).getTime() : 0
+    const dateB = b.created_at ? new Date(b.created_at).getTime() : 0
+    return dateB - dateA
+  })
+  const session = sessions[0]
   if (!session) {
     res.status(400).json({ message: "No payment session found" })
     return
