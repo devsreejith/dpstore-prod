@@ -187,7 +187,7 @@ export default function OrderInformation() {
   const paymentStatus = String(data?.payment_status ?? '').toLowerCase();
 
   const isPaid = isOnlinePayment
-    ? (capturedAmount > 0 || paymentCollectionStatus === 'captured')
+    ? isPaymentSuccessful(paymentCollection)
     : (paymentStatus === 'captured' || paymentStatus === 'paid' || paymentStatus === 'authorized');
 
   const isCancelled =
@@ -209,7 +209,9 @@ export default function OrderInformation() {
       return;
     }
 
-    const isAlreadyPaid = capturedAmount > 0 || paymentCollectionStatus === 'captured';
+    const isAlreadyPaid = isOnlinePayment
+      ? isPaymentSuccessful(paymentCollection)
+      : (capturedAmount > 0 || paymentCollectionStatus === 'captured');
     const shouldSkip = isAlreadyPaid && !isCancelled;
 
     if (!paymentCollectionId || !isOnlinePayment) {
