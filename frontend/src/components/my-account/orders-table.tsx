@@ -12,6 +12,21 @@ const normalizeMediaSrc = (src: any) => {
 
   const backend = String(process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL ?? 'http://localhost:9000').trim().replace(/\/$/, '');
 
+  if (/^https?:\/\//i.test(v)) {
+    if (backend && v.startsWith(backend)) {
+      return v;
+    }
+    return v;
+  }
+
+  if (v.startsWith('uploads/') || v.startsWith('/uploads/') || v.startsWith('static/') || v.startsWith('/static/')) {
+    const cleanPath = v.startsWith('/') ? v : `/${v}`;
+    return `${backend}${cleanPath}`;
+  }
+
+  return v;
+};
+
 const isPaymentSuccessful = (collection: any) => {
   if (!collection) return false;
   
@@ -59,23 +74,6 @@ const isPaymentSuccessful = (collection: any) => {
   }
   
   return false;
-};
-
-  if (/^https?:\/\//i.test(v)) {
-    if (backend && v.startsWith(backend)) {
-      return v;
-    }
-    return v;
-  }
-
-  if (v.startsWith('uploads/') || v.startsWith('/uploads/') || v.startsWith('static/') || v.startsWith('/static/')) {
-    const cleanPath = v.startsWith('/') ? v : `/${v}`;
-    return `${backend}${cleanPath}`;
-  }
-
-  if (v.startsWith('/assets/')) return v;
-  if (!v.startsWith('/')) return `/${v}`;
-  return v;
 };
 
 const pickOrderItemThumb = (it: any) => {
