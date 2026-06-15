@@ -195,7 +195,7 @@ export default function OrderInformation() {
     String(data?.status ?? '').toLowerCase() === 'canceled' ||
     String(data?.status ?? '').toLowerCase() === 'cancelled';
 
-  const isPaymentFailed = !data || (isCancelled && !isPaid) || (isOnlinePayment && (!isPaid || verificationFailed));
+  const isPaymentFailed = !data || (isCancelled && !isPaid) || (isOnlinePayment && !isPaid && verificationFailed);
 
   useEffect(() => {
     let isMounted = true;
@@ -212,7 +212,7 @@ export default function OrderInformation() {
     const isAlreadyPaid = isOnlinePayment
       ? isPaymentSuccessful(paymentCollection)
       : (capturedAmount > 0 || paymentCollectionStatus === 'captured');
-    const shouldSkip = isAlreadyPaid && !isCancelled;
+    const shouldSkip = isAlreadyPaid;
 
     if (!paymentCollectionId || !isOnlinePayment) {
       if (isMounted) setVerificationDone(true);
@@ -236,6 +236,8 @@ export default function OrderInformation() {
         if (isMounted) setVerificationDone(true);
       } catch (e: any) {
         console.error("Payment verification failed:", e);
+        // Always refetch order data so isPaid reflects the latest gateway state
+        try { await refetch(); } catch (_) {}
         if (isMounted) {
           setVerificationFailed(true);
           setVerificationDone(true);
