@@ -28,7 +28,6 @@ import {
   IoGiftOutline,
   IoCalendarOutline,
   IoHelpCircleOutline,
-  IoAlertCircleOutline,
   IoTrashOutline
 } from 'react-icons/io5';
 
