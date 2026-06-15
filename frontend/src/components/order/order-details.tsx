@@ -55,7 +55,7 @@ import Button from '@components/ui/button';
 import http from '@framework/utils/http';
 import { useMemo, useState } from 'react';
 import Link from '@components/ui/link';
-import { useIsRTL, ROUTES } from '@utils/routes';
+import { ROUTES } from '@utils/routes';
 import { useTranslation } from 'next-i18next';
 import {
   IoDocumentTextOutline,

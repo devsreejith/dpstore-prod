@@ -212,6 +212,8 @@ export default function OrderInformation() {
       return;
     }
 
+    if (verificationDone || verifying) return;
+
     // At this point we have an online payment that needs verification.
     // Always start with the loading state – we will not rely on any cached payment data.
     if (isMounted) setVerifyingStatus("loading");
@@ -225,11 +227,15 @@ export default function OrderInformation() {
       let orderWasCancelled = false;
 
       try {
-        console.log(`[Order Info] Calling authorize endpoint once...`);
-        await http.post(`/store/payment-collections/${paymentCollectionId}/authorize`);
+        if (['authorized', 'captured', 'canceled', 'error'].includes(paymentCollectionStatus)) {
+          console.log(`[Order Info] Payment collection status is already '${paymentCollectionStatus}'. Skipping authorize call to avoid 400 error.`);
+        } else {
+          console.log(`[Order Info] Calling authorize endpoint once...`);
+          await http.post(`/store/payment-collections/${paymentCollectionId}/authorize`);
+        }
 
         if (!isMounted) return;
-        console.log(`[Order Info] Authorize call succeeded. Starting refetch polling...`);
+        console.log(`[Order Info] Proceeding to refetch polling...`);
 
         for (let refetchAttempt = 1; refetchAttempt <= maxRetries; refetchAttempt++) {
           const updated = await refetch();
@@ -306,7 +312,7 @@ export default function OrderInformation() {
     verifyPayment();
 
     return () => { isMounted = false; };
-  }, [data, isLoading, paymentCollectionId, isOnlinePayment, verificationDone, verifying, refetch, isCancelled]);
+  }, [data, isLoading, paymentCollectionId, isOnlinePayment, verificationDone, verifying, refetch, isCancelled, paymentCollectionStatus]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
