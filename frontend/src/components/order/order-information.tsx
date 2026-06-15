@@ -14,7 +14,8 @@ import {
   IoLockClosedOutline,
   IoTrashOutline,
   IoShieldCheckmarkOutline,
-  IoCalendarOutline
+  IoCalendarOutline,
+  IoMailOutline
 } from 'react-icons/io5';
 
 const fmt = (amount: any, currencyCode: any = 'AED') => {
@@ -50,9 +51,9 @@ export default function OrderInformation() {
   const [payError, setPayError] = useState<string | null>(null);
   const [verifying, setVerifying] = useState(false);
   const [verificationDone, setVerificationDone] = useState(false);
-  const [verificationFailed, setVerificationFailed] = useState(false);
   const [canceling, setCanceling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
+  const [verifyingStatus, setVerifyingStatus] = useState<"loading" | "success" | "failed" | "cancelled">("loading");
 
   const cancelOrder = async () => {
     if (isCancelled) return;
@@ -111,14 +112,11 @@ export default function OrderInformation() {
       return String(col.payment_sessions[0].provider_id ?? '');
     }
     return '';
-  }, [data]);
-
-  const paymentMethodName =
+  }, [data]);  const paymentMethodName =
     paymentProvider === 'pp_system_default' || !paymentProvider
       ? 'Cash on Delivery'
       : 'Online';
 
-  const paymentStatus = String(data?.payment_status ?? '').toLowerCase();
   const isOnlinePayment = paymentProvider && paymentProvider !== 'pp_system_default';
   
   const paymentCollection = Array.isArray(data?.payment_collections) && data.payment_collections.length
@@ -128,58 +126,167 @@ export default function OrderInformation() {
   const capturedAmount = paymentCollection ? Number(paymentCollection.captured_amount ?? 0) : 0;
   const authorizedAmount = paymentCollection ? Number(paymentCollection.authorized_amount ?? 0) : 0;
   const paymentCollectionStatus = String(paymentCollection?.status ?? '').toLowerCase();
-
-  const isPaid = isOnlinePayment
-    ? (capturedAmount > 0 || paymentCollectionStatus === 'captured')
-    : (paymentStatus === 'captured' || paymentStatus === 'paid' || paymentStatus === 'authorized');
   
   const isCancelled =
     Boolean(data?.canceled_at) ||
     String(data?.status ?? '').toLowerCase() === 'canceled' ||
     String(data?.status ?? '').toLowerCase() === 'cancelled';
 
-  const isPaymentFailed = !data || (isCancelled && !isPaid) || (isOnlinePayment && (!isPaid || verificationFailed));
-
   useEffect(() => {
-    const isAlreadyPaid = capturedAmount > 0 || paymentCollectionStatus === 'captured';
-    const shouldSkip = isAlreadyPaid && !isCancelled;
-    if (!data || !paymentCollectionId || !isOnlinePayment) {
+    let isMounted = true;
+
+    if (isLoading) return;
+    if (!data) {
+      if (isMounted) setVerifyingStatus("failed");
       return;
     }
-    if (shouldSkip) {
-      setVerificationDone(true);
+
+    const isAlreadyPaid = 
+      capturedAmount > 0 || 
+      authorizedAmount > 0 || 
+      paymentCollectionStatus === 'captured' || 
+      paymentCollectionStatus === 'authorized';
+
+    if (isCancelled) {
+      if (isMounted) setVerifyingStatus("cancelled");
       return;
     }
+
+    if (!isOnlinePayment) {
+      if (isMounted) setVerifyingStatus("success");
+      return;
+    }
+
+    if (isAlreadyPaid) {
+      if (isMounted) setVerifyingStatus("success");
+      return;
+    }
+
     if (verificationDone || verifying) {
       return;
     }
 
     const verifyPayment = async () => {
-      setVerifying(true);
-      try {
-        await http.post(`/store/payment-collections/${paymentCollectionId}/authorize`);
-        await refetch();
-        setVerificationDone(true);
-      } catch (e: any) {
-        console.error("Payment verification failed:", e);
-        setVerificationFailed(true);
-        setVerificationDone(true);
-      } finally {
-        setVerifying(false);
+      if (isMounted) {
+        setVerifying(true);
+        setVerifyingStatus("loading");
       }
+      
+      const maxRetries = 3;
+      const delayMs = 1500;
+      let verifiedSuccess = false;
+      let orderWasCancelled = false;
+
+      try {
+        console.log(`[Order Info] Calling authorize endpoint once...`);
+        await http.post(`/store/payment-collections/${paymentCollectionId}/authorize`);
+        
+        if (!isMounted) return;
+        console.log(`[Order Info] Authorize call succeeded. Starting refetch polling...`);
+        
+        for (let refetchAttempt = 1; refetchAttempt <= maxRetries; refetchAttempt++) {
+          const updated = await refetch();
+          if (!isMounted) return;
+          const freshData = updated.data || updated;
+          
+          const freshCollection = Array.isArray(freshData?.payment_collections) && freshData.payment_collections.length
+            ? freshData.payment_collections[0]
+            : null;
+          const freshCapturedAmount = freshCollection ? Number(freshCollection.captured_amount ?? 0) : 0;
+          const freshAuthorizedAmount = freshCollection ? Number(freshCollection.authorized_amount ?? 0) : 0;
+          const freshCollectionStatus = String(freshCollection?.status ?? '').toLowerCase();
+          
+          const freshIsPaid = 
+            freshCapturedAmount > 0 || 
+            freshAuthorizedAmount > 0 || 
+            freshCollectionStatus === 'captured' || 
+            freshCollectionStatus === 'authorized';
+          const freshIsCancelled =
+            Boolean(freshData?.canceled_at) ||
+            String(freshData?.status ?? '').toLowerCase() === 'canceled' ||
+            String(freshData?.status ?? '').toLowerCase() === 'cancelled';
+            
+          if (freshIsPaid) {
+            verifiedSuccess = true;
+            break;
+          }
+
+          if (freshIsCancelled) {
+            orderWasCancelled = true;
+            break;
+          }
+          
+          if (refetchAttempt < maxRetries) {
+            console.log(`[Order Info] DB status not captured yet. Retrying refetch in ${delayMs}ms... (Attempt ${refetchAttempt}/${maxRetries})`);
+            await new Promise((resolve) => setTimeout(resolve, delayMs));
+          }
+        }
+      } catch (e: any) {
+        console.error(`[Order Info] Authorize call failed:`, e);
+        if (!isMounted) return;
+
+        // Final fallback refetch check
+        try {
+          const updated = await refetch();
+          if (!isMounted) return;
+          const freshData = updated.data || updated;
+          
+          const freshCollection = Array.isArray(freshData?.payment_collections) && freshData.payment_collections.length
+            ? freshData.payment_collections[0]
+            : null;
+          const freshCapturedAmount = freshCollection ? Number(freshCollection.captured_amount ?? 0) : 0;
+          const freshAuthorizedAmount = freshCollection ? Number(freshCollection.authorized_amount ?? 0) : 0;
+          const freshCollectionStatus = String(freshCollection?.status ?? '').toLowerCase();
+          
+          const freshIsPaid = 
+            freshCapturedAmount > 0 || 
+            freshAuthorizedAmount > 0 || 
+            freshCollectionStatus === 'captured' || 
+            freshCollectionStatus === 'authorized';
+          const freshIsCancelled =
+            Boolean(freshData?.canceled_at) ||
+            String(freshData?.status ?? '').toLowerCase() === 'canceled' ||
+            String(freshData?.status ?? '').toLowerCase() === 'cancelled';
+
+          if (freshIsPaid) {
+            verifiedSuccess = true;
+          } else if (freshIsCancelled) {
+            orderWasCancelled = true;
+          }
+        } catch (refetchErr) {
+          console.error(`[Order Info] Fallback refetch check failed:`, refetchErr);
+        }
+      }
+
+      if (!isMounted) return;
+
+      if (verifiedSuccess) {
+        setVerifyingStatus("success");
+      } else if (orderWasCancelled) {
+        setVerifyingStatus("cancelled");
+      } else {
+        setVerifyingStatus("failed");
+      }
+      
+      setVerificationDone(true);
+      setVerifying(false);
     };
 
     verifyPayment();
-  }, [data, paymentCollectionId, isOnlinePayment, capturedAmount, verificationDone, verifying, refetch, isCancelled, paymentCollectionStatus]);
 
-  if (isLoading || verifying || (isOnlinePayment && !verificationDone)) {
+    return () => {
+      isMounted = false;
+    };
+  }, [data, isLoading, paymentCollectionId, isOnlinePayment, capturedAmount, verificationDone, verifying, refetch, isCancelled, paymentCollectionStatus]);
+
+  if (isLoading || (isOnlinePayment && verifyingStatus === "loading")) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[450px] py-16 text-center">
         <div className="relative mb-6 flex items-center justify-center">
           {/* Subtle pulsating outer circle */}
           <div className="absolute w-20 h-20 border border-gray-100 rounded-full animate-ping opacity-70"></div>
           {/* Main spinning ring */}
-          <div className="w-12 h-12 border-[3.5px] border-gray-100 border-t-heading rounded-full animate-spin relative z-10"></div>
+          <div className="w-12 h-12 border-[3.5px] border-gray-150 border-t-heading rounded-full animate-spin relative z-10"></div>
         </div>
         <h2 className="text-base md:text-lg font-bold text-heading font-body mb-2 animate-pulse">
           Verifying payment status...
@@ -250,7 +357,7 @@ export default function OrderInformation() {
         </div>
       ) : (
         /* If payment failed, show the split-panel view */
-        isPaymentFailed ? (
+        verifyingStatus === "failed" ? (
           <div className="flex flex-col w-full">
             {/* Back to Orders */}
             <Link
@@ -341,43 +448,35 @@ export default function OrderInformation() {
 
                 {/* Stacked Button Actions */}
                 <div className="flex flex-col gap-3 w-full mb-6">
-                  {isCancelled ? (
-                    <div className="w-full text-center py-2.5 bg-gray-100 border border-gray-200 text-gray-600 font-bold rounded-lg text-xs md:text-sm font-body">
-                      This order has been cancelled.
-                    </div>
-                  ) : (
-                    <>
-                      {/* Retry Payment (Full Width) */}
-                      <button
-                        type="button"
-                        onClick={continuePayment}
-                        disabled={paying || canceling}
-                        className="w-full h-11 bg-[#1D1D1D] hover:bg-black text-white font-bold text-xs md:text-sm rounded-lg transition duration-200 flex items-center justify-center font-body"
-                      >
-                        <span>{paying ? 'Loading...' : 'Retry Payment'}</span>
-                      </button>
+                  {/* Retry Payment (Full Width) */}
+                  <button
+                    type="button"
+                    onClick={continuePayment}
+                    disabled={paying || canceling}
+                    className="w-full h-11 bg-[#1D1D1D] hover:bg-black text-white font-bold text-xs md:text-sm rounded-lg transition duration-200 flex items-center justify-center font-body"
+                  >
+                    <span>{paying ? 'Loading...' : 'Retry Payment'}</span>
+                  </button>
 
-                      {/* Continue Shopping & Cancel Order side-by-side */}
-                      <div className="grid grid-cols-2 gap-3 w-full">
-                        <Link
-                          href="/"
-                          className="h-11 border border-gray-300 hover:bg-gray-50 text-heading font-bold text-xs md:text-sm rounded-lg transition duration-200 flex items-center justify-center font-body"
-                        >
-                          Continue Shopping
-                        </Link>
+                  {/* Continue Shopping & Cancel Order side-by-side */}
+                  <div className="grid grid-cols-2 gap-3 w-full">
+                    <Link
+                      href="/"
+                      className="h-11 border border-gray-300 hover:bg-gray-50 text-heading font-bold text-xs md:text-sm rounded-lg transition duration-200 flex items-center justify-center font-body"
+                    >
+                      Continue Shopping
+                    </Link>
 
-                        <button
-                          type="button"
-                          onClick={cancelOrder}
-                          disabled={paying || canceling}
-                          className="h-11 border border-red-200 hover:bg-red-50 text-red-500 font-bold text-xs md:text-sm rounded-lg transition duration-200 flex items-center justify-center gap-1.5 font-body"
-                        >
-                          <IoTrashOutline className="text-base" />
-                          <span>{canceling ? 'Cancelling...' : 'Cancel Order'}</span>
-                        </button>
-                      </div>
-                    </>
-                  )}
+                    <button
+                      type="button"
+                      onClick={cancelOrder}
+                      disabled={paying || canceling}
+                      className="h-11 border border-red-200 hover:bg-red-50 text-red-500 font-bold text-xs md:text-sm rounded-lg transition duration-200 flex items-center justify-center gap-1.5 font-body"
+                    >
+                      <IoTrashOutline className="text-base" />
+                      <span>{canceling ? 'Cancelling...' : 'Cancel Order'}</span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* Footer lock note */}
@@ -441,6 +540,120 @@ export default function OrderInformation() {
               </div>
             </div>
           </div>
+        ) : verifyingStatus === "cancelled" ? (
+          /* Dedicated Order Cancelled Screen */
+          <div className="flex flex-col w-full">
+            {/* Back to Orders */}
+            <Link
+              href="/my-account/orders"
+              className="inline-flex items-center text-sm font-semibold text-gray-600 hover:text-black transition gap-2 mb-5 font-body self-start"
+            >
+              <IoArrowBackOutline className="text-base" /> Back to Orders
+            </Link>
+
+            {/* Split Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start w-full max-w-[960px] mx-auto">
+              {/* Main Content Column (Left) */}
+              <div className="lg:col-span-2 w-full bg-white border border-gray-150 rounded-xl p-5 md:p-8 shadow-sm flex flex-col items-center">
+                {/* Gray Alert Icon */}
+                <div className="relative mb-5 flex items-center justify-center">
+                  <div className="absolute w-24 h-24 border border-gray-100 rounded-full opacity-60 animate-ping duration-1000"></div>
+                  <div className="absolute w-20 h-20 border border-dashed border-gray-200 rounded-full"></div>
+                  <div className="w-12 h-12 rounded-full bg-gray-400 flex items-center justify-center shadow-sm relative z-10">
+                    <IoAlertCircleOutline className="text-2xl text-white" />
+                  </div>
+                </div>
+
+                <h1 className="text-lg md:text-xl font-bold text-heading font-body mb-1 text-center">
+                  Order Cancelled
+                </h1>
+                <p className="text-xs md:text-sm text-gray-500 font-body mb-6 text-center max-w-md">
+                  This order has been cancelled and will not be processed.
+                </p>
+
+                {/* Order ID & Total Amount Card */}
+                <div className="w-full border border-gray-150 rounded-xl overflow-hidden mb-5 bg-gray-50/30">
+                  <div className="flex justify-between items-center px-4 py-2.5 border-b border-gray-150">
+                    <div className="flex items-center gap-2.5 text-xs md:text-sm text-gray-500 font-body">
+                      <IoDocumentTextOutline className="text-base text-gray-400" />
+                      <span>Order ID</span>
+                    </div>
+                    <span className="text-xs md:text-sm font-bold text-heading font-body">
+                      {formattedOrderNumber}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center px-4 py-2.5">
+                    <div className="flex items-center gap-2.5 text-xs md:text-sm text-gray-500 font-body">
+                      <IoWalletOutline className="text-base text-gray-400" />
+                      <span>Total Amount</span>
+                    </div>
+                    <span className="text-xs md:text-sm font-bold text-heading font-body">
+                      {total}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Stacked Button Actions */}
+                <div className="flex flex-col gap-3 w-full mb-6">
+                  <Link
+                    href="/"
+                    className="w-full h-11 bg-[#1D1D1D] hover:bg-black text-white font-bold text-xs md:text-sm rounded-lg transition duration-200 flex items-center justify-center font-body"
+                  >
+                    Continue Shopping
+                  </Link>
+
+                  <Link
+                    href="/my-account/orders"
+                    className="w-full h-11 border border-gray-300 hover:bg-gray-50 text-heading font-bold text-xs md:text-sm rounded-lg transition duration-200 flex items-center justify-center font-body"
+                  >
+                    Back to Orders
+                  </Link>
+                </div>
+              </div>
+
+              {/* Sidebar Column (Right) */}
+              <div className="lg:col-span-1 w-full flex flex-col gap-6">
+                {/* PRICE DETAILS Card */}
+                <div className="w-full bg-white border border-gray-150 rounded-xl p-5 shadow-sm">
+                  <h2 className="text-xs font-bold text-heading font-body mb-4 uppercase tracking-wider text-left">
+                    Price Details
+                  </h2>
+                  
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center text-xs md:text-sm font-body text-gray-600">
+                      <span>Price ({totalItemsCount} {totalItemsCount === 1 ? 'item' : 'items'})</span>
+                      <span className="text-heading font-medium">{subtotal}</span>
+                    </div>
+
+                    {discountAmount > 0 && (
+                      <div className="flex justify-between items-center text-xs md:text-sm font-body text-emerald-600">
+                        <span>Discount</span>
+                        <span className="font-semibold">-{discount}</span>
+                      </div>
+                    )}
+
+                    <div className="flex justify-between items-center text-xs md:text-sm font-body text-emerald-600">
+                      <span>Delivery Charges</span>
+                      <span className="font-semibold">{shippingAmount === 0 ? 'FREE' : shipping}</span>
+                    </div>
+
+                    <div className="border-t border-gray-150 pt-3 flex justify-between items-center text-sm md:text-base font-bold text-heading font-body">
+                      <span>Total Amount</span>
+                      <span>{total}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Secure Payments Badge */}
+                <div className="flex items-center gap-2.5 text-left font-body text-gray-400 py-1.5 px-0.5">
+                  <IoShieldCheckmarkOutline className="text-xl text-gray-400 flex-shrink-0" />
+                  <span className="text-[9px] md:text-[10px] font-bold leading-normal tracking-wide uppercase">
+                    SAFE AND SECURE PAYMENTS. 100% AUTHENTIC PRODUCTS.
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
         ) : (
           /* If payment succeeded, show the split-panel success view */
           <div className="flex flex-col w-full">
@@ -456,40 +669,53 @@ export default function OrderInformation() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start w-full max-w-[960px] mx-auto">
               {/* Main Content Column (Left) */}
               <div className="lg:col-span-2 w-full bg-white border border-gray-150 rounded-xl p-5 md:p-8 shadow-sm flex flex-col items-center">
-                {/* Green Circle Check Icon with concentric circles */}
-                <div className="relative mb-5 flex items-center justify-center">
-                  <div className="absolute w-24 h-24 border border-emerald-100 rounded-full opacity-60 animate-ping duration-1000"></div>
-                  <div className="absolute w-20 h-20 border border-dashed border-emerald-200 rounded-full"></div>
-                  <span className="absolute -top-1 -left-2 w-1.5 h-1.5 bg-emerald-300 rounded-full"></span>
-                  <span className="absolute -bottom-1 -right-2 w-1.5 h-1.5 bg-emerald-200 rounded-full"></span>
-                  <span className="absolute top-2 -right-3 w-1.5 h-1.5 bg-emerald-300 rounded-full"></span>
-                  <span className="absolute bottom-3 -left-3 w-1.5 h-1.5 bg-emerald-200 rounded-full"></span>
-                  
-                  <div className="w-12 h-12 rounded-full bg-emerald-500 flex items-center justify-center shadow-sm relative z-10">
-                    <svg
-                      className="w-6 h-6 text-white"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="4"
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
+                {/* Icon Selection based on payment method */}
+                {!isOnlinePayment ? (
+                  /* COD Icon: Box/Package Icon */
+                  <div className="relative mb-5 flex items-center justify-center">
+                    <div className="absolute w-24 h-24 border border-emerald-100 rounded-full opacity-60 animate-ping duration-1000"></div>
+                    <div className="absolute w-20 h-20 border border-dashed border-emerald-200 rounded-full"></div>
+                    <div className="w-12 h-12 rounded-full bg-emerald-500 flex items-center justify-center shadow-sm relative z-10">
+                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.3" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                      </svg>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  /* Online payment success icon: Green Circle Check Icon */
+                  <div className="relative mb-5 flex items-center justify-center">
+                    <div className="absolute w-24 h-24 border border-emerald-100 rounded-full opacity-60 animate-ping duration-1000"></div>
+                    <div className="absolute w-20 h-20 border border-dashed border-emerald-200 rounded-full"></div>
+                    <span className="absolute -top-1 -left-2 w-1.5 h-1.5 bg-emerald-300 rounded-full"></span>
+                    <span className="absolute -bottom-1 -right-2 w-1.5 h-1.5 bg-emerald-200 rounded-full"></span>
+                    <span className="absolute top-2 -right-3 w-1.5 h-1.5 bg-emerald-300 rounded-full"></span>
+                    <span className="absolute bottom-3 -left-3 w-1.5 h-1.5 bg-emerald-200 rounded-full"></span>
+                    
+                    <div className="w-12 h-12 rounded-full bg-emerald-500 flex items-center justify-center shadow-sm relative z-10">
+                      <svg
+                        className="w-6 h-6 text-white"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="4"
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
+                    </div>
+                  </div>
+                )}
 
                 <h1 className="text-lg md:text-xl font-bold text-heading font-body mb-1 text-center">
-                  Payment Successful!
+                  {!isOnlinePayment ? "Order Placed Successfully" : "Payment Successful!"}
                 </h1>
-                <p className="text-xs md:text-sm text-gray-500 font-body mb-1 text-center">
-                  Your payment has been completed successfully.
-                </p>
-                <p className="text-xs md:text-sm text-gray-500 font-body mb-6 text-center">
-                  Thank you for your order.
+                <p className="text-xs md:text-sm text-gray-500 font-body mb-6 text-center max-w-md leading-relaxed">
+                  {!isOnlinePayment
+                    ? "Your order has been placed and will be processed shortly. Payment will be collected upon delivery."
+                    : "Your payment has been completed successfully. Thank you for your order."}
                 </p>
 
                 {/* Order ID & Order Date Card */}
@@ -544,7 +770,11 @@ export default function OrderInformation() {
 
                 {/* Footer confirmation email */}
                 <div className="flex items-start gap-2.5 text-center text-xs text-gray-400 font-body max-w-sm mt-1 justify-center leading-relaxed">
-                  <IoLockClosedOutline className="text-base flex-shrink-0 mt-0.5 text-gray-400" />
+                  {isOnlinePayment ? (
+                    <IoLockClosedOutline className="text-base flex-shrink-0 mt-0.5 text-gray-400" />
+                  ) : (
+                    <IoMailOutline className="text-base flex-shrink-0 mt-0.5 text-gray-400" />
+                  )}
                   <div className="flex flex-col items-center">
                     <span>A confirmation email has been sent to</span>
                     <span className="font-bold text-heading mt-0.5">{data?.email}</span>

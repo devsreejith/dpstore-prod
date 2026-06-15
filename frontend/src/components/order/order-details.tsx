@@ -239,7 +239,7 @@ const OrderDetails: React.FC<{ className?: string }> = ({
   const paymentCollectionStatus = String(paymentCollection?.status ?? '').toLowerCase();
 
   const isPaymentPaid = isOnlinePayment
-    ? (capturedAmount > 0 || paymentCollectionStatus === 'captured')
+    ? (capturedAmount > 0 || authorizedAmount > 0 || paymentCollectionStatus === 'captured' || paymentCollectionStatus === 'authorized')
     : (paymentStatus === 'captured' || paymentStatus === 'paid' || paymentStatus === 'authorized');
   
   const isPaymentPending = !isPaymentPaid && !isCancelled;

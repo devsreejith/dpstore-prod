@@ -170,10 +170,11 @@ const OrdersTable: React.FC = () => {
       ? o.payment_collections[0]
       : null;
     const capturedAmount = paymentCollection ? Number(paymentCollection.captured_amount ?? 0) : 0;
+    const authorizedAmount = paymentCollection ? Number(paymentCollection.authorized_amount ?? 0) : 0;
     const paymentCollectionStatus = String(paymentCollection?.status ?? '').toLowerCase();
 
     if (isOnlinePayment) {
-      return capturedAmount > 0 || paymentCollectionStatus === 'captured';
+      return capturedAmount > 0 || authorizedAmount > 0 || paymentCollectionStatus === 'captured' || paymentCollectionStatus === 'authorized';
     }
     return paymentStatus === 'captured' || paymentStatus === 'paid' || paymentStatus === 'authorized';
   };
