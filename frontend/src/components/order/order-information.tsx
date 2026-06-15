@@ -143,7 +143,14 @@ export default function OrderInformation() {
   useEffect(() => {
     const isAlreadyPaid = capturedAmount > 0 || paymentCollectionStatus === 'captured';
     const shouldSkip = isAlreadyPaid && !isCancelled;
-    if (!data || !paymentCollectionId || !isOnlinePayment || shouldSkip || verificationDone || verifying) {
+    if (!data || !paymentCollectionId || !isOnlinePayment) {
+      return;
+    }
+    if (shouldSkip) {
+      setVerificationDone(true);
+      return;
+    }
+    if (verificationDone || verifying) {
       return;
     }
 
@@ -151,8 +158,8 @@ export default function OrderInformation() {
       setVerifying(true);
       try {
         await http.post(`/store/payment-collections/${paymentCollectionId}/authorize`);
+        await refetch();
         setVerificationDone(true);
-        refetch();
       } catch (e: any) {
         console.error("Payment verification failed:", e);
         setVerificationFailed(true);
@@ -163,11 +170,9 @@ export default function OrderInformation() {
     };
 
     verifyPayment();
-  }, [data, paymentCollectionId, isOnlinePayment, capturedAmount, verificationDone, verifying, refetch]);
+  }, [data, paymentCollectionId, isOnlinePayment, capturedAmount, verificationDone, verifying, refetch, isCancelled, paymentCollectionStatus]);
 
-  const isVerificationPending = isOnlinePayment && !isPaid && !verificationDone;
-
-  if (isLoading || verifying || isVerificationPending) {
+  if (isLoading || verifying || (isOnlinePayment && !verificationDone)) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[450px] py-16 text-center">
         <div className="relative mb-6 flex items-center justify-center">
