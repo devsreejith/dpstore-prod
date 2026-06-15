@@ -42,6 +42,55 @@ const fmtOrderDateTime = (dateVal: any) => {
   return `${dateStr} • ${timeStr}`;
 };
 
+const isPaymentSuccessful = (collection: any) => {
+  if (!collection) return false;
+  
+  if (Number(collection.captured_amount ?? 0) > 0 || String(collection.status).toLowerCase() === 'captured') {
+    return true;
+  }
+  
+  if (Number(collection.authorized_amount ?? 0) > 0 || String(collection.status).toLowerCase() === 'authorized') {
+    let hasNGenius = false;
+    let ngeniusSuccess = false;
+
+    if (Array.isArray(collection.payments)) {
+      for (const p of collection.payments) {
+        if (p.provider_id?.includes('ngenius') && p.data) {
+          hasNGenius = true;
+          const state = String(p.data.status || p.data.state || '').toUpperCase();
+          const embeddedState = String(p.data._embedded?.payment?.[0]?.status || p.data._embedded?.payment?.[0]?.state || '').toUpperCase();
+          if (["CAPTURED", "PURCHASED", "SUCCESS", "AUTHORIZED", "AUTH"].includes(state) || 
+              ["CAPTURED", "PURCHASED", "SUCCESS", "AUTHORIZED", "AUTH"].includes(embeddedState)) {
+            ngeniusSuccess = true;
+          }
+        }
+      }
+    }
+    
+    if (Array.isArray(collection.payment_sessions) && !ngeniusSuccess) {
+      for (const s of collection.payment_sessions) {
+        if (s.provider_id?.includes('ngenius') && s.data) {
+          hasNGenius = true;
+          const state = String(s.data.status || s.data.state || '').toUpperCase();
+          const embeddedState = String(s.data._embedded?.payment?.[0]?.status || s.data._embedded?.payment?.[0]?.state || '').toUpperCase();
+          if (["CAPTURED", "PURCHASED", "SUCCESS", "AUTHORIZED", "AUTH"].includes(state) || 
+              ["CAPTURED", "PURCHASED", "SUCCESS", "AUTHORIZED", "AUTH"].includes(embeddedState)) {
+            ngeniusSuccess = true;
+          }
+        }
+      }
+    }
+
+    if (hasNGenius) {
+      return ngeniusSuccess;
+    }
+    
+    return true; // For other providers, rely on Medusa status
+  }
+  
+  return false;
+};
+
 export default function OrderInformation() {
   const {
     query: { id, cart_id },
@@ -54,6 +103,16 @@ export default function OrderInformation() {
   const [canceling, setCanceling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
   const [verifyingStatus, setVerifyingStatus] = useState<"loading" | "success" | "failed" | "cancelled">("loading");
+
+  const prepareForPaymentVerification = () => {
+    // Reset to the loader before leaving the page so a restored browser snapshot
+    // does not briefly show the previous failed/cancelled state on return.
+    setPayError(null);
+    setCancelError(null);
+    setVerificationDone(false);
+    setVerifying(false);
+    setVerifyingStatus("loading");
+  };
 
   const cancelOrder = async () => {
     if (isCancelled) return;
@@ -141,11 +200,7 @@ export default function OrderInformation() {
       return;
     }
 
-    const isAlreadyPaid = 
-      capturedAmount > 0 || 
-      authorizedAmount > 0 || 
-      paymentCollectionStatus === 'captured' || 
-      paymentCollectionStatus === 'authorized';
+    const isAlreadyPaid = isPaymentSuccessful(paymentCollection);
 
     if (isCancelled) {
       if (isMounted) setVerifyingStatus("cancelled");
@@ -196,11 +251,7 @@ export default function OrderInformation() {
           const freshAuthorizedAmount = freshCollection ? Number(freshCollection.authorized_amount ?? 0) : 0;
           const freshCollectionStatus = String(freshCollection?.status ?? '').toLowerCase();
           
-          const freshIsPaid = 
-            freshCapturedAmount > 0 || 
-            freshAuthorizedAmount > 0 || 
-            freshCollectionStatus === 'captured' || 
-            freshCollectionStatus === 'authorized';
+          const freshIsPaid = isPaymentSuccessful(freshCollection);
           const freshIsCancelled =
             Boolean(freshData?.canceled_at) ||
             String(freshData?.status ?? '').toLowerCase() === 'canceled' ||
@@ -238,11 +289,7 @@ export default function OrderInformation() {
           const freshAuthorizedAmount = freshCollection ? Number(freshCollection.authorized_amount ?? 0) : 0;
           const freshCollectionStatus = String(freshCollection?.status ?? '').toLowerCase();
           
-          const freshIsPaid = 
-            freshCapturedAmount > 0 || 
-            freshAuthorizedAmount > 0 || 
-            freshCollectionStatus === 'captured' || 
-            freshCollectionStatus === 'authorized';
+          const freshIsPaid = isPaymentSuccessful(freshCollection);
           const freshIsCancelled =
             Boolean(freshData?.canceled_at) ||
             String(freshData?.status ?? '').toLowerCase() === 'canceled' ||
@@ -279,6 +326,20 @@ export default function OrderInformation() {
     };
   }, [data, isLoading, paymentCollectionId, isOnlinePayment, capturedAmount, verificationDone, verifying, refetch, isCancelled, paymentCollectionStatus]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (!event.persisted) return;
+      prepareForPaymentVerification();
+    };
+
+    window.addEventListener('pageshow', handlePageShow);
+    return () => {
+      window.removeEventListener('pageshow', handlePageShow);
+    };
+  }, []);
+
   if (isLoading || (isOnlinePayment && verifyingStatus === "loading")) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[450px] py-16 text-center">
@@ -312,7 +373,7 @@ export default function OrderInformation() {
       setPayError('Online payment is not available for this order.');
       return;
     }
-    setPayError(null);
+    prepareForPaymentVerification();
     setPaying(true);
     try {
       let providerId = paymentProvider;

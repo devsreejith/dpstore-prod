@@ -12,6 +12,55 @@ const normalizeMediaSrc = (src: any) => {
 
   const backend = String(process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL ?? 'http://localhost:9000').trim().replace(/\/$/, '');
 
+const isPaymentSuccessful = (collection: any) => {
+  if (!collection) return false;
+  
+  if (Number(collection.captured_amount ?? 0) > 0 || String(collection.status).toLowerCase() === 'captured') {
+    return true;
+  }
+  
+  if (Number(collection.authorized_amount ?? 0) > 0 || String(collection.status).toLowerCase() === 'authorized') {
+    let hasNGenius = false;
+    let ngeniusSuccess = false;
+
+    if (Array.isArray(collection.payments)) {
+      for (const p of collection.payments) {
+        if (p.provider_id?.includes('ngenius') && p.data) {
+          hasNGenius = true;
+          const state = String(p.data.status || p.data.state || '').toUpperCase();
+          const embeddedState = String(p.data._embedded?.payment?.[0]?.status || p.data._embedded?.payment?.[0]?.state || '').toUpperCase();
+          if (["CAPTURED", "PURCHASED", "SUCCESS", "AUTHORIZED", "AUTH"].includes(state) || 
+              ["CAPTURED", "PURCHASED", "SUCCESS", "AUTHORIZED", "AUTH"].includes(embeddedState)) {
+            ngeniusSuccess = true;
+          }
+        }
+      }
+    }
+    
+    if (Array.isArray(collection.payment_sessions) && !ngeniusSuccess) {
+      for (const s of collection.payment_sessions) {
+        if (s.provider_id?.includes('ngenius') && s.data) {
+          hasNGenius = true;
+          const state = String(s.data.status || s.data.state || '').toUpperCase();
+          const embeddedState = String(s.data._embedded?.payment?.[0]?.status || s.data._embedded?.payment?.[0]?.state || '').toUpperCase();
+          if (["CAPTURED", "PURCHASED", "SUCCESS", "AUTHORIZED", "AUTH"].includes(state) || 
+              ["CAPTURED", "PURCHASED", "SUCCESS", "AUTHORIZED", "AUTH"].includes(embeddedState)) {
+            ngeniusSuccess = true;
+          }
+        }
+      }
+    }
+
+    if (hasNGenius) {
+      return ngeniusSuccess;
+    }
+    
+    return true;
+  }
+  
+  return false;
+};
+
   if (/^https?:\/\//i.test(v)) {
     if (backend && v.startsWith(backend)) {
       return v;
@@ -174,7 +223,7 @@ const OrdersTable: React.FC = () => {
     const paymentCollectionStatus = String(paymentCollection?.status ?? '').toLowerCase();
 
     if (isOnlinePayment) {
-      return capturedAmount > 0 || authorizedAmount > 0 || paymentCollectionStatus === 'captured' || paymentCollectionStatus === 'authorized';
+      return isPaymentSuccessful(paymentCollection);
     }
     return paymentStatus === 'captured' || paymentStatus === 'paid' || paymentStatus === 'authorized';
   };

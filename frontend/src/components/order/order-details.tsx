@@ -5,18 +5,21 @@ import Button from '@components/ui/button';
 import http from '@framework/utils/http';
 import { useMemo, useState } from 'react';
 import Link from '@components/ui/link';
-import { ROUTES } from '@utils/routes';
+import { useIsRTL } from '@utils/routes';
+import { useTranslation } from 'next-i18next';
 import {
+  IoDocumentTextOutline,
+  IoWalletOutline,
+  IoAlertCircleOutline,
+  IoLocationOutline,
+  IoCarOutline,
+  IoShieldCheckmarkOutline,
   IoArrowBackOutline,
   IoDownloadOutline,
-  IoWalletOutline,
-  IoLocationOutline,
-  IoDocumentTextOutline,
   IoPhonePortraitOutline,
   IoCheckmarkCircle,
   IoWarningOutline,
   IoHeadsetOutline,
-  IoShieldCheckmarkOutline,
   IoRefreshOutline,
   IoCloseCircleOutline,
   IoCardOutline,
@@ -239,7 +242,7 @@ const OrderDetails: React.FC<{ className?: string }> = ({
   const paymentCollectionStatus = String(paymentCollection?.status ?? '').toLowerCase();
 
   const isPaymentPaid = isOnlinePayment
-    ? (capturedAmount > 0 || authorizedAmount > 0 || paymentCollectionStatus === 'captured' || paymentCollectionStatus === 'authorized')
+    ? isPaymentSuccessful(paymentCollection)
     : (paymentStatus === 'captured' || paymentStatus === 'paid' || paymentStatus === 'authorized');
   
   const isPaymentPending = !isPaymentPaid && !isCancelled;
@@ -267,6 +270,7 @@ const OrderDetails: React.FC<{ className?: string }> = ({
       return;
     }
     setPayError(null);
+    setCancelError(null);
     setPaying(true);
     try {
       let providerId = paymentProvider;
@@ -306,6 +310,8 @@ const OrderDetails: React.FC<{ className?: string }> = ({
 
       // 2. Redirect customer to N-Genius Hosted Checkout
       if (typeof window !== 'undefined') {
+        // Clear transient error UI before navigation so a restored page snapshot
+        // does not briefly show stale failure messaging on the way back.
         window.location.href = session.data.payment_url;
       }
     } catch (e: any) {
