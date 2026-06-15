@@ -205,8 +205,9 @@ export default function OrderInformation() {
       return;
     }
 
-    // If the order was cancelled, show cancelled screen.
-    if (isCancelled) {
+    // If the order was cancelled *and* this is not an online payment, show cancelled screen.
+    // For online payments we let the verification flow decide (failed vs cancelled).
+    if (isCancelled && !isOnlinePayment) {
       if (isMounted) setVerifyingStatus("cancelled");
       return;
     }
