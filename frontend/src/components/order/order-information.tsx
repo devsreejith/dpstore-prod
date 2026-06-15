@@ -183,7 +183,6 @@ export default function OrderInformation() {
     : null;
 
   const capturedAmount = paymentCollection ? Number(paymentCollection.captured_amount ?? 0) : 0;
-  const authorizedAmount = paymentCollection ? Number(paymentCollection.authorized_amount ?? 0) : 0;
   const paymentCollectionStatus = String(paymentCollection?.status ?? '').toLowerCase();
   
   const isCancelled =
@@ -200,33 +199,25 @@ export default function OrderInformation() {
       return;
     }
 
-    const isAlreadyPaid = isPaymentSuccessful(paymentCollection);
-
-    if (isCancelled) {
-      if (isMounted) setVerifyingStatus("cancelled");
-      return;
-    }
-
+    // For COD (non‑online) we can directly show success.
     if (!isOnlinePayment) {
       if (isMounted) setVerifyingStatus("success");
       return;
     }
 
-    if (isAlreadyPaid) {
-      if (isMounted) setVerifyingStatus("success");
+    // If the order was cancelled, show cancelled screen.
+    if (isCancelled) {
+      if (isMounted) setVerifyingStatus("cancelled");
       return;
     }
 
-    if (verificationDone || verifying) {
-      return;
-    }
+    // At this point we have an online payment that needs verification.
+    // Always start with the loading state – we will not rely on any cached payment data.
+    if (isMounted) setVerifyingStatus("loading");
 
     const verifyPayment = async () => {
-      if (isMounted) {
-        setVerifying(true);
-        setVerifyingStatus("loading");
-      }
-      
+      if (isMounted) setVerifying(true);
+
       const maxRetries = 3;
       const delayMs = 1500;
       let verifiedSuccess = false;
@@ -235,28 +226,24 @@ export default function OrderInformation() {
       try {
         console.log(`[Order Info] Calling authorize endpoint once...`);
         await http.post(`/store/payment-collections/${paymentCollectionId}/authorize`);
-        
+
         if (!isMounted) return;
         console.log(`[Order Info] Authorize call succeeded. Starting refetch polling...`);
-        
+
         for (let refetchAttempt = 1; refetchAttempt <= maxRetries; refetchAttempt++) {
           const updated = await refetch();
           if (!isMounted) return;
           const freshData = updated.data || updated;
-          
+
           const freshCollection = Array.isArray(freshData?.payment_collections) && freshData.payment_collections.length
             ? freshData.payment_collections[0]
             : null;
-          const freshCapturedAmount = freshCollection ? Number(freshCollection.captured_amount ?? 0) : 0;
-          const freshAuthorizedAmount = freshCollection ? Number(freshCollection.authorized_amount ?? 0) : 0;
-          const freshCollectionStatus = String(freshCollection?.status ?? '').toLowerCase();
-          
           const freshIsPaid = isPaymentSuccessful(freshCollection);
           const freshIsCancelled =
             Boolean(freshData?.canceled_at) ||
             String(freshData?.status ?? '').toLowerCase() === 'canceled' ||
             String(freshData?.status ?? '').toLowerCase() === 'cancelled';
-            
+
           if (freshIsPaid) {
             verifiedSuccess = true;
             break;
@@ -266,7 +253,7 @@ export default function OrderInformation() {
             orderWasCancelled = true;
             break;
           }
-          
+
           if (refetchAttempt < maxRetries) {
             console.log(`[Order Info] DB status not captured yet. Retrying refetch in ${delayMs}ms... (Attempt ${refetchAttempt}/${maxRetries})`);
             await new Promise((resolve) => setTimeout(resolve, delayMs));
@@ -281,14 +268,10 @@ export default function OrderInformation() {
           const updated = await refetch();
           if (!isMounted) return;
           const freshData = updated.data || updated;
-          
+
           const freshCollection = Array.isArray(freshData?.payment_collections) && freshData.payment_collections.length
             ? freshData.payment_collections[0]
             : null;
-          const freshCapturedAmount = freshCollection ? Number(freshCollection.captured_amount ?? 0) : 0;
-          const freshAuthorizedAmount = freshCollection ? Number(freshCollection.authorized_amount ?? 0) : 0;
-          const freshCollectionStatus = String(freshCollection?.status ?? '').toLowerCase();
-          
           const freshIsPaid = isPaymentSuccessful(freshCollection);
           const freshIsCancelled =
             Boolean(freshData?.canceled_at) ||
@@ -314,17 +297,15 @@ export default function OrderInformation() {
       } else {
         setVerifyingStatus("failed");
       }
-      
+
       setVerificationDone(true);
       setVerifying(false);
     };
 
     verifyPayment();
 
-    return () => {
-      isMounted = false;
-    };
-  }, [data, isLoading, paymentCollectionId, isOnlinePayment, capturedAmount, verificationDone, verifying, refetch, isCancelled, paymentCollectionStatus]);
+    return () => { isMounted = false; };
+  }, [data, isLoading, paymentCollectionId, isOnlinePayment, verificationDone, verifying, refetch, isCancelled]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
