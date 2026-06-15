@@ -100,9 +100,9 @@ export default function OrderInformation() {
   const [payError, setPayError] = useState<string | null>(null);
   const [verifying, setVerifying] = useState(false);
   const [verificationDone, setVerificationDone] = useState(false);
+  const [verificationFailed, setVerificationFailed] = useState(false);
   const [canceling, setCanceling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
-  const [verifyingStatus, setVerifyingStatus] = useState<"loading" | "success" | "failed" | "cancelled">("loading");
 
   const prepareForPaymentVerification = () => {
     // Reset to the loader before leaving the page so a restored browser snapshot
@@ -111,7 +111,7 @@ export default function OrderInformation() {
     setCancelError(null);
     setVerificationDone(false);
     setVerifying(false);
-    setVerifyingStatus("loading");
+    setVerificationFailed(false);
   };
 
   const cancelOrder = async () => {
@@ -184,140 +184,69 @@ export default function OrderInformation() {
 
   const capturedAmount = paymentCollection ? Number(paymentCollection.captured_amount ?? 0) : 0;
   const paymentCollectionStatus = String(paymentCollection?.status ?? '').toLowerCase();
-  
+  const paymentStatus = String(data?.payment_status ?? '').toLowerCase();
+
+  const isPaid = isOnlinePayment
+    ? (capturedAmount > 0 || paymentCollectionStatus === 'captured')
+    : (paymentStatus === 'captured' || paymentStatus === 'paid' || paymentStatus === 'authorized');
+
   const isCancelled =
     Boolean(data?.canceled_at) ||
     String(data?.status ?? '').toLowerCase() === 'canceled' ||
     String(data?.status ?? '').toLowerCase() === 'cancelled';
+
+  const isPaymentFailed = !data || (isCancelled && !isPaid) || (isOnlinePayment && (!isPaid || verificationFailed));
 
   useEffect(() => {
     let isMounted = true;
 
     if (isLoading) return;
     if (!data) {
-      if (isMounted) setVerifyingStatus("failed");
+      if (isMounted) {
+        setVerificationFailed(true);
+        setVerificationDone(true);
+      }
       return;
     }
 
-    // For COD (non‑online) we can directly show success.
-    if (!isOnlinePayment) {
-      if (isMounted) setVerifyingStatus("success");
+    const isAlreadyPaid = capturedAmount > 0 || paymentCollectionStatus === 'captured';
+    const shouldSkip = isAlreadyPaid && !isCancelled;
+
+    if (!paymentCollectionId || !isOnlinePayment) {
+      if (isMounted) setVerificationDone(true);
       return;
     }
 
-    // If the order was cancelled *and* this is not an online payment, show cancelled screen.
-    // For online payments we let the verification flow decide (failed vs cancelled).
-    if (isCancelled && !isOnlinePayment) {
-      if (isMounted) setVerifyingStatus("cancelled");
+    if (shouldSkip) {
+      if (isMounted) setVerificationDone(true);
       return;
     }
 
-    if (verificationDone || verifying) return;
-
-    // At this point we have an online payment that needs verification.
-    // Always start with the loading state – we will not rely on any cached payment data.
-    if (isMounted) setVerifyingStatus("loading");
+    if (verificationDone || verifying) {
+      return;
+    }
 
     const verifyPayment = async () => {
       if (isMounted) setVerifying(true);
-
-      const maxRetries = 3;
-      const delayMs = 1500;
-      let verifiedSuccess = false;
-      let orderWasCancelled = false;
-
-      // 1. Authorize Call (with 8s timeout)
       try {
-        if (['authorized', 'captured', 'canceled', 'error'].includes(paymentCollectionStatus)) {
-          console.log(`[Order Info] Payment collection status is already '${paymentCollectionStatus}'. Skipping authorize call to avoid 400 error.`);
-        } else {
-          console.log(`[Order Info] Calling authorize endpoint once...`);
-          await http.post(`/store/payment-collections/${paymentCollectionId}/authorize`, {}, { timeout: 8000 });
+        await http.post(`/store/payment-collections/${paymentCollectionId}/authorize`, {}, { timeout: 8000 });
+        await refetch();
+        if (isMounted) setVerificationDone(true);
+      } catch (e: any) {
+        console.error("Payment verification failed:", e);
+        if (isMounted) {
+          setVerificationFailed(true);
+          setVerificationDone(true);
         }
-      } catch (authErr: any) {
-        console.error(`[Order Info] Authorize call failed or timed out:`, authErr.message || authErr);
+      } finally {
+        if (isMounted) setVerifying(false);
       }
-
-      if (!isMounted) return;
-
-      // 2. Polling Loop
-      console.log(`[Order Info] Proceeding to refetch polling...`);
-      try {
-        for (let refetchAttempt = 1; refetchAttempt <= maxRetries; refetchAttempt++) {
-          const updated = await refetch();
-          if (!isMounted) return;
-          const freshData = updated.data || updated;
-
-          const freshCollection = Array.isArray(freshData?.payment_collections) && freshData.payment_collections.length
-            ? freshData.payment_collections[0]
-            : null;
-          const freshIsPaid = isPaymentSuccessful(freshCollection);
-          const freshIsCancelled =
-            Boolean(freshData?.canceled_at) ||
-            String(freshData?.status ?? '').toLowerCase() === 'canceled' ||
-            String(freshData?.status ?? '').toLowerCase() === 'cancelled';
-
-          if (freshIsPaid) {
-            verifiedSuccess = true;
-            break;
-          }
-
-          if (freshIsCancelled) {
-            orderWasCancelled = true;
-            break;
-          }
-
-          if (refetchAttempt < maxRetries) {
-            console.log(`[Order Info] DB status not captured yet. Retrying refetch in ${delayMs}ms... (Attempt ${refetchAttempt}/${maxRetries})`);
-            await new Promise((resolve) => setTimeout(resolve, delayMs));
-          }
-        }
-      } catch (pollErr: any) {
-        console.error(`[Order Info] Polling check failed:`, pollErr.message || pollErr);
-
-        // Fallback single refetch attempt
-        try {
-          const updated = await refetch();
-          if (!isMounted) return;
-          const freshData = updated.data || updated;
-
-          const freshCollection = Array.isArray(freshData?.payment_collections) && freshData.payment_collections.length
-            ? freshData.payment_collections[0]
-            : null;
-          const freshIsPaid = isPaymentSuccessful(freshCollection);
-          const freshIsCancelled =
-            Boolean(freshData?.canceled_at) ||
-            String(freshData?.status ?? '').toLowerCase() === 'canceled' ||
-            String(freshData?.status ?? '').toLowerCase() === 'cancelled';
-
-          if (freshIsPaid) {
-            verifiedSuccess = true;
-          } else if (freshIsCancelled) {
-            orderWasCancelled = true;
-          }
-        } catch (fallbackErr) {
-          console.error(`[Order Info] Fallback refetch check failed:`, fallbackErr);
-        }
-      }
-
-      if (!isMounted) return;
-
-      if (verifiedSuccess) {
-        setVerifyingStatus("success");
-      } else if (orderWasCancelled) {
-        setVerifyingStatus("cancelled");
-      } else {
-        setVerifyingStatus("failed");
-      }
-
-      setVerificationDone(true);
-      setVerifying(false);
     };
 
     verifyPayment();
 
     return () => { isMounted = false; };
-  }, [data, isLoading, paymentCollectionId, isOnlinePayment, verificationDone, verifying, refetch, isCancelled, paymentCollectionStatus]);
+  }, [data, paymentCollectionId, isOnlinePayment, capturedAmount, verificationDone, verifying, refetch, isCancelled, paymentCollectionStatus]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -333,7 +262,7 @@ export default function OrderInformation() {
     };
   }, []);
 
-  if (isLoading || (isOnlinePayment && verifyingStatus === "loading")) {
+  if (isLoading || verifying || (isOnlinePayment && !verificationDone)) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[450px] py-16 text-center">
         <div className="relative mb-6 flex items-center justify-center">
@@ -355,9 +284,9 @@ export default function OrderInformation() {
           <div><strong>React Query isLoading:</strong> {String(isLoading)}</div>
           <div><strong>Order Data loaded:</strong> {String(!!data)}</div>
           <div><strong>Is Online Payment:</strong> {String(isOnlinePayment)}</div>
-          <div><strong>verifyingStatus:</strong> {verifyingStatus}</div>
           <div><strong>verificationDone:</strong> {String(verificationDone)}</div>
           <div><strong>verifying:</strong> {String(verifying)}</div>
+          <div><strong>verificationFailed:</strong> {String(verificationFailed)}</div>
           <div><strong>paymentCollectionId:</strong> {paymentCollectionId || 'none'}</div>
           <div><strong>paymentCollectionStatus:</strong> {paymentCollectionStatus || 'none'}</div>
         </div>
@@ -422,9 +351,8 @@ export default function OrderInformation() {
         <div className="w-full">
           <OrderDetails className="p-0" />
         </div>
-      ) : (
-        /* If payment failed, show the split-panel view */
-        verifyingStatus === "failed" ? (
+      ) : isCancelled && !isPaid ? (
+        /* Dedicated Order Cancelled Screen */
           <div className="flex flex-col w-full">
             {/* Back to Orders */}
             <Link
@@ -607,8 +535,8 @@ export default function OrderInformation() {
               </div>
             </div>
           </div>
-        ) : verifyingStatus === "cancelled" ? (
-          /* Dedicated Order Cancelled Screen */
+        ) : isPaymentFailed ? (
+          /* If payment failed, show the split-panel view */
           <div className="flex flex-col w-full">
             {/* Back to Orders */}
             <Link
@@ -903,7 +831,7 @@ export default function OrderInformation() {
             </div>
           </div>
         )
-      )}
+      }
     </div>
   );
 }

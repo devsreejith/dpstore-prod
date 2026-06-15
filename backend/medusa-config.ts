@@ -1,8 +1,8 @@
 import { loadEnv, defineConfig } from '@medusajs/framework/utils'
-import dns from 'dns'
+import { setDefaultResultOrder } from 'dns'
 
-if (typeof dns.setDefaultResultOrder === 'function') {
-  dns.setDefaultResultOrder('ipv4first');
+if (typeof setDefaultResultOrder === 'function') {
+  setDefaultResultOrder('ipv4first');
 }
 
 loadEnv(process.env.NODE_ENV || "development", __dirname)
