@@ -121,7 +121,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
 
     // Check transaction status/action from payload to decide what to do
     const action = String(payload.action || payload.event || "").toUpperCase();
-    const isSuccess = action.includes("CAPTURED") || action.includes("SUCCESS") || action.includes("PURCHASED") || action.includes("SALE");
+    const isSuccess = action.includes("CAPTURED") || action.includes("SUCCESS") || action.includes("PURCHASED") || action.includes("SALE") || action.includes("AUTHORIZED") || action.includes("AUTH");
 
     if (isTest) {
       let newStatus = "STARTED";
@@ -177,9 +177,10 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
         }
       } else {
         const isCancellation = action.includes("CANCELLED") || action.includes("CANCELED");
+        const isFailure = action.includes("FAILED") || action.includes("DECLINED") || action.includes("REJECTED");
         if (isCancellation) {
           logger.info(`[N-Genius Webhook] Transaction was cancelled by user. Keeping order pending for retry.`);
-        } else {
+        } else if (isFailure) {
           logger.info(`[N-Genius Webhook] Transaction failed. Releasing reservations and canceling order for payment collection ${session.payment_collection_id}`);
           // Find order associated with this payment collection
           const orderRes = await client.query(
@@ -213,6 +214,8 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
               }
             }
           }
+        } else {
+          logger.info(`[N-Genius Webhook] Non-failure event received: ${action}. Ignoring.`);
         }
       }
     } else {
