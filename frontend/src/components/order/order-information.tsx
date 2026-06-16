@@ -98,6 +98,7 @@ const isPaymentSuccessful = (collection: any) => {
 export default function OrderInformation() {
   const {
     query: { id, cart_id, ref },
+    isReady
   } = useRouter();
   const [showDetails, setShowDetails] = useState(false);
   const [paying, setPaying] = useState(false);
@@ -206,6 +207,7 @@ export default function OrderInformation() {
   useEffect(() => {
     let isMounted = true;
 
+    if (!isReady || !orderIdentifier) return;
     if (isLoading) return;
     if (!data) {
       if (isMounted) {
@@ -256,7 +258,7 @@ export default function OrderInformation() {
     verifyPayment();
 
     return () => { isMounted = false; };
-  }, [data, paymentCollectionId, isOnlinePayment, capturedAmount, verificationDone, verifying, refetch, isCancelled, paymentCollectionStatus]);
+  }, [data, paymentCollectionId, isOnlinePayment, capturedAmount, verificationDone, verifying, refetch, isCancelled, paymentCollectionStatus, isReady, orderIdentifier]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -289,7 +291,7 @@ export default function OrderInformation() {
     }
   }, [verificationDone, isPaid, paymentCollection]);
 
-  if (isLoading || verifying || !paymentCollection || (isOnlinePayment && !verificationDone)) {
+  if (!isReady || isLoading || !data || verifying || (isOnlinePayment && !verificationDone)) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[450px] py-16 text-center">
         <div className="relative mb-6 flex items-center justify-center">

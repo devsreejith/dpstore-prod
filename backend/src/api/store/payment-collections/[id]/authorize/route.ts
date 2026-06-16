@@ -116,7 +116,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
 
     // 2. If N-Genius is CAPTURED, capture it in Medusa
     if (paymentStatus === "captured" && payment) {
-      const isAlreadyCaptured = Number(payment.captured_amount ?? 0) > 0;
+      const isAlreadyCaptured = !!payment.captured_at || Number(payment.captured_amount ?? 0) > 0;
       if (!isAlreadyCaptured) {
         try {
           logger.info(`[Authorize Endpoint] Attempting capture for payment: "${payment.id}"`);
