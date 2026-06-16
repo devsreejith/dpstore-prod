@@ -272,6 +272,42 @@ export default function OrderInformation() {
     };
   }, []);
 
+  useEffect(() => {
+    if (verificationDone && typeof window !== 'undefined') {
+      const collectionStatus = paymentCollection ? paymentCollection.status : "none";
+      const capturedAmt = paymentCollection ? paymentCollection.captured_amount : 0;
+      const paymentsSummary = paymentCollection?.payments?.map((p: any) => `${p.provider_id}:${p.captured_amount ?? 0}:${p.data?.status || p.data?.state || 'none'}`).join(", ") || "none";
+      const sessionsSummary = paymentCollection?.payment_sessions?.map((s: any) => `${s.provider_id}:${s.status}:${s.data?.status || s.data?.state || 'none'}`).join(", ") || "none";
+
+      window.alert(
+        `DEBUG: verificationDone=${verificationDone}, isPaid=${isPaid}\n` +
+        `- Collection Status: ${collectionStatus}\n` +
+        `- Captured Amount: ${capturedAmt}\n` +
+        `- Payments: ${paymentsSummary}\n` +
+        `- Sessions: ${sessionsSummary}`
+      );
+    }
+  }, [verificationDone, isPaid, paymentCollection]);
+
+  if (isLoading || verifying || !paymentCollection || (isOnlinePayment && !verificationDone)) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[450px] py-16 text-center">
+        <div className="relative mb-6 flex items-center justify-center">
+          {/* Subtle pulsating outer circle */}
+          <div className="absolute w-20 h-20 border border-gray-150 rounded-full animate-ping opacity-70"></div>
+          {/* Main spinning ring */}
+          <div className="w-12 h-12 border-[3.5px] border-gray-150 border-t-heading rounded-full animate-spin relative z-10"></div>
+        </div>
+        <h2 className="text-base md:text-lg font-bold text-heading font-body mb-2 animate-pulse">
+          Verifying payment status...
+        </h2>
+        <p className="text-xs md:text-sm text-gray-500 font-body max-w-sm px-4 leading-relaxed">
+          Please wait while we confirm your payment transaction. Do not refresh or close this page.
+        </p>
+      </div>
+    );
+  }
+
   const orderDate = data?.created_at ? new Date(data.created_at) : new Date();
   const yy = String(orderDate.getFullYear()).slice(-2);
   const mm = String(orderDate.getMonth() + 1).padStart(2, '0');
