@@ -6,7 +6,7 @@ export const fetchOrders = async () => {
   const fields = "id,display_id,created_at,email,total,subtotal,tax_total,shipping_total,discount_total,currency_code,payment_status,fulfillment_status,status,canceled_at,updated_at,metadata," +
     "items.id,items.title,items.quantity,items.unit_price,items.thumbnail,items.variant.id,items.variant.product.thumbnail," +
     "payment_collections.id,payment_collections.captured_amount,payment_collections.amount,payment_collections.authorized_amount,payment_collections.payment_sessions.id,payment_collections.payment_sessions.provider_id,payment_collections.payment_sessions.status,payment_collections.payment_sessions.data," +
-    "payment_collections.payments.id,payment_collections.payments.provider_id";
+    "payment_collections.payments.id,payment_collections.payments.provider_id,payment_collections.payments.data";
 
   try {
     const { data } = await http.get(`/store/orders`, {

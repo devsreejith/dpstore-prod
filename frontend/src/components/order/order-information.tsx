@@ -386,10 +386,12 @@ export default function OrderInformation() {
                 </div>
 
                 <h1 className="text-lg md:text-xl font-bold text-heading font-body mb-1 text-center">
-                  Order Cancelled
+                  {isCancelled ? 'Order Cancelled' : 'Payment Failed'}
                 </h1>
                 <p className="text-xs md:text-sm text-gray-500 font-body mb-6 text-center max-w-md">
-                  This order has been cancelled and will not be processed.
+                  {isCancelled
+                    ? 'This order has been cancelled and will not be processed.'
+                    : 'Your payment transaction was not completed. You can retry the payment below.'}
                 </p>
 
                 {/* Order ID & Total Amount Card */}
@@ -414,11 +416,38 @@ export default function OrderInformation() {
                   </div>
                 </div>
 
+                {payError && (
+                  <div className="w-full bg-rose-50 border border-rose-100 rounded-xl p-3.5 mb-5 flex items-center gap-2.5 text-xs md:text-sm text-rose-700 font-semibold font-body text-left">
+                    <span>⚠️ {payError}</span>
+                  </div>
+                )}
+
                 {/* Stacked Button Actions */}
                 <div className="flex flex-col gap-3 w-full mb-6">
+                  {!isCancelled && (
+                    <button
+                      type="button"
+                      onClick={continuePayment}
+                      disabled={paying || canceling}
+                      className="w-full h-11 bg-[#1D1D1D] hover:bg-black text-white font-bold text-xs md:text-sm rounded-lg transition duration-200 flex items-center justify-center font-body"
+                    >
+                      {paying ? 'Processing...' : 'Retry Payment'}
+                    </button>
+                  )}
+
+                  {!isCancelled && (
+                    <button
+                      type="button"
+                      onClick={() => setShowDetails(true)}
+                      className="w-full h-11 border border-gray-300 hover:bg-gray-50 text-heading font-bold text-xs md:text-sm rounded-lg transition duration-200 flex items-center justify-center font-body"
+                    >
+                      View Order Details
+                    </button>
+                  )}
+
                   <Link
                     href="/"
-                    className="w-full h-11 bg-[#1D1D1D] hover:bg-black text-white font-bold text-xs md:text-sm rounded-lg transition duration-200 flex items-center justify-center font-body"
+                    className={`w-full h-11 ${isCancelled ? 'bg-[#1D1D1D] hover:bg-black text-white' : 'border border-gray-300 hover:bg-gray-50 text-heading'} font-bold text-xs md:text-sm rounded-lg transition duration-200 flex items-center justify-center font-body`}
                   >
                     Continue Shopping
                   </Link>
@@ -531,7 +560,7 @@ export default function OrderInformation() {
                 )}
 
                 <h1 className="text-lg md:text-xl font-bold text-heading font-body mb-1 text-center">
-                  {!isOnlinePayment ? "Order Placed Successfully" : "Payment Successful!"}
+                  {!isOnlinePayment ? "Order Placed Successfully" : "Payment Successful"}
                 </h1>
                 <p className="text-xs md:text-sm text-gray-500 font-body mb-6 text-center max-w-md leading-relaxed">
                   {!isOnlinePayment
