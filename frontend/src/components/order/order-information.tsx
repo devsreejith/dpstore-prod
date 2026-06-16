@@ -269,7 +269,8 @@ export default function OrderInformation() {
     window.addEventListener('pageshow', handlePageShow);
     return () => {
       window.removeEventListener('pageshow', handlePageShow);
-     }, []);
+    };
+  }, []);
 
   useEffect(() => {
     if (verificationDone && typeof window !== 'undefined') {
