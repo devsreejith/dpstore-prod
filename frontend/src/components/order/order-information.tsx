@@ -266,22 +266,7 @@ export default function OrderInformation() {
     };
   }, []);
 
-  useEffect(() => {
-    if (verificationDone && typeof window !== 'undefined') {
-      const collectionStatus = paymentCollection ? paymentCollection.status : "none";
-      const capturedAmt = paymentCollection ? paymentCollection.captured_amount : 0;
-      const paymentsSummary = paymentCollection?.payments?.map((p: any) => `${p.provider_id}:${p.captured_amount ?? 0}:${p.data?.status || p.data?.state || 'none'}`).join(", ") || "none";
-      const sessionsSummary = paymentCollection?.payment_sessions?.map((s: any) => `${s.provider_id}:${s.status}:${s.data?.status || s.data?.state || 'none'}`).join(", ") || "none";
 
-      window.alert(
-        `DEBUG: verificationDone=${verificationDone}, isPaid=${isPaid}\n` +
-        `- Collection Status: ${collectionStatus}\n` +
-        `- Captured Amount: ${capturedAmt}\n` +
-        `- Payments: ${paymentsSummary}\n` +
-        `- Sessions: ${sessionsSummary}`
-      );
-    }
-  }, [verificationDone, isPaid, paymentCollection]);
 
   if (!isReady || isLoading || !data || verifying || (isOnlinePayment && !verificationDone)) {
     return (

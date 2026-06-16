@@ -10,7 +10,10 @@ export const fetchOrders = async () => {
 
   try {
     const { data } = await http.get(`/store/orders`, {
-      params: { fields }
+      params: {
+        fields,
+        status: ["pending", "completed", "canceled", "requires_action"]
+      }
     });
     const orders = (data?.orders ?? []) as any[];
     orders.sort((a, b) => {
