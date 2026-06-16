@@ -423,7 +423,7 @@ const OrderDetails: React.FC<{ className?: string }> = ({
           ? 'bg-[#FEF2F2] border-[#FEE2E2] text-rose-700'
           : isPaymentPaid
             ? 'bg-[#F4F9F6] border-[#E8F1EC] text-[#1C5E39]'
-            : 'bg-[#FFFBEB] border-[#FEF3C7] text-[#D97706]'
+            : 'bg-[#FEF2F2] border-[#FEE2E2] text-rose-700'
       }`}>
         <div className="flex items-center gap-3.5">
           {isCancelled ? (
@@ -431,7 +431,7 @@ const OrderDetails: React.FC<{ className?: string }> = ({
           ) : isPaymentPaid ? (
             <IoCheckmarkCircle className="text-xl text-[#1C5E39] flex-shrink-0" />
           ) : (
-            <IoAlertCircleOutline className="text-xl text-amber-500 flex-shrink-0" />
+            <IoAlertCircleOutline className="text-xl text-rose-500 flex-shrink-0" />
           )}
           <div className="text-left font-body">
             <h4 className="text-xs md:text-sm font-bold">
@@ -439,14 +439,14 @@ const OrderDetails: React.FC<{ className?: string }> = ({
                 ? 'Order Cancelled'
                 : isPaymentPaid
                   ? 'Payment Successful'
-                  : 'Payment Pending'}
+                  : 'Payment Failed'}
             </h4>
             <p className="text-[11px] md:text-xs text-gray-500 mt-0.5">
               {isCancelled
                 ? 'This order has been cancelled.'
                 : isPaymentPaid
                   ? 'Your order has been placed successfully.'
-                  : 'Your order is pending payment.'}
+                  : 'Your payment attempt was unsuccessful. Please retry payment.'}
             </p>
           </div>
         </div>
@@ -458,7 +458,7 @@ const OrderDetails: React.FC<{ className?: string }> = ({
             disabled={paying || canceling}
             className="md:self-center self-start h-9 px-5 bg-[#1D1D1D] hover:bg-black text-white font-bold text-xs md:text-sm rounded-lg transition duration-200 flex items-center justify-center font-body shadow-sm"
           >
-            <span>{paying ? 'Processing...' : 'Continue Payment'}</span>
+            <span>{paying ? 'Processing...' : 'Retry Payment'}</span>
           </button>
         )}
       </div>
@@ -653,7 +653,9 @@ const OrderDetails: React.FC<{ className?: string }> = ({
                 ? 'bg-rose-50 border-rose-100 text-rose-700'
                 : isPaymentPaid && paymentProvider !== 'pp_system_default'
                   ? 'bg-[#F4F9F6] border-[#E8F1EC] text-[#1C5E39]'
-                  : 'bg-amber-50 border-amber-100 text-[#D97706]'
+                  : (paymentProvider === 'pp_system_default' || !paymentProvider
+                      ? 'bg-amber-50 border-amber-100 text-[#D97706]'
+                      : 'bg-rose-50 border-rose-100 text-rose-700')
             }`}>
               {isCancelled
                 ? 'Order Cancelled'
@@ -661,7 +663,7 @@ const OrderDetails: React.FC<{ className?: string }> = ({
                   ? `Paid By ${paymentMethodName}`
                   : (paymentProvider === 'pp_system_default' || !paymentProvider
                       ? 'Cash On Delivery'
-                      : 'Pending Payment')}
+                      : 'Payment Failed')}
             </div>
           </div>
 
