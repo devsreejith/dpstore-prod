@@ -297,12 +297,16 @@ export default function OrderInformation() {
           payments: paymentCollection.payments?.map((p: any) => ({
             id: p.id,
             provider_id: p.provider_id,
+            reference: p.data?.reference || 'none',
+            idField: p.data?.id || 'none',
             dataState: p.data?.status || p.data?.state || p.data?._embedded?.payment?.[0]?.status || 'none'
           })),
           payment_sessions: paymentCollection.payment_sessions?.map((s: any) => ({
             id: s.id,
             provider_id: s.provider_id,
             status: s.status,
+            reference: s.data?.reference || 'none',
+            idField: s.data?.id || 'none',
             dataState: s.data?.status || s.data?.state || s.data?._embedded?.payment?.[0]?.status || 'none'
           }))
         } : null
