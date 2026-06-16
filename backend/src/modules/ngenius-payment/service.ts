@@ -171,22 +171,10 @@ export class NGeniusPaymentService extends AbstractPaymentProvider<any> {
         `[N-Genius Service] Status check for reference ${reference} mapped to Medusa status: ${medusaStatus}`
       );
 
-      // Return "authorized" only for captured or authorized statuses
-      if (medusaStatus === "captured" || medusaStatus === "authorized") {
+      // Return "authorized" for captured, authorized, or pending (to allow checkout completion & redirect)
+      if (medusaStatus === "captured" || medusaStatus === "authorized" || medusaStatus === "pending") {
         return {
           status: "authorized",
-          data: {
-            ...sessionData,
-            ...statusResponse,
-            status: statusResponse.status,
-          },
-        };
-      }
-
-      // If payment is still pending, return "pending"
-      if (medusaStatus === "pending") {
-        return {
-          status: "pending",
           data: {
             ...sessionData,
             ...statusResponse,
