@@ -3,16 +3,20 @@ import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
 import pg from "pg";
 
 export async function GET(req: MedusaRequest, res: MedusaResponse) {
-  const actorId = (req as any).auth_context?.actor_id;
-  if (!actorId || !actorId.startsWith("cus_")) {
-    res.status(401).json({ message: "Unauthorized. Please log in." });
-    return;
-  }
-
   const orderId = String(req.params.id ?? "").trim();
   if (!orderId) {
     res.status(400).json({ message: "Order ID is required" });
     return;
+  }
+
+  const isSecureId = orderId.startsWith("cart_") || orderId.startsWith("pay_col_") || orderId.startsWith("pay-col-");
+  const actorId = (req as any).auth_context?.actor_id;
+
+  if (!isSecureId) {
+    if (!actorId || !actorId.startsWith("cus_")) {
+      res.status(401).json({ message: "Unauthorized. Please log in." });
+      return;
+    }
   }
 
   const fieldsStr = req.query.fields as string;
@@ -100,7 +104,7 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
       return;
     }
 
-    if (order.customer_id && order.customer_id !== actorId) {
+    if (!isSecureId && order.customer_id && order.customer_id !== actorId) {
       res.status(403).json({ message: "You are not authorized to view this order." });
       return;
     }
