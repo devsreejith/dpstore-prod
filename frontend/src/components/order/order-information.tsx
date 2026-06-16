@@ -269,91 +269,7 @@ export default function OrderInformation() {
     window.addEventListener('pageshow', handlePageShow);
     return () => {
       window.removeEventListener('pageshow', handlePageShow);
-    };
-  }, []);
-
-  if (isLoading || verifying || (isOnlinePayment && !verificationDone)) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[450px] py-16 text-center">
-        <div className="relative mb-6 flex items-center justify-center">
-          {/* Subtle pulsating outer circle */}
-          <div className="absolute w-20 h-20 border border-gray-100 rounded-full animate-ping opacity-70"></div>
-          {/* Main spinning ring */}
-          <div className="w-12 h-12 border-[3.5px] border-gray-150 border-t-heading rounded-full animate-spin relative z-10"></div>
-        </div>
-        <h2 className="text-base md:text-lg font-bold text-heading font-body mb-2 animate-pulse">
-          Verifying payment status...
-        </h2>
-        <p className="text-xs md:text-sm text-gray-500 font-body max-w-sm px-4 leading-relaxed">
-          Please wait while we confirm your payment transaction. Do not refresh or close this page.
-        </p>
-        <div className="mt-8 p-4 bg-gray-50 border border-gray-200 rounded-lg text-left font-mono text-[11px] text-gray-600 max-w-md mx-auto space-y-1">
-          <div className="font-bold border-b border-gray-200 pb-1 mb-2 text-xs text-gray-700">Debug Information:</div>
-          <div><strong>Router Query:</strong> {JSON.stringify({ id, cart_id })}</div>
-          <div><strong>Order Identifier:</strong> {orderIdentifier || 'undefined'}</div>
-          <div><strong>React Query isLoading:</strong> {String(isLoading)}</div>
-          <div><strong>Order Data loaded:</strong> {String(!!data)}</div>
-          <div><strong>Is Online Payment:</strong> {String(isOnlinePayment)}</div>
-          <div><strong>verificationDone:</strong> {String(verificationDone)}</div>
-          <div><strong>verifying:</strong> {String(verifying)}</div>
-          <div><strong>verificationFailed:</strong> {String(verificationFailed)}</div>
-          <div><strong>paymentCollectionId:</strong> {paymentCollectionId || 'none'}</div>
-          <div><strong>paymentCollectionStatus:</strong> {paymentCollectionStatus || 'none'}</div>
-        </div>
-      </div>
-    );
-  }
-
-  const orderDate = data?.created_at ? new Date(data.created_at) : new Date();
-  const yy = String(orderDate.getFullYear()).slice(-2);
-  const mm = String(orderDate.getMonth() + 1).padStart(2, '0');
-  const dd = String(orderDate.getDate()).padStart(2, '0');
-  const displayIdStr = String(data?.display_id ?? '1').padStart(3, '0');
-  const formattedOrderNumber = `DP${yy}${mm}${dd}${displayIdStr}`;
-
-
-
-  const continuePayment = async () => {
-    if (!paymentCollectionId) {
-      setPayError('Online payment is not available for this order.');
-      return;
-    }
-    prepareForPaymentVerification();
-    setPaying(true);
-    try {
-      let providerId = paymentProvider;
-      if (!providerId || providerId === 'pp_system_default') {
-        providerId = 'pp_ngenius_ngenius';
-      }
-
-      // 1. Create the payment session on the backend
-      const res = await http.post(`/store/payment-collections/${paymentCollectionId}/payment-sessions`, {
-        provider_id: providerId,
-        data: {
-          order_id: data.id
-        },
-      });
-      const pc = (res as any)?.data?.payment_collection ?? (res as any)?.data?.paymentCollection ?? (res as any)?.data;
-      const sessions = Array.isArray(pc?.payment_sessions) ? pc.payment_sessions : [];
-      const session = sessions.find(
-        (s: any) => s.provider_id === "pp_ngenius_ngenius" || s.provider_id === "pp_ngenius" || s.provider_id === "ngenius" || s.data?.payment_url
-      );
-
-      if (!session?.data?.payment_url) {
-        throw new Error('Failed to retrieve hosted payment URL from N-Genius.');
-      }
-
-      // 2. Redirect customer to N-Genius Hosted Checkout
-      if (typeof window !== 'undefined') {
-        window.location.href = session.data.payment_url;
-      }
-    } catch (e: any) {
-      const msg = String(e?.response?.data?.message ?? e?.message ?? 'Failed to initialize N-Genius payment.');
-      setPayError(msg);
-    } finally {
-      setPaying(false);
-    }
-  };
+     }, []);
 
   useEffect(() => {
     if (verificationDone && typeof window !== 'undefined') {
@@ -392,9 +308,32 @@ export default function OrderInformation() {
 
   if (isLoading || verifying || (isOnlinePayment && !verificationDone)) {
     return (
-      <div className="p-10 text-center font-body">
-        <h2 className="text-lg font-bold mb-2">Verifying payment status...</h2>
-        <p className="text-gray-500 text-sm">Please wait while status is being confirmed.</p>
+      <div className="flex flex-col items-center justify-center min-h-[450px] py-16 text-center">
+        <div className="relative mb-6 flex items-center justify-center">
+          {/* Subtle pulsating outer circle */}
+          <div className="absolute w-20 h-20 border border-gray-100 rounded-full animate-ping opacity-70"></div>
+          {/* Main spinning ring */}
+          <div className="w-12 h-12 border-[3.5px] border-gray-150 border-t-heading rounded-full animate-spin relative z-10"></div>
+        </div>
+        <h2 className="text-base md:text-lg font-bold text-heading font-body mb-2 animate-pulse">
+          Verifying payment status...
+        </h2>
+        <p className="text-xs md:text-sm text-gray-500 font-body max-w-sm px-4 leading-relaxed">
+          Please wait while we confirm your payment transaction. Do not refresh or close this page.
+        </p>
+        <div className="mt-8 p-4 bg-gray-50 border border-gray-200 rounded-lg text-left font-mono text-[11px] text-gray-600 max-w-md mx-auto space-y-1">
+          <div className="font-bold border-b border-gray-200 pb-1 mb-2 text-xs text-gray-700">Debug Information:</div>
+          <div><strong>Router Query:</strong> {JSON.stringify({ id, cart_id })}</div>
+          <div><strong>Order Identifier:</strong> {orderIdentifier || 'undefined'}</div>
+          <div><strong>React Query isLoading:</strong> {String(isLoading)}</div>
+          <div><strong>Order Data loaded:</strong> {String(!!data)}</div>
+          <div><strong>Is Online Payment:</strong> {String(isOnlinePayment)}</div>
+          <div><strong>verificationDone:</strong> {String(verificationDone)}</div>
+          <div><strong>verifying:</strong> {String(verifying)}</div>
+          <div><strong>verificationFailed:</strong> {String(verificationFailed)}</div>
+          <div><strong>paymentCollectionId:</strong> {paymentCollectionId || 'none'}</div>
+          <div><strong>paymentCollectionStatus:</strong> {paymentCollectionStatus || 'none'}</div>
+        </div>
       </div>
     );
   }

@@ -3,8 +3,13 @@ import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
 import pg from "pg";
 
 export async function GET(req: MedusaRequest, res: MedusaResponse) {
+  const logger = req.scope.resolve("logger") || console;
   const orderId = String(req.params.id ?? "").trim();
+  
+  logger.info(`[Custom GET Order] Entering endpoint with orderId: "${orderId}"`);
+
   if (!orderId) {
+    logger.warn(`[Custom GET Order] Order ID missing from request params`);
     res.status(400).json({ message: "Order ID is required" });
     return;
   }
@@ -12,8 +17,11 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
   const isSecureId = orderId.startsWith("cart_") || orderId.startsWith("pay_col_") || orderId.startsWith("pay-col-");
   const actorId = (req as any).auth_context?.actor_id;
 
+  logger.info(`[Custom GET Order] isSecureId: ${isSecureId}, actorId: "${actorId || 'none'}"`);
+
   if (!isSecureId) {
     if (!actorId || !actorId.startsWith("cus_")) {
+      logger.warn(`[Custom GET Order] Unauthorized. Non-secure ID requested without customer session.`);
       res.status(401).json({ message: "Unauthorized. Please log in." });
       return;
     }
@@ -53,6 +61,7 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
   try {
     let targetOrderId = orderId;
     if (orderId.startsWith("cart_")) {
+      logger.info(`[Custom GET Order] Resolving cart_id "${orderId}" via database query`);
       const client = new pg.Client({
         connectionString: process.env.DATABASE_URL,
       });
@@ -62,16 +71,20 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
           "SELECT order_id FROM order_cart WHERE cart_id = $1 AND deleted_at IS NULL LIMIT 1",
           [orderId]
         );
+        logger.info(`[Custom GET Order] order_cart lookup returned row count: ${orderCartRes.rows.length}`);
         if (orderCartRes.rows.length === 0) {
+          logger.warn(`[Custom GET Order] No order found in order_cart for cart: ${orderId}`);
           res.status(404).json({ message: `No order found for cart: ${orderId}` });
           return;
         }
         targetOrderId = orderCartRes.rows[0].order_id;
+        logger.info(`[Custom GET Order] Resolved targetOrderId: "${targetOrderId}"`);
       } finally {
         await client.end();
       }
     } else if (orderId.startsWith("pay_col_") || orderId.startsWith("pay-col-")) {
       const normalizedPayColId = orderId.replace(/-/g, "_");
+      logger.info(`[Custom GET Order] Resolving payment_collection "${normalizedPayColId}" via database query`);
       const client = new pg.Client({
         connectionString: process.env.DATABASE_URL,
       });
@@ -81,30 +94,37 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
           "SELECT order_id FROM order_payment_collection WHERE payment_collection_id = $1 AND deleted_at IS NULL LIMIT 1",
           [normalizedPayColId]
         );
+        logger.info(`[Custom GET Order] order_payment_collection lookup returned row count: ${orderPaymentColRes.rows.length}`);
         if (orderPaymentColRes.rows.length === 0) {
+          logger.warn(`[Custom GET Order] No order found in order_payment_collection for: ${normalizedPayColId}`);
           res.status(404).json({ message: `No order found for payment collection: ${orderId}` });
           return;
         }
         targetOrderId = orderPaymentColRes.rows[0].order_id;
+        logger.info(`[Custom GET Order] Resolved targetOrderId: "${targetOrderId}"`);
       } finally {
         await client.end();
       }
     }
 
     const query = req.scope.resolve(ContainerRegistrationKeys.QUERY);
+    logger.info(`[Custom GET Order] Querying Medusa graph for order: "${targetOrderId}"`);
     const { data: orders } = await query.graph({
       entity: "order",
       fields,
       filters: { id: targetOrderId },
     });
-
+ 
     const order = orders?.[0];
+    logger.info(`[Custom GET Order] Medusa graph lookup result: ${!!order}`);
     if (!order) {
+      logger.warn(`[Custom GET Order] Target order not found in Medusa graph: "${targetOrderId}"`);
       res.status(404).json({ message: "Order not found" });
       return;
     }
-
+ 
     if (!isSecureId && order.customer_id && order.customer_id !== actorId) {
+      logger.warn(`[Custom GET Order] Forbidden. Customer ID mismatch on non-secure ID.`);
       res.status(403).json({ message: "You are not authorized to view this order." });
       return;
     }
@@ -147,6 +167,7 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
 
     res.status(200).json({ order });
   } catch (error: any) {
+    logger.error(`[Custom GET Order] Exception in custom order status lookup: ${error.message}`, error);
     res.status(500).json({ error: error.message });
   }
 }
