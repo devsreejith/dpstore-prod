@@ -29,13 +29,17 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
   }
 
   const paymentModuleService = req.scope.resolve("payment")
+  const logger = req.scope.resolve("logger") || console;
   
+  logger.info(`[Authorize Endpoint] Authorizing session for payment collection: "${id}", session_id: "${session.id}"`);
+
   let payment: any;
   let authorizationError = false;
   try {
     payment = await paymentModuleService.authorizePaymentSession(session.id, {})
+    logger.info(`[Authorize Endpoint] authorizePaymentSession returned: ${payment ? JSON.stringify(payment) : "null"}`);
   } catch (err: any) {
-    console.error("[Authorize Endpoint] Authorization error:", err.message);
+    logger.error("[Authorize Endpoint] Authorization error:", err.message);
     authorizationError = true;
   }
 
@@ -45,14 +49,16 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
 
   if (payment && payment.id && !authorizationError) {
     try {
+      logger.info(`[Authorize Endpoint] Attempting capture for payment: "${payment.id}"`);
       await paymentModuleService.capturePayment({
         payment_id: payment.id,
         amount: payment.amount ?? paymentCollection.amount,
       });
       captureSuccessful = true;
       paymentStatus = "captured";
+      logger.info(`[Authorize Endpoint] Successfully captured payment: "${payment.id}"`);
     } catch (captureErr: any) {
-      console.error("[Authorize Endpoint] Capture error:", captureErr.message);
+      logger.error("[Authorize Endpoint] Capture error:", captureErr.message);
     }
   }
 
@@ -60,6 +66,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
   if (!captureSuccessful) {
     try {
       const reference = String((session.data as any)?.reference || (session.data as any)?.id || "");
+      logger.info(`[Authorize Endpoint] Capture not complete. Checking status on N-Genius for reference: "${reference}"`);
       if (reference) {
         const config = {
           apiKey: process.env.NGENIUS_API_KEY,
@@ -71,31 +78,35 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
           failureUrl: process.env.NGENIUS_FAILURE_URL || "http://localhost:8000/order",
           cancelUrl: process.env.NGENIUS_CANCEL_URL || "http://localhost:8000/order",
         };
-        const logger = req.scope.resolve("logger") || console;
         const { NGeniusClient } = await import("../../../../../modules/ngenius-payment/ngenius-client.js");
         const ngeniusClient = new NGeniusClient(config as any, logger);
 
         const isTest = (session.data as any)?.is_test === true || (session.data as any)?.is_test === "true" || reference.startsWith("mock-");
         let statusResponse: any;
         if (isTest) {
+          logger.info(`[Authorize Endpoint] Test payment session detected. Reading status from session data.`);
           statusResponse = {
             status: session.data?.status || "STARTED",
             _embedded: session.data?._embedded,
           };
         } else {
+          logger.info(`[Authorize Endpoint] Querying N-Genius status API for: "${reference}"`);
           statusResponse = await ngeniusClient.getOrderStatus(reference);
         }
+
+        logger.info(`[Authorize Endpoint] N-Genius response: ${JSON.stringify(statusResponse)}`);
 
         const payments = statusResponse._embedded?.payment;
         overallState = String(statusResponse.status || statusResponse.state || "").toUpperCase();
         if (Array.isArray(payments) && payments.length > 0) {
-          // Access the latest chronological payment attempt at the end of the array
           const latestPayment = payments[payments.length - 1];
           const state = latestPayment.status || latestPayment.state;
           if (state) {
             overallState = String(state).toUpperCase();
           }
         }
+
+        logger.info(`[Authorize Endpoint] Determined overallState status: "${overallState}"`);
 
         if (["CAPTURED", "PURCHASED", "SUCCESS"].includes(overallState)) {
           paymentStatus = "captured";
@@ -108,9 +119,11 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
         } else if (["CANCELLED", "CANCELED"].includes(overallState)) {
           paymentStatus = "canceled";
         }
+        
+        logger.info(`[Authorize Endpoint] Resolved paymentStatus: "${paymentStatus}", captureSuccessful: ${captureSuccessful}`);
       }
     } catch (statusErr: any) {
-      console.error("[Authorize Endpoint] Failed to check status from N-Genius:", statusErr.message);
+      logger.error("[Authorize Endpoint] Failed to check status from N-Genius:", statusErr.message);
     }
   }
     if (captureSuccessful) {
