@@ -171,14 +171,26 @@ export class NGeniusPaymentService extends AbstractPaymentProvider<any> {
         `[N-Genius Service] Status check for reference ${reference} mapped to Medusa status: ${medusaStatus}`
       );
 
-      // Return "authorized" for captured, authorized, or pending (to allow checkout completion & redirect)
-      if (medusaStatus === "captured" || medusaStatus === "authorized" || medusaStatus === "pending") {
+      // Return "authorized" only for captured or authorized statuses
+      if (medusaStatus === "captured" || medusaStatus === "authorized") {
         return {
           status: "authorized",
           data: {
             ...sessionData,
             ...statusResponse,
-            status: statusResponse.status || "CAPTURED",
+            status: statusResponse.status,
+          },
+        };
+      }
+
+      // If payment is still pending, return "pending"
+      if (medusaStatus === "pending") {
+        return {
+          status: "pending",
+          data: {
+            ...sessionData,
+            ...statusResponse,
+            status: statusResponse.status,
           },
         };
       }
@@ -506,7 +518,8 @@ export class NGeniusPaymentService extends AbstractPaymentProvider<any> {
     // 1. Inspect payments array inside _embedded if present
     const payments = statusResponse._embedded?.payment;
     if (Array.isArray(payments) && payments.length > 0) {
-      const latestPayment = payments[0];
+      // Access the latest chronological payment attempt at the end of the array
+      const latestPayment = payments[payments.length - 1];
       const state = latestPayment.status || latestPayment.state;
       if (state) {
         const cleanState = String(state).toUpperCase();
@@ -521,6 +534,9 @@ export class NGeniusPaymentService extends AbstractPaymentProvider<any> {
         }
         if (["CANCELLED", "CANCELED"].includes(cleanState)) {
           return "canceled";
+        }
+        if (["STARTED"].includes(cleanState)) {
+          return "pending";
         }
       }
     }
@@ -538,6 +554,9 @@ export class NGeniusPaymentService extends AbstractPaymentProvider<any> {
     }
     if (["CANCELLED", "CANCELED"].includes(overallState)) {
       return "canceled";
+    }
+    if (["STARTED"].includes(overallState)) {
+      return "pending";
     }
 
     return "pending";

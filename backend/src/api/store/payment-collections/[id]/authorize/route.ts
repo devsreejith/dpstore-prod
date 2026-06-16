@@ -29,13 +29,21 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
   }
 
   const paymentModuleService = req.scope.resolve("payment")
-  const payment = await paymentModuleService.authorizePaymentSession(session.id, {})
+  
+  let payment: any;
+  let authorizationError = false;
+  try {
+    payment = await paymentModuleService.authorizePaymentSession(session.id, {})
+  } catch (err: any) {
+    console.error("[Authorize Endpoint] Authorization error:", err.message);
+    authorizationError = true;
+  }
 
   let captureSuccessful = false;
   let paymentStatus = "pending";
   let overallState = "";
 
-  if (payment && payment.id) {
+  if (payment && payment.id && !authorizationError) {
     try {
       await paymentModuleService.capturePayment({
         payment_id: payment.id,
@@ -45,63 +53,66 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
       paymentStatus = "captured";
     } catch (captureErr: any) {
       console.error("[Authorize Endpoint] Capture error:", captureErr.message);
+    }
+  }
 
-      // Verify the actual transaction status with N-Genius
-      try {
-        const reference = String((session.data as any)?.reference || (session.data as any)?.id || "");
-        if (reference) {
-          const config = {
-            apiKey: process.env.NGENIUS_API_KEY,
-            merchantId: process.env.NGENIUS_MERCHANT_ID,
-            outletId: process.env.NGENIUS_OUTLET_ID,
-            tokenUrl: process.env.NGENIUS_TOKEN_URL || "https://api-gateway.sandbox.ngenius-payments.com/identity/auth/access-token",
-            transactionUrl: process.env.NGENIUS_TRANSACTION_URL || "https://api-gateway.sandbox.ngenius-payments.com/transactions/outlets/{OUTLET_ID}/orders",
-            successUrl: process.env.NGENIUS_SUCCESS_URL || "http://localhost:8000/order",
-            failureUrl: process.env.NGENIUS_FAILURE_URL || "http://localhost:8000/order",
-            cancelUrl: process.env.NGENIUS_CANCEL_URL || "http://localhost:8000/order",
+  // Verify the actual transaction status with N-Genius if capture was not successful
+  if (!captureSuccessful) {
+    try {
+      const reference = String((session.data as any)?.reference || (session.data as any)?.id || "");
+      if (reference) {
+        const config = {
+          apiKey: process.env.NGENIUS_API_KEY,
+          merchantId: process.env.NGENIUS_MERCHANT_ID,
+          outletId: process.env.NGENIUS_OUTLET_ID,
+          tokenUrl: process.env.NGENIUS_TOKEN_URL || "https://api-gateway.sandbox.ngenius-payments.com/identity/auth/access-token",
+          transactionUrl: process.env.NGENIUS_TRANSACTION_URL || "https://api-gateway.sandbox.ngenius-payments.com/transactions/outlets/{OUTLET_ID}/orders",
+          successUrl: process.env.NGENIUS_SUCCESS_URL || "http://localhost:8000/order",
+          failureUrl: process.env.NGENIUS_FAILURE_URL || "http://localhost:8000/order",
+          cancelUrl: process.env.NGENIUS_CANCEL_URL || "http://localhost:8000/order",
+        };
+        const logger = req.scope.resolve("logger") || console;
+        const { NGeniusClient } = await import("../../../../../modules/ngenius-payment/ngenius-client.js");
+        const ngeniusClient = new NGeniusClient(config as any, logger);
+
+        const isTest = (session.data as any)?.is_test === true || (session.data as any)?.is_test === "true" || reference.startsWith("mock-");
+        let statusResponse: any;
+        if (isTest) {
+          statusResponse = {
+            status: session.data?.status || "STARTED",
+            _embedded: session.data?._embedded,
           };
-          const logger = req.scope.resolve("logger") || console;
-          const { NGeniusClient } = await import("../../../../../modules/ngenius-payment/ngenius-client.js");
-          const ngeniusClient = new NGeniusClient(config as any, logger);
+        } else {
+          statusResponse = await ngeniusClient.getOrderStatus(reference);
+        }
 
-          const isTest = (session.data as any)?.is_test === true || (session.data as any)?.is_test === "true" || reference.startsWith("mock-");
-          let statusResponse: any;
-          if (isTest) {
-            statusResponse = {
-              status: session.data?.status || "STARTED",
-              _embedded: session.data?._embedded,
-            };
-          } else {
-            statusResponse = await ngeniusClient.getOrderStatus(reference);
-          }
-
-          const payments = statusResponse._embedded?.payment;
-          overallState = String(statusResponse.status || statusResponse.state || "").toUpperCase();
-          if (Array.isArray(payments) && payments.length > 0) {
-            const latestPayment = payments[0];
-            const state = latestPayment.status || latestPayment.state;
-            if (state) {
-              overallState = String(state).toUpperCase();
-            }
-          }
-
-          if (["CAPTURED", "PURCHASED", "SUCCESS"].includes(overallState)) {
-            paymentStatus = "captured";
-            captureSuccessful = true;
-          } else if (["AUTHORIZED", "AUTH"].includes(overallState)) {
-            paymentStatus = "authorized";
-            captureSuccessful = true;
-          } else if (["FAILED", "DECLINED", "REJECTED"].includes(overallState)) {
-            paymentStatus = "error";
-          } else if (["CANCELLED", "CANCELED"].includes(overallState)) {
-            paymentStatus = "canceled";
+        const payments = statusResponse._embedded?.payment;
+        overallState = String(statusResponse.status || statusResponse.state || "").toUpperCase();
+        if (Array.isArray(payments) && payments.length > 0) {
+          // Access the latest chronological payment attempt at the end of the array
+          const latestPayment = payments[payments.length - 1];
+          const state = latestPayment.status || latestPayment.state;
+          if (state) {
+            overallState = String(state).toUpperCase();
           }
         }
-      } catch (statusErr: any) {
-        console.error("[Authorize Endpoint] Failed to check status from N-Genius:", statusErr.message);
-      }
-    }
 
+        if (["CAPTURED", "PURCHASED", "SUCCESS"].includes(overallState)) {
+          paymentStatus = "captured";
+          captureSuccessful = true;
+        } else if (["AUTHORIZED", "AUTH"].includes(overallState)) {
+          paymentStatus = "authorized";
+          captureSuccessful = true;
+        } else if (["FAILED", "DECLINED", "REJECTED"].includes(overallState)) {
+          paymentStatus = "error";
+        } else if (["CANCELLED", "CANCELED"].includes(overallState)) {
+          paymentStatus = "canceled";
+        }
+      }
+    } catch (statusErr: any) {
+      console.error("[Authorize Endpoint] Failed to check status from N-Genius:", statusErr.message);
+    }
+  }
     if (captureSuccessful) {
       try {
         const pg = await import("pg");
@@ -189,7 +200,6 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
       });
       return;
     }
-  }
 
   res.json({ payment_collection: paymentCollection, authorization: payment })
 }
