@@ -168,7 +168,10 @@ export class NGeniusPaymentService extends AbstractPaymentProvider<any> {
       const medusaStatus = this.mapNGeniusStatusToMedusa(statusResponse);
 
       this.logger.info(
-        `[N-Genius Service] Status check for reference ${reference} mapped to Medusa status: ${medusaStatus}`
+        `[NGENIUS RAW RESPONSE] ${JSON.stringify(statusResponse, null, 2)}`
+      );
+      this.logger.info(
+        `[NGENIUS MAPPED STATUS] ${medusaStatus}`
       );
 
       // Return "authorized" for captured, authorized, or pending (to allow checkout completion & redirect)
