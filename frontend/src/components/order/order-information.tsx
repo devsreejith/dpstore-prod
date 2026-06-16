@@ -195,7 +195,9 @@ export default function OrderInformation() {
     String(data?.status ?? '').toLowerCase() === 'canceled' ||
     String(data?.status ?? '').toLowerCase() === 'cancelled';
 
-  const isPaymentFailed = !data || (isCancelled && !isPaid) || (isOnlinePayment && !isPaid && verificationFailed);
+  // For online payments, isPaid (from isPaymentSuccessful) is the single source of truth.
+  // No dependency on verificationFailed — only the gateway result matters.
+  const isPaymentFailed = !data || (isCancelled && !isPaid) || (isOnlinePayment && !isPaid);
 
   useEffect(() => {
     let isMounted = true;
@@ -355,7 +357,7 @@ export default function OrderInformation() {
         <div className="w-full">
           <OrderDetails className="p-0" />
         </div>
-      ) : isCancelled && !isPaid ? (
+      ) : isCancelled && !isPaid && !isOnlinePayment ? (
         /* Dedicated Order Cancelled Screen */
           <div className="flex flex-col w-full">
             {/* Back to Orders */}
