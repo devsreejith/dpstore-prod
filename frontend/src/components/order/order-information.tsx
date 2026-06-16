@@ -43,6 +43,10 @@ const fmtOrderDateTime = (dateVal: any) => {
 };
 
 const isPaymentSuccessful = (collection: any) => {
+  console.log(
+    "NGENIUS_COLLECTION",
+    JSON.stringify(collection, null, 2)
+  );
   if (!collection) return false;
   
   if (Number(collection.captured_amount ?? 0) > 0 || String(collection.status).toLowerCase() === 'captured') {
@@ -197,7 +201,7 @@ export default function OrderInformation() {
 
   // For online payments, isPaid (from isPaymentSuccessful) is the single source of truth.
   // No dependency on verificationFailed — only the gateway result matters.
-  const isPaymentFailed = !data || (isCancelled && !isPaid) || (isOnlinePayment && !isPaid);
+  const isPaymentFailed = isOnlinePayment && !isPaid;
 
   useEffect(() => {
     let isMounted = true;
@@ -357,191 +361,7 @@ export default function OrderInformation() {
         <div className="w-full">
           <OrderDetails className="p-0" />
         </div>
-      ) : isCancelled && !isPaid && !isOnlinePayment ? (
-        /* Dedicated Order Cancelled Screen */
-          <div className="flex flex-col w-full">
-            {/* Back to Orders */}
-            <Link
-              href="/my-account/orders"
-              className="inline-flex items-center text-sm font-semibold text-gray-600 hover:text-black transition gap-2 mb-5 font-body self-start"
-            >
-              <IoArrowBackOutline className="text-base" /> Back to Orders
-            </Link>
-
-            {/* Split Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start w-full max-w-[960px] mx-auto">
-              {/* Main Content Column (Left) */}
-              <div className="lg:col-span-2 w-full bg-white border border-gray-150 rounded-xl p-5 md:p-8 shadow-sm flex flex-col items-center">
-                {/* Red Circle "X" Icon with concentric circles */}
-                <div className="relative mb-5 flex items-center justify-center">
-                  <div className="absolute w-24 h-24 border border-red-100 rounded-full opacity-60 animate-ping duration-1000"></div>
-                  <div className="absolute w-20 h-20 border border-dashed border-red-200 rounded-full"></div>
-                  <span className="absolute -top-1 -left-2 w-1.5 h-1.5 bg-red-300 rounded-full"></span>
-                  <span className="absolute -bottom-1 -right-2 w-1.5 h-1.5 bg-red-200 rounded-full"></span>
-                  <span className="absolute top-2 -right-3 w-1.5 h-1.5 bg-red-300 rounded-full"></span>
-                  <span className="absolute bottom-3 -left-3 w-1.5 h-1.5 bg-red-200 rounded-full"></span>
-                  
-                  <div className="w-12 h-12 rounded-full bg-red-500 flex items-center justify-center shadow-sm relative z-10">
-                    <svg
-                      className="w-6 h-6 text-white"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="3.5"
-                        d="M6 18L18 6M6 6l12 12"
-                      />
-                    </svg>
-                  </div>
-                </div>
-
-                <h1 className="text-lg md:text-xl font-bold text-heading font-body mb-1 text-center">
-                  Payment Unsuccessful
-                </h1>
-                <p className="text-xs md:text-sm text-gray-500 font-body mb-6 text-center max-w-md">
-                  Your payment could not be completed at this time.
-                </p>
-
-                {/* Order ID & Total Amount Card */}
-                <div className="w-full border border-gray-150 rounded-xl overflow-hidden mb-5 bg-gray-50/30">
-                  <div className="flex justify-between items-center px-4 py-2.5 border-b border-gray-150">
-                    <div className="flex items-center gap-2.5 text-xs md:text-sm text-gray-500 font-body">
-                      <IoDocumentTextOutline className="text-base text-gray-400" />
-                      <span>Order ID</span>
-                    </div>
-                    <span className="text-xs md:text-sm font-bold text-heading font-body">
-                      {formattedOrderNumber}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center px-4 py-2.5">
-                    <div className="flex items-center gap-2.5 text-xs md:text-sm text-gray-500 font-body">
-                      <IoWalletOutline className="text-base text-gray-400" />
-                      <span>Total Amount</span>
-                    </div>
-                    <span className="text-xs md:text-sm font-bold text-heading font-body">
-                      {total}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Red Warning Banner */}
-                <div className="w-full bg-red-50 border border-red-100 rounded-xl p-3.5 mb-6 flex gap-2.5">
-                  <IoAlertCircleOutline className="text-lg text-red-500 flex-shrink-0 mt-0.5" />
-                  <div className="text-xs text-red-600 font-semibold font-body leading-relaxed text-left">
-                    The order has not been confirmed. Please try again using the same or a different payment method.
-                  </div>
-                </div>
-
-                {cancelError && (
-                  <div className="w-full bg-red-50 border border-red-200 text-red-600 rounded-lg p-3.5 text-xs font-semibold mb-6 flex items-center gap-2 font-body">
-                    <span>⚠️</span> {cancelError}
-                  </div>
-                )}
-
-                {payError && (
-                  <div className="w-full bg-red-50 border border-red-200 text-red-600 rounded-lg p-3.5 text-xs font-semibold mb-6 flex items-center gap-2 font-body">
-                    <span>⚠️</span> {payError}
-                  </div>
-                )}
-
-                {/* Stacked Button Actions */}
-                <div className="flex flex-col gap-3 w-full mb-6">
-                  {/* Retry Payment (Full Width) */}
-                  <button
-                    type="button"
-                    onClick={continuePayment}
-                    disabled={paying || canceling}
-                    className="w-full h-11 bg-[#1D1D1D] hover:bg-black text-white font-bold text-xs md:text-sm rounded-lg transition duration-200 flex items-center justify-center font-body"
-                  >
-                    <span>{paying ? 'Loading...' : 'Retry Payment'}</span>
-                  </button>
-
-                  {/* Continue Shopping & Cancel Order side-by-side */}
-                  <div className="grid grid-cols-2 gap-3 w-full">
-                    <Link
-                      href="/"
-                      className="h-11 border border-gray-300 hover:bg-gray-50 text-heading font-bold text-xs md:text-sm rounded-lg transition duration-200 flex items-center justify-center font-body"
-                    >
-                      Continue Shopping
-                    </Link>
-
-                    <button
-                      type="button"
-                      onClick={cancelOrder}
-                      disabled={paying || canceling}
-                      className="h-11 border border-red-200 hover:bg-red-50 text-red-500 font-bold text-xs md:text-sm rounded-lg transition duration-200 flex items-center justify-center gap-1.5 font-body"
-                    >
-                      <IoTrashOutline className="text-base" />
-                      <span>{canceling ? 'Cancelling...' : 'Cancel Order'}</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Footer lock note */}
-                <div className="flex items-start gap-1.5 text-center text-[10px] md:text-xs text-gray-400 font-body max-w-sm mt-1 justify-center leading-relaxed">
-                  <IoLockClosedOutline className="text-xs flex-shrink-0 mt-0.5 text-gray-400" />
-                  <span>
-                    If the amount was deducted, it will typically be reversed by your bank within a few business days.
-                  </span>
-                </div>
-              </div>
-
-              {/* Sidebar Column (Right) */}
-              <div className="lg:col-span-1 w-full flex flex-col gap-6">
-                {/* PRICE DETAILS Card */}
-                <div className="w-full bg-white border border-gray-150 rounded-xl p-5 shadow-sm">
-                  <h2 className="text-xs font-bold text-heading font-body mb-4 uppercase tracking-wider text-left">
-                    Price Details
-                  </h2>
-                  
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center text-xs md:text-sm font-body text-gray-600">
-                      <span>Price ({totalItemsCount} {totalItemsCount === 1 ? 'item' : 'items'})</span>
-                      <span className="text-heading font-medium">{subtotal}</span>
-                    </div>
-
-                    {discountAmount > 0 && (
-                      <div className="flex justify-between items-center text-xs md:text-sm font-body text-emerald-600">
-                        <span>Discount</span>
-                        <span className="font-semibold">-{discount}</span>
-                      </div>
-                    )}
-
-                    <div className="flex justify-between items-center text-xs md:text-sm font-body text-emerald-600">
-                      <span>Delivery Charges</span>
-                      <span className="font-semibold">{shippingAmount === 0 ? 'FREE' : shipping}</span>
-                    </div>
-
-                    <div className="border-t border-gray-150 pt-3 flex justify-between items-center text-sm md:text-base font-bold text-heading font-body">
-                      <span>Total Amount</span>
-                      <span>{total}</span>
-                    </div>
-                  </div>
-
-                  {/* Failed Payment Warning Box */}
-                  <div className="w-full bg-red-50/50 border border-red-100 rounded-xl p-3 mt-4 flex gap-2.5">
-                    <IoAlertCircleOutline className="text-lg text-red-500 flex-shrink-0 mt-0.5" />
-                    <div className="text-left font-body">
-                      <div className="text-xs font-bold text-red-600">Payment failed</div>
-                      <div className="text-[10px] text-red-600/80 mt-0.5">No amount has been charged.</div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Secure Payments Badge */}
-                <div className="flex items-center gap-2.5 text-left font-body text-gray-400 py-1.5 px-0.5">
-                  <IoShieldCheckmarkOutline className="text-xl text-gray-400 flex-shrink-0" />
-                  <span className="text-[9px] md:text-[10px] font-bold leading-normal tracking-wide uppercase">
-                    SAFE AND SECURE PAYMENTS. 100% AUTHENTIC PRODUCTS.
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : isPaymentFailed ? (
+      ) : isPaymentFailed ? (
           /* If payment failed, show the split-panel view */
           <div className="flex flex-col w-full">
             {/* Back to Orders */}
