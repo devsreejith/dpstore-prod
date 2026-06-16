@@ -281,8 +281,13 @@ export default function OrderInformation() {
         isCancelled,
         orderId: data?.id,
         orderStatus: data?.status,
-        orderCanceledAt: data?.canceled_at,
         paymentStatus: data?.payment_status,
+        paymentProvider,
+        isOnlinePayment,
+        paymentCollectionId,
+        verificationDone,
+        verifying,
+        verificationFailed,
         paymentCollection: paymentCollection ? {
           id: paymentCollection.id,
           status: paymentCollection.status,
@@ -292,20 +297,20 @@ export default function OrderInformation() {
           payments: paymentCollection.payments?.map((p: any) => ({
             id: p.id,
             provider_id: p.provider_id,
-            data: p.data,
+            dataState: p.data?.status || p.data?.state || p.data?._embedded?.payment?.[0]?.status || 'none'
           })),
           payment_sessions: paymentCollection.payment_sessions?.map((s: any) => ({
             id: s.id,
             provider_id: s.provider_id,
             status: s.status,
-            data: s.data,
+            dataState: s.data?.status || s.data?.state || s.data?._embedded?.payment?.[0]?.status || 'none'
           }))
         } : null
       };
       
       window.alert("DEBUG PAYMENT STATUS:\n" + JSON.stringify(debugInfo, null, 2));
     }
-  }, [verificationDone, isPaid, isPaymentFailed, isCancelled, data, paymentCollection]);
+  }, [verificationDone, isPaid, isPaymentFailed, isCancelled, data, paymentCollection, isOnlinePayment, paymentProvider, paymentCollectionId, verifying, verificationFailed]);
 
   if (isLoading || verifying || (isOnlinePayment && !verificationDone)) {
     return (
