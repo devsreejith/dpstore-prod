@@ -205,15 +205,11 @@ export default function OrderInformation() {
   const isPaymentFailed = isOnlinePayment && !isPaid;
 
   useEffect(() => {
-    let isMounted = true;
-
     if (!isReady || !orderIdentifier) return;
     if (isLoading) return;
     if (!data) {
-      if (isMounted) {
-        setVerificationFailed(true);
-        setVerificationDone(true);
-      }
+      setVerificationFailed(true);
+      setVerificationDone(true);
       return;
     }
 
@@ -223,12 +219,12 @@ export default function OrderInformation() {
     const shouldSkip = isAlreadyPaid;
 
     if (!paymentCollectionId || !isOnlinePayment) {
-      if (isMounted) setVerificationDone(true);
+      setVerificationDone(true);
       return;
     }
 
     if (shouldSkip) {
-      if (isMounted) setVerificationDone(true);
+      setVerificationDone(true);
       return;
     }
 
@@ -237,27 +233,23 @@ export default function OrderInformation() {
     }
 
     const verifyPayment = async () => {
-      if (isMounted) setVerifying(true);
+      setVerifying(true);
       try {
         await http.post(`/store/payment-collections/${paymentCollectionId}/authorize`, {}, { timeout: 8000 });
         await refetch();
-        if (isMounted) setVerificationDone(true);
+        setVerificationDone(true);
       } catch (e: any) {
         console.error("Payment verification failed:", e);
         // Always refetch order data so isPaid reflects the latest gateway state
         try { await refetch(); } catch (_) {}
-        if (isMounted) {
-          setVerificationFailed(true);
-          setVerificationDone(true);
-        }
+        setVerificationFailed(true);
+        setVerificationDone(true);
       } finally {
-        if (isMounted) setVerifying(false);
+        setVerifying(false);
       }
     };
 
     verifyPayment();
-
-    return () => { isMounted = false; };
   }, [data, paymentCollectionId, isOnlinePayment, capturedAmount, verificationDone, verifying, refetch, isCancelled, paymentCollectionStatus, isReady, orderIdentifier]);
 
   useEffect(() => {
