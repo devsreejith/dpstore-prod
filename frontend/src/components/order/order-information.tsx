@@ -457,9 +457,13 @@ export default function OrderInformation() {
                       </div>
                     )}
 
-                    <div className="flex justify-between items-center text-xs md:text-sm font-body text-emerald-600">
+                    <div className={`flex justify-between items-center text-xs md:text-sm font-body ${
+                      shippingAmount === 0 ? 'text-emerald-600' : 'text-gray-600'
+                    }`}>
                       <span>Delivery Charges</span>
-                      <span className="font-semibold">{shippingAmount === 0 ? 'FREE' : shipping}</span>
+                      <span className={shippingAmount === 0 ? 'font-bold uppercase' : 'font-semibold font-mono text-heading'}>
+                        {shippingAmount === 0 ? 'FREE' : shipping}
+                      </span>
                     </div>
 
                     <div className="border-t border-gray-150 pt-3 flex justify-between items-center text-sm md:text-base font-bold text-heading font-body">
@@ -628,9 +632,13 @@ export default function OrderInformation() {
                       </div>
                     )}
 
-                    <div className="flex justify-between items-center text-xs md:text-sm font-body text-emerald-600">
+                    <div className={`flex justify-between items-center text-xs md:text-sm font-body ${
+                      shippingAmount === 0 ? 'text-emerald-600' : 'text-gray-600'
+                    }`}>
                       <span>Delivery Charges</span>
-                      <span className="font-semibold">{shippingAmount === 0 ? 'FREE' : shipping}</span>
+                      <span className={shippingAmount === 0 ? 'font-bold uppercase' : 'font-semibold font-mono text-heading'}>
+                        {shippingAmount === 0 ? 'FREE' : shipping}
+                      </span>
                     </div>
 
                     <div className="border-t border-gray-150 pt-3 flex justify-between items-center text-sm md:text-base font-bold text-heading font-body">

@@ -14,19 +14,21 @@ const CheckoutCard: React.FC<CheckoutCardProps> = ({
   selectedAddress,
 }) => {
   const [mounted, setMounted] = useState(false);
-  const { items, total, isEmpty } = useCart();
+  const { items, total, isEmpty, cart } = useCart();
 
-  // Keep the real price and display discount as AED 00.00 for now
-  const originalAmount = total;
-  const discountAmount = 0;
+  const shippingTotal = typeof cart?.shipping_total === "number" ? cart.shipping_total : 0;
+  const hasShipping = shippingTotal > 0;
+  const shippingAmount = 25; // 25 AED for all orders
+  const itemSubtotal = hasShipping ? total - shippingTotal : total;
+  const finalTotal = hasShipping ? total : total + shippingAmount;
 
   const { price: priceOriginal } = usePrice({
-    amount: originalAmount,
+    amount: itemSubtotal,
     currencyCode: "AED",
   });
 
   const { price: priceTotal } = usePrice({
-    amount: total,
+    amount: finalTotal,
     currencyCode: "AED",
   });
 
@@ -96,7 +98,7 @@ const CheckoutCard: React.FC<CheckoutCardProps> = ({
 
           <div className="flex justify-between items-center">
             <span className="text-gray-700 font-normal">Delivery Charges</span>
-            <span className="text-[#008755] uppercase font-bold text-10px">Free</span>
+            <span className="font-mono text-heading font-semibold">AED 25.00</span>
           </div>
 
           <div className="border-t border-gray-150 pt-4 flex justify-between items-center font-bold text-sm md:text-base text-heading">

@@ -517,8 +517,10 @@ const OrderDetails: React.FC<{ className?: string }> = ({
               <p className="text-[11px] md:text-xs text-gray-600 font-medium mt-1">
                 Estimated delivery: May 28 - May 30, 2026
               </p>
-              <div className="text-[#008755] font-bold text-xs md:text-sm mt-1 uppercase">
-                FREE
+              <div className={`font-bold text-xs md:text-sm mt-1 uppercase ${
+                shippingAmount === 0 ? 'text-[#008755]' : 'text-heading font-mono'
+              }`}>
+                {shippingAmount === 0 ? 'FREE' : fmt(shippingAmount, currency)}
               </div>
             </div>
           </div>
@@ -643,7 +645,11 @@ const OrderDetails: React.FC<{ className?: string }> = ({
 
               <div className="flex justify-between items-center">
                 <span className="text-gray-600 font-normal">Delivery Charges</span>
-                <span className="text-emerald-600 uppercase font-bold text-xs">{shippingAmount === 0 ? 'Free' : fmt(shippingAmount, currency)}</span>
+                <span className={`text-xs ${
+                  shippingAmount === 0 ? 'text-emerald-600 font-bold uppercase' : 'text-heading font-semibold font-mono'
+                }`}>
+                  {shippingAmount === 0 ? 'Free' : fmt(shippingAmount, currency)}
+                </span>
               </div>
 
               <div className="border-t border-gray-150 pt-4 flex justify-between items-center font-bold text-sm md:text-base text-heading">

@@ -176,7 +176,7 @@ export default async function ensure_shipping_setup({ container }: { container: 
             code: "standard",
           },
           price_type: "flat",
-          prices: [{ amount: 0, currency_code: currencyCode }],
+          prices: [{ amount: 25, currency_code: currencyCode }],
         },
       ],
     })
