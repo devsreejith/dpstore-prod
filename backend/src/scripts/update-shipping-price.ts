@@ -7,8 +7,34 @@ export default async function updateShippingPrice({ container }: ExecArgs) {
   })
   await client.connect()
   try {
-    // 1. Find the price row for the shipping option price set
-    const priceSetId = 'pset_01KSR67FR1SY1ZED46PTSYKFTQ'
+    // 1. Find the shipping option ID by name
+    console.log("Looking up shipping option with name 'Standard UAE Shipping'...")
+    const optionRes = await client.query(`
+      SELECT id FROM shipping_option WHERE name = 'Standard UAE Shipping' AND deleted_at IS NULL LIMIT 1
+    `)
+
+    if (optionRes.rows.length === 0) {
+      console.error("Error: Shipping option 'Standard UAE Shipping' not found in database!")
+      return
+    }
+
+    const shippingOptionId = optionRes.rows[0].id
+    console.log(`Found shipping option ID: ${shippingOptionId}`)
+
+    // 2. Find the price set ID linked to this shipping option
+    const linkRes = await client.query(`
+      SELECT price_set_id FROM shipping_option_price_set WHERE shipping_option_id = $1 LIMIT 1
+    `, [shippingOptionId])
+
+    if (linkRes.rows.length === 0) {
+      console.error(`Error: No price set linked to shipping option ID ${shippingOptionId} in shipping_option_price_set!`)
+      return
+    }
+
+    const priceSetId = linkRes.rows[0].price_set_id
+    console.log(`Found price set ID: ${priceSetId}`)
+
+    // 3. Find the price row for the shipping option price set
     const priceRes = await client.query(`
       SELECT * FROM price WHERE price_set_id = $1
     `, [priceSetId])
@@ -28,18 +54,19 @@ export default async function updateShippingPrice({ container }: ExecArgs) {
       console.log("Prices updated successfully in DB!")
     } else {
       console.log("No price row found. Inserting a new one...")
+      const generatedPriceId = `price_ship_${shippingOptionId.slice(-12)}`
       await client.query(`
         INSERT INTO price (id, price_set_id, currency_code, amount, raw_amount, rules_count, created_at, updated_at)
         VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
       `, [
-        'price_shipping_standard_ae',
+        generatedPriceId,
         priceSetId,
         'aed',
         25,
         JSON.stringify({ value: '25', precision: 20 }),
         0
       ])
-      console.log("Inserted new price row!")
+      console.log(`Inserted new price row with ID: ${generatedPriceId}`)
     }
 
     // Verify
