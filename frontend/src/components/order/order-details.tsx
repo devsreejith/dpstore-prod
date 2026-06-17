@@ -421,14 +421,14 @@ const OrderDetails: React.FC<{ className?: string }> = ({
       <div className={`w-full border rounded-xl p-4 mb-5 flex flex-col md:flex-row md:items-center justify-between gap-4 ${
         isCancelled
           ? 'bg-[#FEF2F2] border-[#FEE2E2] text-rose-700'
-          : isPaymentPaid
+          : isPaymentPaid || !isOnlinePayment
             ? 'bg-[#F4F9F6] border-[#E8F1EC] text-[#008755]'
             : 'bg-[#FEF2F2] border-[#FEE2E2] text-rose-700'
       }`}>
         <div className="flex items-center gap-3.5">
           {isCancelled ? (
             <IoCloseCircleOutline className="text-xl text-rose-500 flex-shrink-0" />
-          ) : isPaymentPaid ? (
+          ) : isPaymentPaid || !isOnlinePayment ? (
             <IoCheckmarkCircle className="text-xl text-[#008755] flex-shrink-0" />
           ) : (
             <IoAlertCircleOutline className="text-xl text-rose-500 flex-shrink-0" />
@@ -437,21 +437,25 @@ const OrderDetails: React.FC<{ className?: string }> = ({
             <h4 className="text-xs md:text-sm font-bold">
               {isCancelled
                 ? 'Order Cancelled'
-                : isPaymentPaid
-                  ? 'Payment Successful'
-                  : 'Payment Failed'}
+                : !isOnlinePayment
+                  ? 'Order Confirmed'
+                  : isPaymentPaid
+                    ? 'Payment Successful'
+                    : 'Payment Failed'}
             </h4>
             <p className="text-[11px] md:text-xs text-gray-500 mt-0.5">
               {isCancelled
                 ? 'This order has been cancelled.'
-                : isPaymentPaid
-                  ? 'Your order has been placed successfully.'
-                  : 'Your payment attempt was unsuccessful. Please retry payment.'}
+                : !isOnlinePayment
+                  ? 'Your order has been placed successfully. Payment will be collected upon delivery.'
+                  : isPaymentPaid
+                    ? 'Your order has been placed successfully.'
+                    : 'Your payment attempt was unsuccessful. Please retry payment.'}
             </p>
           </div>
         </div>
 
-        {isPaymentPending && !isCancelled && (
+        {isPaymentPending && !isCancelled && isOnlinePayment && (
           <button
             type="button"
             onClick={continuePayment}
@@ -662,7 +666,7 @@ const OrderDetails: React.FC<{ className?: string }> = ({
                 : isPaymentPaid && paymentProvider !== 'pp_system_default'
                   ? `Paid By ${paymentMethodName}`
                   : (paymentProvider === 'pp_system_default' || !paymentProvider
-                      ? 'Cash On Delivery'
+                      ? 'Pending (Pay on Delivery)'
                       : 'Payment Failed')}
             </div>
           </div>
