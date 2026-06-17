@@ -148,10 +148,10 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
       session.data = updatedData;
     }
 
-    // Check if a payment record already exists for this collection (e.g. from completeCart)
+    // Check if a payment record already exists for this payment session (e.g. from completeCart or authorize endpoint)
     const paymentRes = await client.query(
-      "SELECT id, amount, captured_at FROM payment WHERE payment_collection_id = $1 AND deleted_at IS NULL LIMIT 1",
-      [session.payment_collection_id]
+      "SELECT id, amount, captured_at FROM payment WHERE payment_session_id = $1 AND deleted_at IS NULL LIMIT 1",
+      [session.id]
     );
 
     if (paymentRes.rows.length > 0) {

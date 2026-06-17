@@ -29,7 +29,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
   }
 
   const payments = paymentCollection.payments || []
-  let payment: any = payments[0]
+  let payment: any = payments.find((p: any) => p.payment_session_id === session.id)
 
   const paymentModuleService = req.scope.resolve("payment")
   const logger = req.scope.resolve("logger") || console;

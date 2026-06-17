@@ -226,7 +226,7 @@ const OrdersTable: React.FC = () => {
     return paymentStatus === 'captured' || paymentStatus === 'paid' || paymentStatus === 'authorized';
   };
 
-  const getDisplayStatus = (o: any) => {
+  const getDisplayStatus = (o: any): string => {
     const canceled = Boolean(o?.canceled_at) || String(o?.status ?? '').toLowerCase() === 'cancelled' || String(o?.status ?? '').toLowerCase() === 'canceled';
     if (canceled) return 'Cancelled';
 
