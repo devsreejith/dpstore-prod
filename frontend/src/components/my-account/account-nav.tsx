@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { useRouter } from "next/router";
 import {
-  IoHomeOutline,
   IoCartOutline,
   IoPersonOutline,
   IoLocationOutline,
   IoSettingsOutline,
   IoHeartOutline,
   IoLogOutOutline,
+  IoChevronForwardOutline,
 } from "react-icons/io5";
 import { ROUTES } from "@utils/routes";
 import { useLogoutMutation } from "@framework/auth/use-logout";
@@ -27,92 +27,108 @@ export default function AccountNav({ customerName }: { customerName?: string | n
   };
 
   return (
-    <nav className="w-full md:w-[260px] lg:w-[280px] flex-shrink-0 flex flex-col gap-4">
-      {/* Structured Navigation Categories - Borderless & Shadowless List */}
-      <div className="flex flex-col gap-2">
-        {/* Section: MY ORDERS */}
-        <div className="flex flex-col">
-          <div className="px-4 pt-3 pb-1 text-gray-400 font-semibold uppercase text-[10px] tracking-wider font-body">
-            MY ORDERS
-          </div>
-          <Link
-            href={ROUTES.ORDERS}
-            className={`flex items-center gap-3.5 py-2.5 px-4 transition rounded-md font-body ${
-              isActive(ROUTES.ORDERS)
-                ? "bg-gray-100 text-heading font-medium"
-                : "text-body hover:text-heading hover:bg-gray-50 font-normal"
-            }`}
-          >
-            <IoCartOutline className="w-5 h-5 text-gray-500" />
-            <span className="text-sm">Orders</span>
-          </Link>
+    <nav className="w-full md:w-[260px] lg:w-[280px] flex-shrink-0 flex flex-col bg-white shadow-sm md:self-start md:min-h-[450px]">
+      {/* User Greeting */}
+      <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100">
+        <div className="w-6 h-6 flex-shrink-0 flex items-center justify-center">
+          <IoPersonOutline className="w-5 h-5 text-[#008755]" />
         </div>
+        <div className="flex flex-col">
+          <span className="text-xs text-gray-500 font-body leading-tight">Hello,</span>
+          <span className="text-sm font-semibold text-[#008755] font-body leading-tight">
+            {customerName || "User"}
+          </span>
+        </div>
+      </div>
 
-        {/* Section: ACCOUNT SETTINGS */}
-        <div className="flex flex-col gap-0.5">
-          <div className="px-4 pt-3 pb-1 text-gray-400 font-semibold uppercase text-[10px] tracking-wider font-body">
-            ACCOUNT SETTINGS
+      {/* MY ORDERS */}
+      <div className="border-b border-gray-100">
+        <Link
+          href={ROUTES.ORDERS}
+          className="flex items-center justify-between px-5 py-3.5 hover:bg-gray-50 transition"
+        >
+          <div className="flex items-center gap-3">
+            <IoCartOutline className="w-5 h-5 text-[#008755]" />
+            <span className="text-[13px] font-semibold uppercase tracking-wide text-[#008755] font-body">
+              MY ORDERS
+            </span>
           </div>
+          <IoChevronForwardOutline className="w-4 h-4 text-gray-400" />
+        </Link>
+      </div>
+
+      {/* ACCOUNT SETTINGS */}
+      <div className="border-b border-gray-100">
+        <div className="flex items-center gap-3 px-5 py-3.5">
+          <IoSettingsOutline className="w-5 h-5 text-[#008755]" />
+          <span className="text-[13px] font-semibold uppercase tracking-wide text-[#008755] font-body">
+            ACCOUNT SETTINGS
+          </span>
+        </div>
+        <div className="flex flex-col">
           <Link
             href={ROUTES.ACCOUNT_DETAILS}
-            className={`flex items-center gap-3.5 py-2.5 px-4 transition rounded-md font-body ${
+            className={`relative flex items-center py-2.5 pl-14 pr-5 text-sm transition font-body ${
               isActive(ROUTES.ACCOUNT_DETAILS)
-                ? "bg-gray-100 text-heading font-medium"
-                : "text-body hover:text-heading hover:bg-gray-50 font-normal"
+                ? "text-[#008755] font-medium before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[3px] before:bg-[#008755]"
+                : "text-gray-700 hover:bg-gray-50 font-normal"
             }`}
           >
-            <IoPersonOutline className="w-5 h-5 text-gray-500" />
-            <span className="text-sm">Profile Information</span>
+            Profile Information
           </Link>
           <Link
             href={ROUTES.ADDRESSES}
-            className={`flex items-center gap-3.5 py-2.5 px-4 transition rounded-md font-body ${
+            className={`relative flex items-center py-2.5 pl-14 pr-5 text-sm transition font-body ${
               isActive(ROUTES.ADDRESSES)
-                ? "bg-gray-100 text-heading font-medium"
-                : "text-body hover:text-heading hover:bg-gray-50 font-normal"
+                ? "text-[#008755] font-medium before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[3px] before:bg-[#008755]"
+                : "text-gray-700 hover:bg-gray-50 font-normal"
             }`}
           >
-            <IoLocationOutline className="w-5 h-5 text-gray-500" />
-            <span className="text-sm">Manage Addresses</span>
+            Manage Addresses
           </Link>
           <Link
             href={ROUTES.CHANGE_PASSWORD}
-            className={`flex items-center gap-3.5 py-2.5 px-4 transition rounded-md font-body ${
+            className={`relative flex items-center py-2.5 pl-14 pr-5 text-sm transition font-body mb-2 ${
               isActive(ROUTES.CHANGE_PASSWORD)
-                ? "bg-gray-100 text-heading font-medium"
-                : "text-body hover:text-heading hover:bg-gray-50 font-normal"
+                ? "text-[#008755] font-medium before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[3px] before:bg-[#008755]"
+                : "text-gray-700 hover:bg-gray-50 font-normal"
             }`}
           >
-            <IoSettingsOutline className="w-5 h-5 text-gray-500" />
-            <span className="text-sm">Change Password</span>
+            Change Password
           </Link>
         </div>
+      </div>
 
-        {/* Section: MY STUFF */}
-        <div className="flex flex-col">
-          <div className="px-4 pt-3 pb-1 text-gray-400 font-semibold uppercase text-[10px] tracking-wider font-body">
+      {/* MY STUFF */}
+      <div className="border-b border-gray-100">
+        <div className="flex items-center gap-3 px-5 py-3.5">
+          <IoHeartOutline className="w-5 h-5 text-[#008755]" />
+          <span className="text-[13px] font-semibold uppercase tracking-wide text-[#008755] font-body">
             MY STUFF
-          </div>
+          </span>
+        </div>
+        <div className="flex flex-col">
           <Link
             href={ROUTES.WISHLIST}
-            className={`flex items-center gap-3.5 py-2.5 px-4 transition rounded-md font-body ${
+            className={`relative flex items-center py-2.5 pl-14 pr-5 text-sm transition font-body mb-2 ${
               isActive(ROUTES.WISHLIST)
-                ? "bg-gray-100 text-heading font-medium"
-                : "text-body hover:text-heading hover:bg-gray-50 font-normal"
+                ? "text-[#008755] font-medium before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[3px] before:bg-[#008755]"
+                : "text-gray-700 hover:bg-gray-50 font-normal"
             }`}
           >
-            <IoHeartOutline className="w-5 h-5 text-gray-500" />
-            <span className="text-sm">Wishlist / Favorites</span>
+            Wishlist / Favorites
           </Link>
         </div>
+      </div>
 
-        {/* Section: LOGOUT */}
+      {/* LOGOUT */}
+      <div>
         <button
           type="button"
-          className="flex items-center gap-3.5 cursor-pointer text-sm font-normal py-2.5 px-4 text-heading hover:bg-red-50 hover:text-red-600 transition rounded-md text-left w-full mt-3 border-t border-gray-100 pt-3.5 font-body"
+          className="flex items-center gap-3 w-full px-5 py-3.5 text-sm text-gray-700 hover:bg-red-50 transition font-body cursor-pointer"
           onClick={() => logout()}
         >
-          <IoLogOutOutline className="w-5 h-5 text-red-500" />
+          <IoLogOutOutline className="w-5 h-5 text-red-400" />
           <span>Logout</span>
         </button>
       </div>

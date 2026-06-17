@@ -422,14 +422,14 @@ const OrderDetails: React.FC<{ className?: string }> = ({
         isCancelled
           ? 'bg-[#FEF2F2] border-[#FEE2E2] text-rose-700'
           : isPaymentPaid
-            ? 'bg-[#F4F9F6] border-[#E8F1EC] text-[#1C5E39]'
+            ? 'bg-[#F4F9F6] border-[#E8F1EC] text-[#008755]'
             : 'bg-[#FEF2F2] border-[#FEE2E2] text-rose-700'
       }`}>
         <div className="flex items-center gap-3.5">
           {isCancelled ? (
             <IoCloseCircleOutline className="text-xl text-rose-500 flex-shrink-0" />
           ) : isPaymentPaid ? (
-            <IoCheckmarkCircle className="text-xl text-[#1C5E39] flex-shrink-0" />
+            <IoCheckmarkCircle className="text-xl text-[#008755] flex-shrink-0" />
           ) : (
             <IoAlertCircleOutline className="text-xl text-rose-500 flex-shrink-0" />
           )}
@@ -456,7 +456,7 @@ const OrderDetails: React.FC<{ className?: string }> = ({
             type="button"
             onClick={continuePayment}
             disabled={paying || canceling}
-            className="md:self-center self-start h-9 px-5 bg-[#1D1D1D] hover:bg-black text-white font-bold text-xs md:text-sm rounded-lg transition duration-200 flex items-center justify-center font-body shadow-sm"
+            className="md:self-center self-start h-9 px-5 bg-[#005844] hover:bg-black text-white font-bold text-xs md:text-sm rounded-lg transition duration-200 flex items-center justify-center font-body shadow-sm"
           >
             <span>{paying ? 'Processing...' : 'Retry Payment'}</span>
           </button>
@@ -513,7 +513,7 @@ const OrderDetails: React.FC<{ className?: string }> = ({
               <p className="text-[11px] md:text-xs text-gray-600 font-medium mt-1">
                 Estimated delivery: May 28 - May 30, 2026
               </p>
-              <div className="text-[#1C5E39] font-bold text-xs md:text-sm mt-1 uppercase">
+              <div className="text-[#008755] font-bold text-xs md:text-sm mt-1 uppercase">
                 FREE
               </div>
             </div>
@@ -652,7 +652,7 @@ const OrderDetails: React.FC<{ className?: string }> = ({
               isCancelled
                 ? 'bg-rose-50 border-rose-100 text-rose-700'
                 : isPaymentPaid && paymentProvider !== 'pp_system_default'
-                  ? 'bg-[#F4F9F6] border-[#E8F1EC] text-[#1C5E39]'
+                  ? 'bg-[#F4F9F6] border-[#E8F1EC] text-[#008755]'
                   : (paymentProvider === 'pp_system_default' || !paymentProvider
                       ? 'bg-amber-50 border-amber-100 text-[#D97706]'
                       : 'bg-rose-50 border-rose-100 text-rose-700')

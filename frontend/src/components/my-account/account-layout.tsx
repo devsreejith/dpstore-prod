@@ -45,22 +45,22 @@ const AccountLayout: React.FunctionComponent<{
 
 	return (
 		<>
-			<Container>
-        <div className="py-10 lg:py-12 px-0 xl:max-w-screen-xl mx-auto w-full">
-          <div className="flex flex-col md:flex-row w-full gap-6">
-            <AccountNav customerName={customerName} />
-            <div className="w-full md:flex-1 min-w-0">
-              {wrapChildrenInCard ? (
-                <div className="bg-white border border-gray-200 rounded-md p-4 md:p-6">{children}</div>
-              ) : (
-                children
-              )}
-            </div>
-          </div>
-        </div>
+			<div className="bg-[#f1f3f6]">
+				<Container>
+					<div className="py-6 lg:py-8 px-0 w-full">
+						<div className="flex flex-col md:flex-row md:items-start w-full gap-4">
+							<AccountNav customerName={customerName} />
+							<div className="w-full md:flex-1 min-w-0">
+								<div className="bg-white shadow-sm p-5 md:p-6 md:min-h-[450px]">
+									{children}
+								</div>
+							</div>
+						</div>
+					</div>
 
-				{showSubscription && <Subscription />}
-			</Container>
+					{showSubscription && <Subscription />}
+				</Container>
+			</div>
 		</>
 	);
 };

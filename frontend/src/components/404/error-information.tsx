@@ -22,7 +22,7 @@ const ErrorInformation: React.FC = () => {
         </p>
         <Link
           href="/"
-          className="text-[13px] md:text-sm lg:text-base leading-4 inline-flex items-center cursor-pointer transition ease-in-out duration-300 bg-heading text-white px-4 md:px-6  py-2.5 lg:py-3 hover:text-white hover:bg-gray-600 hover:shadow-cart rounded-lg"
+          className="text-[13px] md:text-sm lg:text-base leading-4 inline-flex items-center cursor-pointer transition ease-in-out duration-300 bg-heading text-white px-4 md:px-6  py-2.5 lg:py-3 hover:text-white hover:bg-[#008755] hover:shadow-cart rounded-lg"
         >
           <IoHomeSharp />
           <span className=" ltr:pl-1.5 rtl:pr-1.5 ">{t('button-go-home')}</span>

@@ -23,8 +23,8 @@ const NewArrivalsProductFeedWithTabs: React.FC<any> = () => {
         sectionHeading="text-our-products"
         className="pb-0.5 mb-1 sm:mb-1.5 md:mb-2 lg:mb-3 2xl:mb-4 3xl:mb-5"
         categorySlug={ROUTES.SEARCH}
-        linkText="text-shop-now"
-        linkClassName="text-sm px-5 py-2.5 font-semibold text-white bg-heading hover:bg-gray-800 rounded-md transition duration-200"
+        linkText="text-see-all"
+        linkClassName="text-sm px-5 py-2.5 font-semibold text-white bg-heading hover:bg-[#008755] rounded-md transition duration-200"
       />
 
       <TabGroup as="div" className="">

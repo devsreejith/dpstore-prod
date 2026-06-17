@@ -102,10 +102,10 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
   switch (status) {
     case 'Payment Failed':
       bgClass = 'bg-[#FFF5F5]';
-      textClass = 'text-[#E02424]';
+      textClass = 'text-[#E4002B]';
       borderClass = 'border-[#FDE8E8]';
       icon = (
-        <svg className="w-3.5 h-3.5 mr-1 flex-shrink-0 text-[#E02424]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <svg className="w-3.5 h-3.5 mr-1 flex-shrink-0 text-[#E4002B]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
         </svg>
       );
@@ -113,20 +113,20 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
     case 'Cancelled':
     case 'Canceled':
       bgClass = 'bg-[#FFF5F5]';
-      textClass = 'text-[#E02424]';
+      textClass = 'text-[#E4002B]';
       borderClass = 'border-[#FDE8E8]';
       icon = (
-        <svg className="w-3.5 h-3.5 mr-1 flex-shrink-0 text-[#E02424]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <svg className="w-3.5 h-3.5 mr-1 flex-shrink-0 text-[#E4002B]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
       );
       break;
     case 'Delivered':
-      bgClass = 'bg-[#EDFDF5]';
-      textClass = 'text-[#10B981]';
+      bgClass = 'bg-[#E8F5E9]';
+      textClass = 'text-[#26D07C]';
       borderClass = 'border-[#D1FAE5]';
       icon = (
-        <svg className="w-3.5 h-3.5 mr-1 flex-shrink-0 text-[#10B981]" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+        <svg className="w-3.5 h-3.5 mr-1 flex-shrink-0 text-[#26D07C]" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
         </svg>
       );
@@ -313,7 +313,7 @@ const OrdersTable: React.FC = () => {
                 }}
                 className={`text-xs md:text-sm font-semibold whitespace-nowrap pb-3 border-b-2 transition duration-200 ${
                   isActive
-                    ? 'border-[#1C5E39] text-[#1C5E39]'
+                    ? 'border-[#008755] text-[#008755]'
                     : 'border-transparent text-gray-700 hover:text-black'
                 }`}
               >
@@ -338,71 +338,74 @@ const OrdersTable: React.FC = () => {
         ) : error ? (
           <div className="text-sm text-red-600 py-10 text-center font-body">{errorText}</div>
         ) : filteredOrders.length ? (
-          <div className="w-full bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm flex flex-col">
-            <div className="w-full overflow-x-auto">
-              <table className="w-full text-left border-collapse font-body min-w-[500px]">
-                <thead>
-                  <tr className="border-b border-gray-200 text-xs md:text-sm text-gray-800">
-                    <th className="py-4 px-5 font-bold">Product</th>
-                    <th className="py-4 px-5 font-bold">Date</th>
-                    <th className="py-4 px-5 font-bold">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-150 text-xs md:text-sm text-body">
-                  {paginatedOrders.map((order: any) => {
-                    const formattedId = getFormattedOrderId(order);
-                    const orderDateStr = fmtDateOnly(order.created_at);
-                    const orderTimeStr = fmtTimeOnly(order.created_at);
-                    const orderStatus = getDisplayStatus(order);
-                    const totalItems = Array.isArray(order?.items)
-                      ? order.items.reduce((sum: number, it: any) => sum + (it.quantity || 0), 0)
-                      : 0;
-                    const orderTotal = fmt(order.total, order.currency_code);
-                    
-                    const firstItem = Array.isArray(order?.items) && order.items.length > 0 ? order.items[0] : null;
-                    const itemThumb = firstItem ? pickOrderItemThumb(firstItem) : '';
-                    const itemTitle = firstItem ? (firstItem.title || firstItem.product_title) : 'Product';
+          <div className="w-full flex flex-col">
+            {/* Order items list */}
+            <div className="divide-y divide-gray-200">
+              {paginatedOrders.map((order: any) => {
+                const orderStatus = getDisplayStatus(order);
+                const orderTotal = fmt(order.total, order.currency_code);
 
-                    return (
-                      <tr key={order.id} className="hover:bg-gray-50/30 transition duration-150">
-                        <td className="py-4 px-5">
-                          <Link
-                            href={`/my-account/orders/${order.id}`}
-                            className="flex gap-4 items-center group cursor-pointer"
-                          >
-                            <div className="w-12 h-12 rounded border border-gray-150 overflow-hidden bg-white p-1 flex items-center justify-center flex-shrink-0 group-hover:border-gray-300 transition">
-                              {itemThumb ? (
-                                <img src={itemThumb} alt="" className="object-contain max-h-full max-w-full" />
-                              ) : (
-                                <div className="w-full h-full bg-gray-100 flex items-center justify-center text-[9px] text-gray-400">No Image</div>
-                              )}
-                            </div>
-                            <div className="min-w-0">
-                              <h4 className="text-xs md:text-sm font-semibold text-heading truncate max-w-[150px] md:max-w-[220px] group-hover:text-[#1C5E39] transition">
-                                {itemTitle}
-                              </h4>
-                              <span className="text-[10px] md:text-xs text-gray-700 font-medium block mt-0.5">
-                                Order ID: {formattedId}
-                              </span>
-                            </div>
-                          </Link>
-                        </td>
-                        <td className="py-4 px-5">
-                          <div className="text-xs md:text-sm text-heading font-medium">{orderDateStr}</div>
-                          <div className="text-[10px] md:text-xs text-gray-700 font-medium mt-0.5">{orderTimeStr}</div>
-                        </td>
-                        <td className="py-4 px-5">
-                          <StatusBadge status={orderStatus} />
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                const firstItem = Array.isArray(order?.items) && order.items.length > 0 ? order.items[0] : null;
+                const itemThumb = firstItem ? pickOrderItemThumb(firstItem) : '';
+                const itemTitle = firstItem ? (firstItem.title || firstItem.product_title) : 'Product';
+
+                // Status dot color
+                let dotColor = 'bg-blue-500'; // Processing
+                if (orderStatus === 'Delivered') dotColor = 'bg-green-500';
+                else if (orderStatus === 'Cancelled' || orderStatus === 'Canceled') dotColor = 'bg-red-500';
+                else if (orderStatus === 'Returned') dotColor = 'bg-orange-500';
+                else if (orderStatus === 'Shipped' || orderStatus === 'Out for Delivery') dotColor = 'bg-indigo-500';
+                else if (orderStatus === 'Payment Failed') dotColor = 'bg-red-500';
+
+                // Status text color
+                let statusTextColor = 'text-blue-600'; // Processing
+                if (orderStatus === 'Delivered') statusTextColor = 'text-green-600';
+                else if (orderStatus === 'Cancelled' || orderStatus === 'Canceled') statusTextColor = 'text-red-600';
+                else if (orderStatus === 'Returned') statusTextColor = 'text-orange-600';
+                else if (orderStatus === 'Shipped' || orderStatus === 'Out for Delivery') statusTextColor = 'text-indigo-600';
+                else if (orderStatus === 'Payment Failed') statusTextColor = 'text-red-600';
+
+                return (
+                  <Link
+                    key={order.id}
+                    href={`/my-account/orders/${order.id}`}
+                    className="flex items-center gap-4 md:gap-6 py-4 px-1 hover:bg-gray-50/50 transition duration-150 group cursor-pointer"
+                  >
+                    {/* Product Image */}
+                    <div className="w-16 h-16 md:w-20 md:h-20 rounded border border-gray-200 overflow-hidden bg-white p-1.5 flex items-center justify-center flex-shrink-0 group-hover:border-gray-300 transition">
+                      {itemThumb ? (
+                        <img src={itemThumb} alt="" className="object-contain max-h-full max-w-full" />
+                      ) : (
+                        <div className="w-full h-full bg-gray-100 flex items-center justify-center text-[9px] text-gray-400 font-body">No Image</div>
+                      )}
+                    </div>
+
+                    {/* Product Name */}
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-sm md:text-base font-medium text-heading truncate max-w-[200px] md:max-w-[350px] group-hover:text-[#008755] transition font-body">
+                        {itemTitle}
+                      </h4>
+                    </div>
+
+                    {/* Price */}
+                    <div className="flex-shrink-0 text-sm md:text-base font-medium text-heading font-body hidden sm:block">
+                      {orderTotal}
+                    </div>
+
+                    {/* Status */}
+                    <div className="flex-shrink-0 flex items-center gap-1.5 min-w-[100px] md:min-w-[130px] justify-end">
+                      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${dotColor}`}></span>
+                      <span className={`text-xs md:text-sm font-semibold ${statusTextColor} font-body whitespace-nowrap`}>
+                        {orderStatus}
+                      </span>
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
 
             {/* Pagination Footer */}
-            <div className="flex flex-col sm:flex-row justify-between items-center gap-4 px-5 py-4 border-t border-gray-150 bg-white font-body">
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-4 px-1 py-4 border-t border-gray-200 bg-white font-body mt-2">
               <div className="text-xs md:text-sm text-gray-700 font-semibold">
                 {showingText}
               </div>
@@ -426,7 +429,7 @@ const OrdersTable: React.FC = () => {
                       onClick={() => setCurrentPage(p)}
                       className={`w-8 h-8 rounded flex items-center justify-center text-xs font-semibold transition ${
                         isPageActive
-                          ? 'bg-[#1C5E39] text-white border border-[#1C5E39]'
+                          ? 'bg-[#008755] text-white border border-[#008755]'
                           : 'border border-gray-200 text-heading hover:bg-gray-50'
                       }`}
                     >
@@ -452,7 +455,7 @@ const OrdersTable: React.FC = () => {
           <div className="border border-gray-200 rounded-md p-8 bg-gray-50/50 text-center py-12 font-body">
             <div className="text-base text-heading font-semibold">No orders found</div>
             <p className="mt-1 text-sm text-gray-400 max-w-sm mx-auto">
-              No orders found in the "{activeTab}" category.
+              No orders found in the &quot;{activeTab}&quot; category.
             </p>
           </div>
         )}

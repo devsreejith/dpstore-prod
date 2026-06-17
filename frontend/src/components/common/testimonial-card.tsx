@@ -55,7 +55,7 @@ const TestimonialCard: React.FC<Props> = ({
             {item.name}
           </Text>
           {type === "modern" && (
-            <span className="text-base text-[#5A5A5A] font-normal">
+            <span className="text-base text-[#58585B] font-normal">
               from Duisbarg
             </span>
           )}

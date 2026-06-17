@@ -273,13 +273,13 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
       {activeStep === 2 && (
         <div className="space-y-4">
           <div className="flex items-center justify-between pb-2">
-            <h2 className="text-sm md:text-base font-bold text-[#1C5E39] uppercase tracking-wider font-body">
+            <h2 className="text-sm md:text-base font-bold text-[#008755] uppercase tracking-wider font-body">
               {showAddAddress ? "ADD NEW ADDRESS" : "DELIVERY ADDRESS"}
             </h2>
             <button
               type="button"
               onClick={() => setShowAddAddress(!showAddAddress)}
-              className="text-xs md:text-sm font-bold text-[#1C5E39] hover:underline transition font-body"
+              className="text-xs md:text-sm font-bold text-[#008755] hover:underline transition font-body"
             >
               {showAddAddress ? "← Back to address list" : "+ Add new address"}
             </button>
@@ -397,14 +397,14 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
                         applyAddressToForm(a);
                       }}
                       className={`border rounded-lg p-5 cursor-pointer flex flex-col gap-4 relative transition ${
-                        checked ? 'border-[#1C5E39] bg-white shadow-sm' : 'border-gray-200 bg-white hover:bg-gray-50/20'
+                        checked ? 'border-[#008755] bg-white shadow-sm' : 'border-gray-200 bg-white hover:bg-gray-50/20'
                       }`}
                     >
                       <div className="flex items-start gap-3">
                         <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition ${
-                          checked ? 'border-[#1C5E39]' : 'border-gray-300'
+                          checked ? 'border-[#008755]' : 'border-gray-300'
                         }`}>
-                          {checked && <div className="w-2.5 h-2.5 rounded-full bg-[#1C5E39]" />}
+                          {checked && <div className="w-2.5 h-2.5 rounded-full bg-[#008755]" />}
                         </div>
                         <div className="min-w-0 flex-1 pr-8">
                           <div className="text-sm text-heading font-bold flex items-center gap-2 font-body">
@@ -440,7 +440,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
                         <div className="pt-2 flex justify-start">
                           <button
                             type="button"
-                            className="h-10 px-6 font-bold uppercase tracking-wider text-xs font-body bg-[#1D1D1D] hover:bg-black text-white rounded transition duration-200"
+                            className="h-10 px-6 font-bold uppercase tracking-wider text-xs font-body bg-[#005844] hover:bg-black text-white rounded transition duration-200"
                             onClick={(e) => {
                               e.stopPropagation();
                               setActiveStep(3);
@@ -476,7 +476,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
           </button>
 
           {/* Heading */}
-          <h2 className="text-sm md:text-base font-bold text-[#1C5E39] uppercase tracking-wider font-body mt-1">
+          <h2 className="text-sm md:text-base font-bold text-[#008755] uppercase tracking-wider font-body mt-1">
             Select Payment Method
           </h2>
 
@@ -504,16 +504,16 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
               onClick={() => setSelectedPaymentProvider('pp_system_default')}
               className={`border rounded-lg p-4 cursor-pointer flex flex-col gap-3 transition bg-white ${
                 selectedPaymentProvider === 'pp_system_default'
-                  ? 'border-[#1C5E39]'
+                  ? 'border-[#008755]'
                   : 'border-gray-200 hover:bg-gray-50/20'
               }`}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded bg-[#EBF5EE] flex items-center justify-center flex-shrink-0">
+                  <div className="w-10 h-10 rounded bg-[#E8F5E9] flex items-center justify-center flex-shrink-0">
                     {/* Hand with banknote icon */}
                     <svg
-                      className="w-5 h-5 text-[#1C5E39]"
+                      className="w-5 h-5 text-[#008755]"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -540,12 +540,12 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
                 <div
                   className={`w-4 h-4 rounded-full border flex items-center justify-center flex-shrink-0 transition ${
                     selectedPaymentProvider === 'pp_system_default'
-                      ? 'border-[#1C5E39]'
+                      ? 'border-[#008755]'
                       : 'border-gray-300'
                   }`}
                 >
                   {selectedPaymentProvider === 'pp_system_default' && (
-                    <div className="w-2 h-2 rounded-full bg-[#1C5E39]" />
+                    <div className="w-2 h-2 rounded-full bg-[#008755]" />
                   )}
                 </div>
               </div>
@@ -556,7 +556,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
               onClick={() => setSelectedPaymentProvider('pp_ngenius_ngenius')}
               className={`border rounded-lg p-4 cursor-pointer flex flex-col gap-3 transition bg-white ${
                 selectedPaymentProvider === 'pp_ngenius_ngenius'
-                  ? 'border-[#1C5E39]'
+                  ? 'border-[#008755]'
                   : 'border-gray-200 hover:bg-gray-50/20'
               }`}
             >
@@ -588,12 +588,12 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
                 <div
                   className={`w-4 h-4 rounded-full border flex items-center justify-center flex-shrink-0 transition ${
                     selectedPaymentProvider === 'pp_ngenius_ngenius'
-                      ? 'border-[#1C5E39]'
+                      ? 'border-[#008755]'
                       : 'border-gray-300'
                   }`}
                 >
                   {selectedPaymentProvider === 'pp_ngenius_ngenius' && (
-                    <div className="w-2 h-2 rounded-full bg-[#1C5E39]" />
+                    <div className="w-2 h-2 rounded-full bg-[#008755]" />
                   )}
                 </div>
               </div>
@@ -603,7 +603,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
             <div className="pt-3 flex flex-col gap-2.5">
               <Button
                 type="submit"
-                className="w-full h-10 font-bold uppercase tracking-wider text-xs font-body bg-[#1D1D1D] hover:bg-black text-white rounded transition duration-200"
+                className="w-full h-10 font-bold uppercase tracking-wider text-xs font-body bg-[#005844] hover:bg-black text-white rounded transition duration-200"
                 loading={submitting}
                 disabled={submitting || isEmpty}
               >

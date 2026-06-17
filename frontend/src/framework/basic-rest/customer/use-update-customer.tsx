@@ -16,6 +16,7 @@ async function updateUser(input: UpdateUserType) {
     first_name: input.firstName ?? null,
     last_name: input.lastName ?? null,
     phone: input.phoneNumber ?? null,
+    metadata: { gender: input.gender ?? null },
   };
   const { data } = await http.post("/store/customers/me", payload);
   return data?.customer ?? data;

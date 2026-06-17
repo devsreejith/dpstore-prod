@@ -66,7 +66,7 @@ const Copyright: React.FC<CopyrightProps> = ({ payment, variant }) => {
         )}
 
         {variant === "contemporary" && (
-          <p className="text-sm font-semibold leading-[19px] text-[#212121] cursor-pointer">
+          <p className="text-sm font-semibold leading-[19px] text-[#005844] cursor-pointer">
             <Link href="#siteHeader">Scroll to top</Link>
 
             <AiOutlineArrowUp className="inline ltr:ml-3 rtl:mr-3" />

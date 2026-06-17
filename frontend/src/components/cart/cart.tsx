@@ -84,7 +84,7 @@ export default function Cart() {
             'w-full px-5 py-3 md:py-4 flex items-center justify-center rounded-md text-sm sm:text-base text-white focus:outline-none transition duration-300 ',
             (isEmpty || !isCartValid)
               ? 'cursor-not-allowed bg-gray-400 hover:bg-gray-400'
-              : 'bg-heading hover:bg-gray-600'
+              : 'bg-heading hover:bg-[#008755]'
           )}
         >
           <span className="w-full ltr:pr-5 rtl:pl-5 -mt-0.5 py-0.5">

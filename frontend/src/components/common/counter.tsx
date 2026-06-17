@@ -36,7 +36,7 @@ const Counter: React.FC<CounterProps> = ({
 					{
 						"w-10 md:w-12 text-heading border-e border-gray-300 hover:text-white hover:bg-heading":
 							variant === "default",
-						"w-8 md:w-9 text-white bg-heading hover:bg-gray-600 focus:outline-none":
+						"w-8 md:w-9 text-white bg-heading hover:bg-[#008755] focus:outline-none":
 							variant === "dark",
 					}
 				)}
@@ -65,7 +65,7 @@ const Counter: React.FC<CounterProps> = ({
 					{
 						"w-10 md:w-12 text-heading border-s border-gray-300 hover:text-white hover:bg-heading":
 							variant === "default",
-						"w-8 md:w-9 text-white bg-heading hover:bg-gray-600 focus:outline-none":
+						"w-8 md:w-9 text-white bg-heading hover:bg-[#008755] focus:outline-none":
 							variant === "dark",
 					}
 				)}

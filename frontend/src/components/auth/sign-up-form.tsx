@@ -128,7 +128,7 @@ const SignUpForm: React.FC = () => {
           </div>
         </div>
       </form>
-      <div className="text-sm sm:text-base text-[#5A5A5A] text-center mt-5 mb-1">
+      <div className="text-sm sm:text-base text-[#58585B] text-center mt-5 mb-1">
         {t('common:text-have-account')}{' '}
         <button
           type="button"

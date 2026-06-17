@@ -44,7 +44,7 @@ const CheckoutCard: React.FC<CheckoutCardProps> = ({
       {activeStep === 3 && (
         <div className="border border-gray-200 rounded-md bg-white p-5 mb-5 shadow-sm flex justify-between items-start">
           <div className="min-w-0 flex-1">
-            <h2 className="text-xs md:text-sm font-bold text-[#1C5E39] uppercase tracking-wider font-body mb-2.5">
+            <h2 className="text-xs md:text-sm font-bold text-[#008755] uppercase tracking-wider font-body mb-2.5">
               DELIVERY ADDRESS
             </h2>
             {selectedAddress ? (
@@ -68,7 +68,7 @@ const CheckoutCard: React.FC<CheckoutCardProps> = ({
           <button
             type="button"
             onClick={() => setActiveStep(2)}
-            className="text-[10px] md:text-xs font-bold text-[#1C5E39] uppercase hover:underline ml-4 flex-shrink-0"
+            className="text-[10px] md:text-xs font-bold text-[#008755] uppercase hover:underline ml-4 flex-shrink-0"
           >
             Change
           </button>
@@ -91,12 +91,12 @@ const CheckoutCard: React.FC<CheckoutCardProps> = ({
 
           <div className="flex justify-between items-center">
             <span className="text-gray-700 font-normal">Discount</span>
-            <span className="text-[#1C5E39] font-mono font-semibold">AED 00.00</span>
+            <span className="text-[#008755] font-mono font-semibold">AED 00.00</span>
           </div>
 
           <div className="flex justify-between items-center">
             <span className="text-gray-700 font-normal">Delivery Charges</span>
-            <span className="text-[#1C5E39] uppercase font-bold text-10px">Free</span>
+            <span className="text-[#008755] uppercase font-bold text-10px">Free</span>
           </div>
 
           <div className="border-t border-gray-150 pt-4 flex justify-between items-center font-bold text-sm md:text-base text-heading">

@@ -388,7 +388,7 @@ export default function Header() {
                       <Link
                         href={ROUTES.ACCOUNT}
                         onClick={() => setDropdownOpen(false)}
-                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-heading hover:bg-[#FAF4EE] hover:text-[#4E3629] font-normal transition"
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-heading hover:bg-[#E8F5E9] hover:text-[#005844] font-normal transition"
                       >
                         <IoPersonOutline className="text-lg text-gray-400" />
                         <span>Profile</span>
@@ -396,7 +396,7 @@ export default function Header() {
                       <Link
                         href={ROUTES.ORDERS}
                         onClick={() => setDropdownOpen(false)}
-                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-heading hover:bg-[#FAF4EE] hover:text-[#4E3629] font-normal transition"
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-heading hover:bg-[#E8F5E9] hover:text-[#005844] font-normal transition"
                       >
                         <IoBagOutline className="text-lg text-gray-400" />
                         <span>Orders</span>
@@ -404,7 +404,7 @@ export default function Header() {
                       <Link
                         href={ROUTES.CHANGE_PASSWORD}
                         onClick={() => setDropdownOpen(false)}
-                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-heading hover:bg-[#FAF4EE] hover:text-[#4E3629] font-normal transition"
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-heading hover:bg-[#E8F5E9] hover:text-[#005844] font-normal transition"
                       >
                         <IoSettingsOutline className="text-lg text-gray-400" />
                         <span>Settings</span>

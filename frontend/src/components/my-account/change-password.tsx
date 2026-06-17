@@ -106,7 +106,7 @@ const ChangePassword: React.FC = () => {
 								type="submit"
 								loading={isPending}
 								disabled={isPending}
-								className="h-11 px-6 bg-[#212121] hover:bg-gray-600 text-white font-semibold font-body rounded transition duration-150 mt-3 w-full sm:w-auto"
+								className="h-11 px-6 bg-[#005844] hover:bg-gray-600 text-white font-semibold font-body rounded transition duration-150 mt-3 w-full sm:w-auto"
 							>
 								{t("common:text-change-password")}
 							</Button>

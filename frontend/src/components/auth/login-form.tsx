@@ -134,7 +134,7 @@ const LoginForm: React.FC = () => {
           </div>
         </div>
       </form>
-      <div className="mt-5 mb-1 text-sm text-center sm:text-base text-[#5A5A5A]">
+      <div className="mt-5 mb-1 text-sm text-center sm:text-base text-[#58585B]">
         {t('common:text-no-account')}{' '}
         <button
           type="button"

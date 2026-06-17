@@ -60,7 +60,7 @@ const WidgetLink: FC<Props> = ({ className, data }) => {
             ) : (
                 <div className="ltr:mr-4 rtl:ml-4 flex flex-col space-y-7 lg:space-y-7.5">
                     <Logo className="" />
-                    <p className="text-sm font-normal text-[#1D1E1F] leading-6 max-w-[334px] ">
+                    <p className="text-sm font-normal text-[#005844] leading-6 max-w-[334px] ">
                         {description}
                     </p>
                     <ul className="text-xs lg:text-sm text-body flex items-center gap-x-3 lg:gap-x-3.5">

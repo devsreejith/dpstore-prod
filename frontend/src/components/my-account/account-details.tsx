@@ -22,6 +22,7 @@ const AccountDetails: React.FC = () => {
     register,
     handleSubmit,
     setValue,
+    reset,
     formState: { errors },
   } = useForm<UpdateUserType>({
     defaultValues,
@@ -42,6 +43,8 @@ const AccountDetails: React.FC = () => {
     if (c.last_name) setValue('lastName', c.last_name);
     if (c.phone) setValue('phoneNumber', c.phone);
     if (c.email) setValue('email', c.email);
+    if (c.metadata?.gender) setValue('gender', c.metadata.gender);
+    else if (c.gender) setValue('gender', c.gender);
   }, [customerQuery.data, setValue]);
 
   function onSubmit(input: UpdateUserType) {
@@ -87,14 +90,7 @@ const AccountDetails: React.FC = () => {
               errorKey={errors.lastName?.message}
             />
           </div>
-          <Input
-            labelKey="forms:label-display-name"
-            {...register('displayName', {
-              required: 'forms:display-name-required',
-            })}
-            variant="solid"
-            errorKey={errors.displayName?.message}
-          />
+
           <div className="flex flex-col sm:flex-row sm:gap-x-3 space-y-4 sm:space-y-0">
             <Input
               type="tel"
@@ -141,14 +137,21 @@ const AccountDetails: React.FC = () => {
               />
             </div>
           </div>
-          <div className="relative">
+          <div className="relative flex items-center gap-3">
             <Button
               type="submit"
               loading={isPending}
               disabled={isPending}
-              className="h-11 px-6 bg-[#212121] hover:bg-gray-600 text-white font-semibold font-body rounded transition duration-150 mt-3 w-full sm:w-auto"
+              className="h-11 px-8 bg-[#005844] hover:bg-[#008755] text-white font-semibold font-body rounded transition duration-150 mt-3 sm:w-auto"
             >
               {t('common:button-save')}
+            </Button>
+            <Button
+              type="button"
+              onClick={() => reset()}
+              className="h-11 px-8 bg-[#000000] hover:bg-gray-800 text-white font-semibold font-body rounded transition duration-150 mt-3 sm:w-auto"
+            >
+              Cancel
             </Button>
           </div>
         </div>
