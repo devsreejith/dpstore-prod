@@ -245,12 +245,13 @@ const OrdersTable: React.FC = () => {
   };
 
   const getFormattedOrderId = (o: any) => {
+    if (o?.metadata?.order_number) {
+      return String(o.metadata.order_number);
+    }
     const orderDate = o?.created_at ? new Date(o.created_at) : new Date();
     const yy = String(orderDate.getFullYear()).slice(-2);
-    const mm = String(orderDate.getMonth() + 1).padStart(2, '0');
-    const dd = String(orderDate.getDate()).padStart(2, '0');
-    const displayIdStr = String(o?.display_id ?? '1').padStart(3, '0');
-    return `DP${yy}${mm}${dd}${displayIdStr}`;
+    const displayIdStr = String(o?.display_id ?? '1').padStart(4, '0');
+    return `ORD-OL${yy}-${displayIdStr}`;
   };
 
   const fmtDateOnly = (v: any) => {
@@ -368,7 +369,7 @@ const OrdersTable: React.FC = () => {
                 return (
                   <Link
                     key={order.id}
-                    href={`/my-account/orders/${order.id}`}
+                    href={`/my-account/orders/${getFormattedOrderId(order)}`}
                     className="flex items-center gap-4 md:gap-6 py-4 px-1 hover:bg-gray-50/50 transition duration-150 group cursor-pointer"
                   >
                     {/* Product Image */}

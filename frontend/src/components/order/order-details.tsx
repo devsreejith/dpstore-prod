@@ -401,11 +401,17 @@ const OrderDetails: React.FC<{ className?: string }> = ({
 
   const displayPaymentMethod = paymentMethodName;
 
-  const yy = order?.created_at ? String(new Date(order.created_at).getFullYear()).slice(-2) : '';
-  const mm = order?.created_at ? String(new Date(order.created_at).getMonth() + 1).padStart(2, '0') : '';
-  const dd = order?.created_at ? String(new Date(order.created_at).getDate()).padStart(2, '0') : '';
-  const displayIdStr = String(order?.display_id ?? '1').padStart(3, '0');
-  const formattedOrderNumber = `DP${yy}${mm}${dd}${displayIdStr}`;
+  const getFriendlyOrderNumber = (o: any) => {
+    if (o?.metadata?.order_number) {
+      return String(o.metadata.order_number);
+    }
+    const orderDate = o?.created_at ? new Date(o.created_at) : new Date();
+    const yyVal = String(orderDate.getFullYear()).slice(-2);
+    const displayIdStrVal = String(o?.display_id ?? '1').padStart(4, '0');
+    return `ORD-OL${yyVal}-${displayIdStrVal}`;
+  };
+
+  const formattedOrderNumber = getFriendlyOrderNumber(order);
 
   return (
     <div className={`${className} bg-transparent min-h-screen pb-12 font-body`}>

@@ -287,12 +287,17 @@ export default function OrderInformation() {
     );
   }
 
-  const orderDate = data?.created_at ? new Date(data.created_at) : new Date();
-  const yy = String(orderDate.getFullYear()).slice(-2);
-  const mm = String(orderDate.getMonth() + 1).padStart(2, '0');
-  const dd = String(orderDate.getDate()).padStart(2, '0');
-  const displayIdStr = String(data?.display_id ?? '1').padStart(3, '0');
-  const formattedOrderNumber = `DP${yy}${mm}${dd}${displayIdStr}`;
+  const getFriendlyOrderNumber = (o: any) => {
+    if (o?.metadata?.order_number) {
+      return String(o.metadata.order_number);
+    }
+    const orderDate = o?.created_at ? new Date(o.created_at) : new Date();
+    const yyVal = String(orderDate.getFullYear()).slice(-2);
+    const displayIdStrVal = String(o?.display_id ?? '1').padStart(4, '0');
+    return `ORD-OL${yyVal}-${displayIdStrVal}`;
+  };
+
+  const formattedOrderNumber = getFriendlyOrderNumber(data);
 
   const continuePayment = async () => {
     if (!paymentCollectionId) {

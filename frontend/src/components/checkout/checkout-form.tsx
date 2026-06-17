@@ -211,13 +211,27 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
           shipping_option_id: shippingOptionId || undefined,
           payment_provider_id: selectedPaymentProvider,
         });
+        const getFriendlyOrderId = (o: any) => {
+          if (o?.metadata?.order_number) {
+            return String(o.metadata.order_number);
+          }
+          if (o?.display_id) {
+            const orderDate = o?.created_at ? new Date(o.created_at) : new Date();
+            const yy = String(orderDate.getFullYear()).slice(-2);
+            const displayIdStr = String(o.display_id).padStart(4, '0');
+            return `ORD-OL${yy}-${displayIdStr}`;
+          }
+          return String(o?.id ?? '');
+        };
+
         if (result?.type === 'order' && result?.order?.id) {
+          const friendlyId = getFriendlyOrderId(result.order);
           if (selectedPaymentProvider === 'pp_system_default') {
-            router.push(`${ROUTES.ORDER}?id=${result.order.id}`);
+            router.push(`${ROUTES.ORDER}?id=${friendlyId}`);
           } else {
             const hasRedirect = !!(result as any).payment_url;
             if (!hasRedirect) {
-              router.push(`/my-account/orders/${result.order.id}`);
+              router.push(`/my-account/orders/${friendlyId}`);
             }
           }
         } else {

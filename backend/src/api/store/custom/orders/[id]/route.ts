@@ -105,6 +105,44 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
       } finally {
         await client.end();
       }
+    } else if (orderId.startsWith("ORD-")) {
+      logger.info(`[Custom GET Order] Resolving friendly order number "${orderId}" via database query`);
+      const client = new pg.Client({
+        connectionString: process.env.DATABASE_URL,
+      });
+      await client.connect();
+      try {
+        const orderRes = await client.query(
+          "SELECT id FROM \"order\" WHERE metadata->>'order_number' = $1 AND deleted_at IS NULL LIMIT 1",
+          [orderId]
+        );
+        if (orderRes.rows.length === 0) {
+          const match = orderId.match(/ORD-OL\d+-(\d+)/);
+          if (match) {
+            const displayId = parseInt(match[1], 10);
+            const fallbackRes = await client.query(
+              "SELECT id FROM \"order\" WHERE display_id = $1 AND deleted_at IS NULL LIMIT 1",
+              [displayId]
+            );
+            if (fallbackRes.rows.length > 0) {
+              targetOrderId = fallbackRes.rows[0].id;
+            } else {
+              logger.warn(`[Custom GET Order] Friendly order number display ID fallback match failed: ${displayId}`);
+              res.status(404).json({ message: `Order not found: ${orderId}` });
+              return;
+            }
+          } else {
+            logger.warn(`[Custom GET Order] Friendly order number format mismatch: ${orderId}`);
+            res.status(404).json({ message: `Order not found: ${orderId}` });
+            return;
+          }
+        } else {
+          targetOrderId = orderRes.rows[0].id;
+        }
+        logger.info(`[Custom GET Order] Resolved targetOrderId: "${targetOrderId}"`);
+      } finally {
+        await client.end();
+      }
     }
 
     const query = req.scope.resolve(ContainerRegistrationKeys.QUERY);

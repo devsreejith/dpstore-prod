@@ -129,10 +129,18 @@ export class NGeniusClient {
     currencyCode: string,
     orderReference: string,
     customerEmail?: string,
-    redirectParam?: string
+    redirectParam?: string,
+    billingAddress?: {
+      firstName: string;
+      lastName: string;
+      address1: string;
+      city: string;
+      countryCode: string;
+      phoneNumber?: string;
+    }
   ): Promise<CreateOrderResponse> {
     this.logger?.info?.(
-      `[N-Genius Client] Creating order redirect session. Ref: ${orderReference}, redirectParam: ${redirectParam}, Amount: ${amountMinor} ${currencyCode}`
+      `[N-Genius Client] Creating order redirect session. Ref: ${orderReference}, redirectParam: ${redirectParam}, Amount: ${amountMinor} ${currencyCode}, BillingAddress: ${JSON.stringify(billingAddress)}`
     );
 
     const token = await this.getAccessToken();
@@ -152,6 +160,14 @@ export class NGeniusClient {
       },
       merchantOrderReference: orderReference,
       emailAddress: customerEmail,
+      billingAddress: billingAddress ? {
+        firstName: billingAddress.firstName || "Customer",
+        lastName: billingAddress.lastName || "N/A",
+        address1: billingAddress.address1 || "N/A",
+        city: billingAddress.city || "Dubai",
+        countryCode: (billingAddress.countryCode || "AE").toUpperCase(),
+        phoneNumber: billingAddress.phoneNumber && billingAddress.phoneNumber !== "N/A" ? billingAddress.phoneNumber : undefined,
+      } : undefined,
       merchantAttributes: redirectUrl ? {
         redirectUrl: redirectUrl
       } : undefined

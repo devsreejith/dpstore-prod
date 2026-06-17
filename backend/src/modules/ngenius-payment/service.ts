@@ -3,6 +3,48 @@ import { NGeniusClient } from "./ngenius-client";
 import { NGeniusConfig } from "./types";
 import pg from "pg";
 
+function sanitizeNGeniusData(obj: any): any {
+  if (!obj || typeof obj !== "object") return obj;
+
+  const cloned = JSON.parse(JSON.stringify(obj));
+
+  const scrub = (target: any) => {
+    if (!target || typeof target !== "object") return;
+
+    const keysToScrub = [
+      "pan",
+      "paymentMethod",
+      "payment_method",
+      "cardBrand",
+      "card_brand",
+      "cardScheme",
+      "card_scheme",
+      "cardType",
+      "card_type",
+      "maskedPan",
+      "masked_pan",
+      "expiry",
+      "cardholderName",
+      "cardholder_name"
+    ];
+
+    for (const key of keysToScrub) {
+      if (key in target) {
+        delete target[key];
+      }
+    }
+
+    for (const k of Object.keys(target)) {
+      if (typeof target[k] === "object") {
+        scrub(target[k]);
+      }
+    }
+  };
+
+  scrub(cloned);
+  return cloned;
+}
+
 export class NGeniusPaymentService extends AbstractPaymentProvider<any> {
   static identifier = "ngenius";
   protected client: NGeniusClient;
@@ -31,45 +73,140 @@ export class NGeniusPaymentService extends AbstractPaymentProvider<any> {
       }
       const parsedAmount = Math.round(Number(amountValue));
 
-      // Retrieve resource_id or other unique reference from context
-      const resourceId = input.resource_id || context?.resource_id || context?.payment_collection_id || data?.resource_id || `mc-${Date.now()}`;
+      // Retrieve cart or order ID from input
+      const cartIdOrOrderId = data?.cart_id || data?.order_id || context?.cart_id || context?.cart?.id || input.cart_id || (context?.resource_id?.startsWith("cart_") ? context.resource_id : undefined) || (input.resource_id?.startsWith("cart_") ? input.resource_id : undefined) || (context?.resource_id?.startsWith("ord_") ? context.resource_id : undefined) || (input.resource_id?.startsWith("ord_") ? input.resource_id : undefined);
 
-      this.logger.info(
-        `[N-Genius Service] Initiating payment for resource: ${resourceId}, Amount: ${parsedAmount} ${currency_code}`
-      );
-
-      // resource_id represents the cart ID or payment collection ID
-      // N-Genius order reference must match "[a-zA-Z0-9\-]{1,37}" (no underscores allowed)
-      const orderReference = String(resourceId).replace(/_/g, "-");
-      
-      const cartId = data?.cart_id || data?.order_id || context?.cart_id || context?.cart?.id || input.cart_id || (context?.resource_id?.startsWith("cart_") ? context.resource_id : undefined) || (input.resource_id?.startsWith("cart_") ? input.resource_id : undefined);
-
+      let orderReference = "";
       let customerEmail = context?.email || context?.customer?.email;
-      if (!customerEmail && cartId) {
-        let dbClient: any;
-        try {
-          dbClient = new pg.Client({
-            connectionString: process.env.DATABASE_URL,
-          });
-          await dbClient.connect();
-          const cartRes = await dbClient.query(
-            "SELECT email FROM cart WHERE id = $1 AND deleted_at IS NULL",
-            [cartId]
-          );
-          if (cartRes.rows.length > 0 && cartRes.rows[0].email) {
-            customerEmail = cartRes.rows[0].email;
-            this.logger.info(`[N-Genius Service] Retrieved customer email from cart database: ${customerEmail}`);
-          }
-        } catch (dbErr: any) {
-          this.logger.warn(`[N-Genius Service] Failed to retrieve cart email from database: ${dbErr.message}`);
-        } finally {
-          if (dbClient) {
-            try {
-              await dbClient.end();
-            } catch {}
+      let customerPhone = context?.shipping_address?.phone || context?.billing_address?.phone || context?.customer?.phone;
+      let customerFirstName = context?.shipping_address?.first_name || context?.billing_address?.first_name || context?.customer?.first_name;
+      let customerLastName = context?.shipping_address?.last_name || context?.billing_address?.last_name || context?.customer?.last_name;
+      let customerAddress1 = context?.shipping_address?.address_1 || context?.billing_address?.address_1;
+      let customerCity = context?.shipping_address?.city || context?.billing_address?.city;
+      let customerCountryCode = context?.shipping_address?.country_code || context?.billing_address?.country_code;
+
+      let dbClient: any;
+      try {
+        dbClient = new pg.Client({
+          connectionString: process.env.DATABASE_URL,
+        });
+        await dbClient.connect();
+
+        if (cartIdOrOrderId) {
+          if (cartIdOrOrderId.startsWith("ord_")) {
+            this.logger.info(`[N-Genius Service] Resolving retry payment for order: ${cartIdOrOrderId}`);
+            const orderRes = await dbClient.query(`
+              SELECT o.email, o.metadata,
+                     s.first_name AS s_first_name, s.last_name AS s_last_name, s.address_1 AS s_address_1, s.city AS s_city, s.country_code AS s_country_code, s.phone AS s_phone,
+                     b.first_name AS b_first_name, b.last_name AS b_last_name, b.address_1 AS b_address_1, b.city AS b_city, b.country_code AS b_country_code, b.phone AS b_phone
+              FROM "order" o
+              LEFT JOIN order_address s ON o.shipping_address_id = s.id
+              LEFT JOIN order_address b ON o.billing_address_id = b.id
+              WHERE o.id = $1 AND o.deleted_at IS NULL
+            `, [cartIdOrOrderId]);
+
+            if (orderRes.rows.length > 0) {
+              const row = orderRes.rows[0];
+              if (!customerEmail && row.email) customerEmail = row.email;
+              const phoneVal = row.s_phone || row.b_phone;
+              if (!customerPhone && phoneVal) customerPhone = phoneVal;
+              if (!customerFirstName) customerFirstName = row.s_first_name || row.b_first_name;
+              if (!customerLastName) customerLastName = row.s_last_name || row.b_last_name;
+              if (!customerAddress1) customerAddress1 = row.s_address_1 || row.b_address_1;
+              if (!customerCity) customerCity = row.s_city || row.b_city;
+              if (!customerCountryCode) customerCountryCode = row.s_country_code || row.b_country_code;
+
+              if (row.metadata?.order_number) {
+                orderReference = row.metadata.order_number;
+                this.logger.info(`[N-Genius Service] Found friendly order number in order metadata: ${orderReference}`);
+              }
+            }
+          } else if (cartIdOrOrderId.startsWith("cart_")) {
+            this.logger.info(`[N-Genius Service] Resolving payment for cart: ${cartIdOrOrderId}`);
+            const cartRes = await dbClient.query(`
+              SELECT c.email, c.metadata,
+                     s.first_name AS s_first_name, s.last_name AS s_last_name, s.address_1 AS s_address_1, s.city AS s_city, s.country_code AS s_country_code, s.phone AS s_phone,
+                     b.first_name AS b_first_name, b.last_name AS b_last_name, b.address_1 AS b_address_1, b.city AS b_city, b.country_code AS b_country_code, b.phone AS b_phone
+              FROM cart c
+              LEFT JOIN cart_address s ON c.shipping_address_id = s.id
+              LEFT JOIN cart_address b ON c.billing_address_id = b.id
+              WHERE c.id = $1 AND c.deleted_at IS NULL
+            `, [cartIdOrOrderId]);
+
+            if (cartRes.rows.length > 0) {
+              const row = cartRes.rows[0];
+              if (!customerEmail && row.email) customerEmail = row.email;
+              const phoneVal = row.s_phone || row.b_phone;
+              if (!customerPhone && phoneVal) customerPhone = phoneVal;
+              if (!customerFirstName) customerFirstName = row.s_first_name || row.b_first_name;
+              if (!customerLastName) customerLastName = row.s_last_name || row.b_last_name;
+              if (!customerAddress1) customerAddress1 = row.s_address_1 || row.b_address_1;
+              if (!customerCity) customerCity = row.s_city || row.b_city;
+              if (!customerCountryCode) customerCountryCode = row.s_country_code || row.b_country_code;
+
+              if (row.metadata?.order_number) {
+                orderReference = row.metadata.order_number;
+                this.logger.info(`[N-Genius Service] Found friendly order number in cart metadata: ${orderReference}`);
+              } else {
+                const maxOrderRes = await dbClient.query('SELECT COALESCE(MAX(display_id), 0) AS max_id FROM "order"');
+                let nextDisplayId = Number(maxOrderRes.rows[0].max_id) + 1;
+
+                const otherCartsRes = await dbClient.query(`
+                  SELECT metadata->>'order_number' AS order_number 
+                  FROM cart 
+                  WHERE metadata->>'order_number' IS NOT NULL 
+                    AND id != $1 
+                    AND deleted_at IS NULL
+                `, [cartIdOrOrderId]);
+
+                let maxPreAllocated = 0;
+                for (const otherRow of otherCartsRes.rows) {
+                  const match = String(otherRow.order_number || "").match(/ORD-OL\d+-(\d+)/);
+                  if (match) {
+                    const val = parseInt(match[1], 10);
+                    if (val > maxPreAllocated) maxPreAllocated = val;
+                  }
+                }
+
+                if (maxPreAllocated >= nextDisplayId) {
+                  nextDisplayId = maxPreAllocated + 1;
+                }
+
+                const yy = String(new Date().getFullYear()).slice(-2);
+                const displayIdStr = String(nextDisplayId).padStart(4, '0');
+                orderReference = `ORD-OL${yy}-${displayIdStr}`;
+
+                this.logger.info(`[N-Genius Service] Pre-allocated friendly order number: ${orderReference}`);
+
+                const updatedCartMetadata = {
+                  ...(row.metadata || {}),
+                  order_number: orderReference,
+                };
+                await dbClient.query(
+                  "UPDATE cart SET metadata = $1, updated_at = NOW() WHERE id = $2",
+                  [JSON.stringify(updatedCartMetadata), cartIdOrOrderId]
+                );
+              }
+            }
           }
         }
+      } catch (dbErr: any) {
+        this.logger.warn(`[N-Genius Service] Database helper error: ${dbErr.message}`);
+      } finally {
+        if (dbClient) {
+          try { await dbClient.end(); } catch {}
+        }
       }
+
+      if (!orderReference) {
+        const resourceId = input.resource_id || context?.resource_id || context?.payment_collection_id || data?.resource_id || `mc-${Date.now()}`;
+        orderReference = String(resourceId).replace(/_/g, "-");
+        this.logger.info(`[N-Genius Service] Fallback orderReference constructed: ${orderReference}`);
+      }
+
+      this.logger.info(
+        `[N-Genius Service] Initiating payment for resource reference: ${orderReference}, Amount: ${parsedAmount} ${currency_code}`
+      );
 
       const isTestEmail = customerEmail && (customerEmail.includes("example.com") || customerEmail.includes("test"));
 
@@ -92,25 +229,31 @@ export class NGeniusPaymentService extends AbstractPaymentProvider<any> {
         };
       }
 
-      // N-Genius creates the order, returning order details and the hosted checkout payment_url
-      
-      let redirectParam = "";
-      if (cartId) {
-        if (cartId.startsWith("ord_")) {
-          redirectParam = `id=${cartId}`;
-        } else {
-          redirectParam = `cart_id=${cartId}`;
-        }
-      } else {
-        redirectParam = `ref=${orderReference}`;
-      }
+      const cleanPhone = (phone: string | undefined): string | undefined => {
+        if (!phone) return undefined;
+        const cleaned = phone.replace(/[^\d+]/g, "");
+        return cleaned.length >= 7 ? cleaned : undefined;
+      };
+
+      const billingAddressPayload = {
+        firstName: String(customerFirstName || "Customer").trim(),
+        lastName: String(customerLastName || "N/A").trim(),
+        address1: String(customerAddress1 || "N/A").trim(),
+        city: String(customerCity || "Dubai").trim(),
+        countryCode: String(customerCountryCode || "AE").trim().toUpperCase(),
+        phoneNumber: cleanPhone(customerPhone) || "N/A",
+      };
+
+      // Construct redirectParam using friendly order number
+      const redirectParam = `id=${orderReference}`;
 
       const orderResponse = await this.client.createOrder(
         parsedAmount,
         currency_code,
         orderReference,
         customerEmail,
-        redirectParam
+        redirectParam,
+        billingAddressPayload
       );
 
       const paymentUrl = orderResponse._links?.payment?.href;
@@ -118,7 +261,7 @@ export class NGeniusPaymentService extends AbstractPaymentProvider<any> {
       return {
         id: orderResponse.reference,
         status: "pending",
-        data: {
+        data: sanitizeNGeniusData({
           id: orderResponse.reference,
           reference: orderResponse.reference,
           payment_url: paymentUrl,
@@ -126,7 +269,7 @@ export class NGeniusPaymentService extends AbstractPaymentProvider<any> {
           currency_code,
           status: orderResponse.status || "STARTED",
           ...orderResponse,
-        },
+        }),
       };
     } catch (error: any) {
       this.logger.error(`[N-Genius Service] Initiate payment failed. Error: ${error.message}`);
@@ -178,11 +321,11 @@ export class NGeniusPaymentService extends AbstractPaymentProvider<any> {
       if (medusaStatus === "captured" || medusaStatus === "authorized" || medusaStatus === "pending") {
         return {
           status: "authorized",
-          data: {
+          data: sanitizeNGeniusData({
             ...sessionData,
             ...statusResponse,
             status: statusResponse.status,
-          },
+          }),
         };
       }
 
@@ -192,19 +335,19 @@ export class NGeniusPaymentService extends AbstractPaymentProvider<any> {
           status: "error",
           error: "Payment declined or failed in N-Genius",
           code: "payment_declined",
-          data: {
+          data: sanitizeNGeniusData({
             ...sessionData,
             ...statusResponse,
-          },
+          }),
         };
       }
 
       return {
         status: "requires_more",
-        data: {
+        data: sanitizeNGeniusData({
           ...sessionData,
           ...statusResponse,
-        },
+        }),
       };
     } catch (error: any) {
       this.logger.error(`[N-Genius Service] Authorize payment failed. Error: ${error.message}`);
@@ -250,11 +393,11 @@ export class NGeniusPaymentService extends AbstractPaymentProvider<any> {
       }
 
       return {
-        data: {
+        data: sanitizeNGeniusData({
           ...sessionData,
           ...statusResponse,
           captured_at: new Date().toISOString(),
-        },
+        }),
       };
     } catch (error: any) {
       this.logger.error(`[N-Genius Service] Capture payment failed. Error: ${error.message}`);
@@ -278,11 +421,11 @@ export class NGeniusPaymentService extends AbstractPaymentProvider<any> {
 
       // TODO: Call official cancel order API once documentation is received.
       return {
-        data: {
+        data: sanitizeNGeniusData({
           ...sessionData,
           status: "CANCELED",
           canceled_at: new Date().toISOString(),
-        },
+        }),
       };
     } catch (error: any) {
       this.logger.error(`[N-Genius Service] Cancel payment failed. Error: ${error.message}`);
@@ -332,11 +475,11 @@ export class NGeniusPaymentService extends AbstractPaymentProvider<any> {
       }
 
       return {
-        data: {
+        data: sanitizeNGeniusData({
           ...sessionData,
           refund: refundResponse,
           refunded_at: new Date().toISOString(),
-        },
+        }),
       };
     } catch (error: any) {
       this.logger.error(`[N-Genius Service] Refund payment failed. Error: ${error.message}`);
@@ -375,10 +518,10 @@ export class NGeniusPaymentService extends AbstractPaymentProvider<any> {
         statusResponse = await this.client.getOrderStatus(reference);
       }
       return {
-        data: {
+        data: sanitizeNGeniusData({
           ...sessionData,
           ...statusResponse,
-        },
+        }),
       };
     } catch (error: any) {
       this.logger.error(`[N-Genius Service] Retrieve payment failed. Error: ${error.message}`);
