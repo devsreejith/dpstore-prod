@@ -74,7 +74,13 @@ export class NGeniusPaymentService extends AbstractPaymentProvider<any> {
       const parsedAmount = Math.round(Number(amountValue));
 
       // Retrieve cart or order ID from input
-      const cartIdOrOrderId = data?.cart_id || data?.order_id || context?.cart_id || context?.cart?.id || input.cart_id || (context?.resource_id?.startsWith("cart_") ? context.resource_id : undefined) || (input.resource_id?.startsWith("cart_") ? input.resource_id : undefined) || (context?.resource_id?.startsWith("ord_") ? context.resource_id : undefined) || (input.resource_id?.startsWith("ord_") ? input.resource_id : undefined);
+      const cartIdOrOrderId = data?.cart_id || data?.order_id || context?.cart_id || context?.cart?.id || input.cart_id || 
+        (context?.resource_id?.startsWith("cart_") ? context.resource_id : undefined) || 
+        (input.resource_id?.startsWith("cart_") ? input.resource_id : undefined) || 
+        (context?.resource_id?.startsWith("order_") ? context.resource_id : undefined) || 
+        (context?.resource_id?.startsWith("ord_") ? context.resource_id : undefined) || 
+        (input.resource_id?.startsWith("order_") ? input.resource_id : undefined) || 
+        (input.resource_id?.startsWith("ord_") ? input.resource_id : undefined);
 
       let orderReference = "";
       let customerEmail = context?.email || context?.customer?.email;
@@ -93,7 +99,7 @@ export class NGeniusPaymentService extends AbstractPaymentProvider<any> {
         await dbClient.connect();
 
         if (cartIdOrOrderId) {
-          if (cartIdOrOrderId.startsWith("ord_")) {
+          if (cartIdOrOrderId.startsWith("order_") || cartIdOrOrderId.startsWith("ord_")) {
             this.logger.info(`[N-Genius Service] Resolving retry payment for order: ${cartIdOrOrderId}`);
             const orderRes = await dbClient.query(`
               SELECT o.email, o.metadata,

@@ -14,7 +14,7 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
     return;
   }
 
-  const isSecureId = orderId.startsWith("cart_") || orderId.startsWith("pay_col_") || orderId.startsWith("pay-col-");
+  const isSecureId = orderId.startsWith("cart_") || orderId.startsWith("pay_col_") || orderId.startsWith("pay-col-") || orderId.startsWith("mc-");
   const actorId = (req as any).auth_context?.actor_id;
 
   logger.info(`[Custom GET Order] isSecureId: ${isSecureId}, actorId: "${actorId || 'none'}"`);
@@ -101,6 +101,34 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
           return;
         }
         targetOrderId = orderPaymentColRes.rows[0].order_id;
+        logger.info(`[Custom GET Order] Resolved targetOrderId: "${targetOrderId}"`);
+      } finally {
+        await client.end();
+      }
+    } else if (orderId.startsWith("mc-")) {
+      logger.info(`[Custom GET Order] Resolving mc- fallback reference "${orderId}" via database query`);
+      const client = new pg.Client({
+        connectionString: process.env.DATABASE_URL,
+      });
+      await client.connect();
+      try {
+        const sessionRes = await client.query(
+          `SELECT opc.order_id 
+           FROM payment_session ps
+           JOIN order_payment_collection opc ON ps.payment_collection_id = opc.payment_collection_id
+           WHERE (ps.data->>'reference' = $1 OR ps.data->>'id' = $1 OR ps.data->>'merchantOrderReference' = $1)
+             AND ps.deleted_at IS NULL
+             AND opc.deleted_at IS NULL
+           LIMIT 1`,
+          [orderId]
+        );
+        logger.info(`[Custom GET Order] mc- lookup returned row count: ${sessionRes.rows.length}`);
+        if (sessionRes.rows.length === 0) {
+          logger.warn(`[Custom GET Order] No order found matching mc- reference: ${orderId}`);
+          res.status(404).json({ message: `No order found for payment session reference: ${orderId}` });
+          return;
+        }
+        targetOrderId = sessionRes.rows[0].order_id;
         logger.info(`[Custom GET Order] Resolved targetOrderId: "${targetOrderId}"`);
       } finally {
         await client.end();
