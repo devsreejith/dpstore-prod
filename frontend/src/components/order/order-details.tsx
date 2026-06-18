@@ -413,6 +413,241 @@ const OrderDetails: React.FC<{ className?: string }> = ({
 
   const formattedOrderNumber = getFriendlyOrderNumber(order);
 
+  const getEstimatedDeliveryDate = (createdAtVal: any) => {
+    const d = createdAtVal ? new Date(createdAtVal) : new Date();
+    if (!Number.isFinite(d.getTime())) return '';
+    const start = new Date(d);
+    start.setDate(start.getDate() + 2);
+    const end = new Date(d);
+    end.setDate(end.getDate() + 4);
+
+    const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' };
+    return `${start.toLocaleDateString('en-US', options)} - ${end.toLocaleDateString('en-US', options)}`;
+  };
+
+  const handleDownloadInvoice = () => {
+    if (!order) return;
+    const invoiceWindow = window.open('', '_blank');
+    if (!invoiceWindow) {
+      alert('Please allow popups to download the invoice.');
+      return;
+    }
+
+    const friendlyOrderNumber = formattedOrderNumber;
+    const currency = String(order.currency_code ?? 'AED').toUpperCase();
+
+    const itemsHtml = items.map((it: any) => {
+      const qty = Number(it.quantity ?? 1);
+      const totalVal = Number(it.total ?? it.unit_price * qty);
+      const unitVal = totalVal / qty;
+      return `
+        <tr>
+          <td style="padding: 12px; border-bottom: 1px solid #eee;">
+            <div style="font-weight: bold; color: #111;">${it.title || it.product_title}</div>
+            <div style="font-size: 11px; color: #666;">SKU: ${it.variant?.sku || 'N/A'}</div>
+          </td>
+          <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: center;">${fmt(unitVal, currency)}</td>
+          <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: center;">${qty}</td>
+          <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right; font-weight: bold;">${fmt(totalVal, currency)}</td>
+        </tr>
+      `;
+    }).join('');
+
+    const invoiceHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Invoice - ${friendlyOrderNumber}</title>
+        <style>
+          body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            color: #333;
+            margin: 0;
+            padding: 40px;
+          }
+          .invoice-box {
+            max-width: 800px;
+            margin: auto;
+            border: 1px solid #eee;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+            padding: 30px;
+            border-radius: 8px;
+            background: #fff;
+          }
+          .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 2px solid #008755;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+          }
+          .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #008755;
+          }
+          .title {
+            font-size: 28px;
+            font-weight: bold;
+            color: #111;
+            text-align: right;
+          }
+          .meta-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+          }
+          .meta-section h3 {
+            font-size: 14px;
+            color: #777;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 4px;
+          }
+          .meta-section p {
+            margin: 4px 0;
+            font-size: 14px;
+            line-height: 1.4;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+          }
+          th {
+            background: #f8f8f8;
+            padding: 12px;
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #555;
+            border-bottom: 2px solid #eee;
+          }
+          .totals-table {
+            width: 300px;
+            margin-left: auto;
+            margin-top: 20px;
+          }
+          .totals-table td {
+            padding: 8px 12px;
+            font-size: 14px;
+          }
+          .totals-table tr.grand-total td {
+            font-size: 16px;
+            font-weight: bold;
+            color: #008755;
+            border-top: 2px solid #eee;
+          }
+          .footer {
+            text-align: center;
+            font-size: 12px;
+            color: #999;
+            margin-top: 50px;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+          }
+          @media print {
+            body { padding: 0; }
+            .invoice-box { border: none; box-shadow: none; padding: 0; }
+            .no-print { display: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="invoice-box">
+          <div class="header">
+            <div>
+              <div class="logo">HouseHoldProduct</div>
+              <div style="font-size: 12px; color: #666; margin-top: 4px;">Dubai, United Arab Emirates</div>
+            </div>
+            <div>
+              <div class="title">INVOICE</div>
+              <div style="font-size: 14px; text-align: right; color: #555; margin-top: 5px;">
+                <strong>Invoice ID:</strong> ${friendlyOrderNumber}
+              </div>
+              <div style="font-size: 14px; text-align: right; color: #555; margin-top: 3px;">
+                <strong>Date:</strong> ${fmtDate(order.created_at)}
+              </div>
+            </div>
+          </div>
+
+          <div class="meta-grid">
+            <div class="meta-section">
+              <h3>Billed To</h3>
+              <p><strong>${billingAddress.name}</strong></p>
+              ${billingAddress.lines.map(line => `<p>${line}</p>`).join('')}
+              ${billingAddress.phone ? `<p>Phone: ${billingAddress.phone}</p>` : ''}
+              <p>Email: ${order.email}</p>
+            </div>
+            <div class="meta-section">
+              <h3>Shipped To</h3>
+              <p><strong>${shippingAddress.name}</strong></p>
+              ${shippingAddress.lines.map(line => `<p>${line}</p>`).join('')}
+              ${shippingAddress.phone ? `<p>Phone: ${shippingAddress.phone}</p>` : ''}
+            </div>
+          </div>
+
+          <div class="meta-grid" style="margin-bottom: 20px;">
+            <div class="meta-section">
+              <h3>Payment Method</h3>
+              <p>${displayPaymentMethod}</p>
+              <p>Status: ${isPaymentPaid ? 'Paid' : 'Pending'}</p>
+            </div>
+            <div class="meta-section">
+              <h3>Shipping Method</h3>
+              <p>${shippingMethod}</p>
+            </div>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th style="text-align: left;">Item Description</th>
+                <th style="text-align: center; width: 120px;">Unit Price</th>
+                <th style="text-align: center; width: 80px;">Qty</th>
+                <th style="text-align: right; width: 120px;">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${itemsHtml}
+            </tbody>
+          </table>
+
+          <table class="totals-table">
+            <tr>
+              <td>Subtotal:</td>
+              <td style="text-align: right; font-weight: 500;">${fmt(subtotalAmount, currency)}</td>
+            </tr>
+            <tr>
+              <td>Delivery Charges:</td>
+              <td style="text-align: right; font-weight: 500;">${shippingAmount === 0 ? 'Free' : fmt(shippingAmount, currency)}</td>
+            </tr>
+            <tr class="grand-total">
+              <td>Total Amount:</td>
+              <td style="text-align: right;">${fmt(totalAmount, currency)}</td>
+            </tr>
+          </table>
+
+          <div class="footer">
+            <p>Thank you for shopping with HouseHoldProduct!</p>
+            <p style="font-size: 10px; margin-top: 5px;">If you have any questions, please contact support.</p>
+          </div>
+        </div>
+        <script>
+          window.onload = function() {
+            window.print();
+          }
+        </script>
+      </body>
+      </html>
+    `;
+
+    invoiceWindow.document.write(invoiceHtml);
+    invoiceWindow.document.close();
+  };
+
   return (
     <div className={`${className} bg-transparent min-h-screen pb-12 font-body`}>
       <Link href={ROUTES.ORDERS} className="inline-flex items-center text-sm font-semibold text-gray-600 hover:text-black transition gap-2 mb-5 font-body">
@@ -521,7 +756,7 @@ const OrderDetails: React.FC<{ className?: string }> = ({
                 <span>{shippingMethod}</span>
               </div>
               <p className="text-[11px] md:text-xs text-gray-600 font-medium mt-1">
-                Estimated delivery: May 28 - May 30, 2026
+                Estimated delivery: {getEstimatedDeliveryDate(order?.created_at)}
               </p>
               <div className={`font-bold text-xs md:text-sm mt-1 uppercase ${
                 shippingAmount === 0 ? 'text-[#008755]' : 'text-heading font-mono'
@@ -628,7 +863,7 @@ const OrderDetails: React.FC<{ className?: string }> = ({
           {/* Download Invoice Button */}
           <button
             type="button"
-            onClick={() => alert('Invoice download starting...')}
+            onClick={handleDownloadInvoice}
             className="w-full h-11 border border-gray-300 hover:bg-gray-50 text-heading font-bold text-xs md:text-sm rounded-lg transition duration-200 flex items-center justify-center gap-2 font-body mb-1"
           >
             <svg className="w-4 h-4 text-heading" fill="none" stroke="currentColor" viewBox="0 0 24 24">
