@@ -559,7 +559,7 @@ const OrderDetails: React.FC<{ className?: string }> = ({
         <div class="invoice-box">
           <div class="header">
             <div>
-              <div class="logo">HouseHoldProduct</div>
+              <div class="logo">Dubai Police Store</div>
               <div style="font-size: 12px; color: #666; margin-top: 4px;">Dubai, United Arab Emirates</div>
             </div>
             <div>
@@ -631,7 +631,7 @@ const OrderDetails: React.FC<{ className?: string }> = ({
           </table>
 
           <div class="footer">
-            <p>Thank you for shopping with HouseHoldProduct!</p>
+            <p>Thank you for shopping with Dubai Police Official Merchandise Online Store</p>
             <p style="font-size: 10px; margin-top: 5px;">If you have any questions, please contact support.</p>
           </div>
         </div>
@@ -861,16 +861,18 @@ const OrderDetails: React.FC<{ className?: string }> = ({
         {/* Right sidebar area (col-span-4) */}
         <div className="lg:col-span-4 space-y-4 w-full">
           {/* Download Invoice Button */}
-          <button
-            type="button"
-            onClick={handleDownloadInvoice}
-            className="w-full h-11 border border-gray-300 hover:bg-gray-50 text-heading font-bold text-xs md:text-sm rounded-lg transition duration-200 flex items-center justify-center gap-2 font-body mb-1"
-          >
-            <svg className="w-4 h-4 text-heading" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
-            <span>Download Invoice</span>
-          </button>
+          {!isCancelled && (!isOnlinePayment || isPaymentPaid) && (
+            <button
+              type="button"
+              onClick={handleDownloadInvoice}
+              className="w-full h-11 border border-gray-300 hover:bg-gray-50 text-heading font-bold text-xs md:text-sm rounded-lg transition duration-200 flex items-center justify-center gap-2 font-body mb-1"
+            >
+              <svg className="w-4 h-4 text-heading" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              <span>Download Invoice</span>
+            </button>
+          )}
 
           {/* PRICE DETAILS Card */}
           <div className="border border-gray-150 rounded-xl bg-white p-5 text-left font-body shadow-sm">
