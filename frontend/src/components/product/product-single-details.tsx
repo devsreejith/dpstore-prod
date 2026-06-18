@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import Loader from "@components/ui/loader";
 import cn from "classnames";
 import Button from "@components/ui/button";
 import Counter from "@components/common/counter";
@@ -54,7 +55,7 @@ const ProductSingleDetails: React.FC = () => {
       currencyCode: "AED",
     }
   );
-  if (isLoading) return <p>Loading...</p>;
+  if (isLoading) return <Loader size="large" text="Loading..." />;
   if (error) return <p>{error.message}</p>;
   if (!data) return <p>Product not found</p>;
   const variations = getVariations(data?.variations);

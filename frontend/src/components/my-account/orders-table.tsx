@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import Loader from '@components/ui/loader';
 import { fadeInTop } from '@utils/motion/fade-in-top';
 import Link from '@components/ui/link';
 import { useTranslation } from 'next-i18next';
@@ -169,7 +170,7 @@ const OrdersTable: React.FC = () => {
   const { data, isLoading, error } = useOrdersQuery({});
   const [activeTab, setActiveTab] = useState('All Orders');
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+  const itemsPerPage = 10;
 
   const orders = Array.isArray(data?.orders)
     ? [...data.orders].sort((a, b) => {
@@ -335,7 +336,7 @@ const OrdersTable: React.FC = () => {
         className="w-full"
       >
         {isLoading ? (
-          <div className="text-sm text-body py-10 text-center font-body">{t('text-loading')}</div>
+          <Loader size="medium" text={t('text-loading')} />
         ) : error ? (
           <div className="text-sm text-red-600 py-10 text-center font-body">{errorText}</div>
         ) : filteredOrders.length ? (

@@ -1,4 +1,5 @@
 import { CheckBox } from "@components/ui/checkbox";
+import Loader from "@components/ui/loader";
 import { useBrandsQuery } from "@framework/brand/get-all-brands";
 import { useRouter } from "next/router";
 import React from "react";
@@ -17,7 +18,7 @@ export const BrandFilter = () => {
     setFormState(selectedBrands);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query?.brand]);
-  if (isLoading) return <p>Loading...</p>;
+  if (isLoading) return <Loader size="small" text="Loading..." />;
   if (error) return <p>{error.message}</p>;
 
   function handleItemClick(e: React.FormEvent<HTMLInputElement>): void {

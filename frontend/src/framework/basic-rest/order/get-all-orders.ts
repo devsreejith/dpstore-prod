@@ -12,7 +12,8 @@ export const fetchOrders = async () => {
     const { data } = await http.get(`/store/orders`, {
       params: {
         fields,
-        status: ["pending", "completed", "canceled", "requires_action"]
+        status: ["pending", "completed", "canceled", "requires_action"],
+        limit: 99999
       }
     });
     const orders = (data?.orders ?? []) as any[];
@@ -26,7 +27,11 @@ export const fetchOrders = async () => {
     const status = e?.response?.status;
     const msg = String(e?.response?.data?.message ?? e?.message ?? "");
     if (status === 400 && msg.toLowerCase().includes("unrecognized fields")) {
-      const { data } = await http.get(`/store/orders`);
+      const { data } = await http.get(`/store/orders`, {
+        params: {
+          limit: 99999
+        }
+      });
       return { orders: (data?.orders ?? []) as any[], count: data?.count ?? 0 };
     }
     throw e;

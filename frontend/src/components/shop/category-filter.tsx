@@ -1,4 +1,5 @@
 import { useCategoriesQuery } from "@framework/category/get-all-categories";
+import Loader from "@components/ui/loader";
 import { CheckBox } from "@components/ui/checkbox";
 import { useRouter } from "next/router";
 import React from "react";
@@ -23,7 +24,7 @@ export const CategoryFilter = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query?.category]);
 
-  if (isLoading) return <p>Loading...</p>;
+  if (isLoading) return <Loader size="small" text="Loading..." />;
 
   function handleItemClick(e: React.FormEvent<HTMLInputElement>): void {
     const { value } = e.currentTarget;

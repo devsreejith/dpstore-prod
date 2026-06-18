@@ -1,4 +1,5 @@
 import OrderDetails from '@components/order/order-details';
+import Loader from '@components/ui/loader';
 import { useOrderQuery } from '@framework/order/get-order';
 import { useRouter } from 'next/router';
 import usePrice, { formatPrice } from '@framework/product/use-price';
@@ -270,20 +271,11 @@ export default function OrderInformation() {
 
   if (!isReady || isLoading || !data || verifying || (isOnlinePayment && !verificationDone)) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[450px] py-16 text-center">
-        <div className="relative mb-6 flex items-center justify-center">
-          {/* Subtle pulsating outer circle */}
-          <div className="absolute w-20 h-20 border border-gray-150 rounded-full animate-ping opacity-70"></div>
-          {/* Main spinning ring */}
-          <div className="w-12 h-12 border-[3.5px] border-gray-150 border-t-heading rounded-full animate-spin relative z-10"></div>
-        </div>
-        <h2 className="text-base md:text-lg font-bold text-heading font-body mb-2 animate-pulse">
-          Verifying payment status...
-        </h2>
-        <p className="text-xs md:text-sm text-gray-500 font-body max-w-sm px-4 leading-relaxed">
-          Please wait while we confirm your payment transaction. Do not refresh or close this page.
-        </p>
-      </div>
+      <Loader
+        size="large"
+        text="Verifying payment status..."
+        description="Please wait while we confirm your payment transaction. Do not refresh or close this page."
+      />
     );
   }
 

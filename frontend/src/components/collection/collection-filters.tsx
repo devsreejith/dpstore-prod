@@ -1,4 +1,5 @@
 import React from "react";
+import Loader from "@components/ui/loader";
 import { useTranslation } from "next-i18next";
 import { useCollectionsQuery } from "@framework/collection/get-all-collection";
 import ActiveLink from "@components/ui/active-link";
@@ -9,7 +10,7 @@ export const CollectionFilters: React.FC = () => {
   const { data, isLoading } = useCollectionsQuery({
     limit: 15,
   });
-  if (isLoading) return <p>Loading...</p>;
+  if (isLoading) return <Loader size="small" text="Loading..." />;
 
   const items = data?.collections.data;
   return (

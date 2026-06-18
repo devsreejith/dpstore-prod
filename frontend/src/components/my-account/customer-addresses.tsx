@@ -1,4 +1,5 @@
 import Input from "@components/ui/input";
+import Loader from "@components/ui/loader";
 import Button from "@components/ui/button";
 import Alert from "@components/ui/alert";
 import http from "@framework/utils/http";
@@ -385,7 +386,7 @@ export default function CustomerAddresses() {
       {/* Address List */}
       <div className="mt-1">
         {addressesQuery.isLoading ? (
-          <div className="text-sm text-body py-6">Loading...</div>
+          <Loader size="medium" text="Loading..." />
         ) : (
           <div>
             {addresses.length ? (
