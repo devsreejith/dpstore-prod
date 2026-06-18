@@ -45,6 +45,30 @@ function sanitizeNGeniusData(obj: any): any {
   return cloned;
 }
 
+function getDecimalDigits(currencyCode: string): number {
+  const code = String(currencyCode || "").toUpperCase();
+  // Currencies with 3 decimal places
+  if (["BHD", "IQD", "JOD", "KWD", "LYD", "OMR", "TND"].includes(code)) {
+    return 3;
+  }
+  // Currencies with 0 decimal places
+  if (["BIF", "CLP", "DJF", "GNF", "JPY", "KMF", "KRW", "MGA", "PYG", "RWF", "UGX", "VUV", "VND", "XAF", "XOF", "XPF"].includes(code)) {
+    return 0;
+  }
+  // Default is 2 decimal places
+  return 2;
+}
+
+function getAmountInMinorUnits(amount: number, currencyCode: string): number {
+  const decimals = getDecimalDigits(currencyCode);
+  return Math.round(amount * Math.pow(10, decimals));
+}
+
+function getAmountFromMinorUnits(amountMinor: number, currencyCode: string): number {
+  const decimals = getDecimalDigits(currencyCode);
+  return amountMinor / Math.pow(10, decimals);
+}
+
 export class NGeniusPaymentService extends AbstractPaymentProvider<any> {
   static identifier = "ngenius";
   protected client: NGeniusClient;
@@ -71,7 +95,7 @@ export class NGeniusPaymentService extends AbstractPaymentProvider<any> {
       if (typeof amount === "object" && amount !== null) {
         amountValue = amount.value ?? amount.raw?.value ?? amount;
       }
-      const parsedAmount = Math.round(Number(amountValue));
+      const minorAmount = getAmountInMinorUnits(Number(amountValue), currency_code);
 
       // Retrieve cart or order ID from input
       const cartIdOrOrderId = data?.cart_id || data?.order_id || context?.cart_id || context?.cart?.id || input.cart_id || 
@@ -211,7 +235,7 @@ export class NGeniusPaymentService extends AbstractPaymentProvider<any> {
       }
 
       this.logger.info(
-        `[N-Genius Service] Initiating payment for resource reference: ${orderReference}, Amount: ${parsedAmount} ${currency_code}`
+        `[N-Genius Service] Initiating payment for resource reference: ${orderReference}, Amount: ${amountValue} (Minor: ${minorAmount}) ${currency_code}`
       );
 
 
@@ -236,7 +260,7 @@ export class NGeniusPaymentService extends AbstractPaymentProvider<any> {
       const redirectParam = `id=${orderReference}`;
 
       const orderResponse = await this.client.createOrder(
-        parsedAmount,
+        minorAmount,
         currency_code,
         orderReference,
         customerEmail,
@@ -416,18 +440,19 @@ export class NGeniusPaymentService extends AbstractPaymentProvider<any> {
       if (typeof amountValue === "object" && amountValue !== null) {
         amountValue = amountValue.value ?? amountValue.raw?.value ?? amountValue;
       }
-      const parsedRefundAmount = Math.round(Number(amountValue));
       
       const currency = sessionData.currency_code || "AED";
+      const minorRefundAmount = getAmountInMinorUnits(Number(amountValue), currency);
+
       this.logger.info(
-        `[N-Genius Service] Refunding payment for reference: ${reference}, Amount: ${parsedRefundAmount} ${currency}`
+        `[N-Genius Service] Refunding payment for reference: ${reference}, Amount: ${amountValue} (Minor: ${minorRefundAmount}) ${currency}`
       );
 
       if (!reference) {
         throw new Error("No N-Genius order reference found in payment session.");
       }
 
-      const refundResponse = await this.client.refundPayment(reference, parsedRefundAmount, currency);
+      const refundResponse = await this.client.refundPayment(reference, minorRefundAmount, currency);
 
       return {
         data: sanitizeNGeniusData({
@@ -537,11 +562,13 @@ export class NGeniusPaymentService extends AbstractPaymentProvider<any> {
     
     // Extract amount details
     const amountObj = payload.data?.order?.amount || payload.amount;
+    const currency = amountObj?.currencyCode || payload.data?.order?.amount?.currencyCode || payload.data?.order?.currencyCode || payload.currency || "AED";
     let amount = 0;
     if (typeof amountObj === "object" && amountObj !== null) {
-      amount = amountObj.value || amountObj.amount || 0;
+      const rawAmount = amountObj.value || amountObj.amount || 0;
+      amount = getAmountFromMinorUnits(rawAmount, currency);
     } else if (typeof amountObj === "number") {
-      amount = amountObj;
+      amount = getAmountFromMinorUnits(amountObj, currency);
     }
 
     if (!reference) {
