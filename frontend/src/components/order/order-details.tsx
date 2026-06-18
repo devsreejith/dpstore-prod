@@ -294,7 +294,8 @@ const OrderDetails: React.FC<{ className?: string }> = ({
     ? isPaymentSuccessful(paymentCollection)
     : (paymentStatus === 'captured' || paymentStatus === 'paid' || paymentStatus === 'authorized');
   
-  const isPaymentPending = !isPaymentPaid && !isCancelled;
+  const isGenuinelyCancelled = isCancelled && (!isOnlinePayment || isPaymentPaid);
+  const isPaymentPending = !isPaymentPaid;
 
   const display = order?.display_id ?? order?.custom_display_id ?? order?.id;
   const title = display ? `Order #000${display}` : `Order #000${String(order?.id ?? '')}`;
@@ -660,14 +661,14 @@ const OrderDetails: React.FC<{ className?: string }> = ({
 
       {/* Payment Status Alert Box */}
       <div className={`w-full border rounded-xl p-4 mb-5 flex flex-col md:flex-row md:items-center justify-between gap-4 ${
-        isCancelled
+        isGenuinelyCancelled
           ? 'bg-[#FEF2F2] border-[#FEE2E2] text-rose-700'
           : isPaymentPaid || !isOnlinePayment
             ? 'bg-[#F4F9F6] border-[#E8F1EC] text-[#008755]'
             : 'bg-[#FEF2F2] border-[#FEE2E2] text-rose-700'
       }`}>
         <div className="flex items-center gap-3.5">
-          {isCancelled ? (
+          {isGenuinelyCancelled ? (
             <IoCloseCircleOutline className="text-xl text-rose-500 flex-shrink-0" />
           ) : isPaymentPaid || !isOnlinePayment ? (
             <IoCheckmarkCircle className="text-xl text-[#008755] flex-shrink-0" />
@@ -676,7 +677,7 @@ const OrderDetails: React.FC<{ className?: string }> = ({
           )}
           <div className="text-left font-body">
             <h4 className="text-xs md:text-sm font-bold">
-              {isCancelled
+              {isGenuinelyCancelled
                 ? 'Order Cancelled'
                 : !isOnlinePayment
                   ? 'Order Confirmed'
@@ -685,7 +686,7 @@ const OrderDetails: React.FC<{ className?: string }> = ({
                     : 'Payment Failed'}
             </h4>
             <p className="text-[11px] md:text-xs text-gray-500 mt-0.5">
-              {isCancelled
+              {isGenuinelyCancelled
                 ? 'This order has been cancelled.'
                 : !isOnlinePayment
                   ? 'Your order has been placed successfully. Payment will be collected upon delivery.'
@@ -696,7 +697,7 @@ const OrderDetails: React.FC<{ className?: string }> = ({
           </div>
         </div>
 
-        {isPaymentPending && !isCancelled && isOnlinePayment && (
+        {isPaymentPending && !isGenuinelyCancelled && isOnlinePayment && (
           <button
             type="button"
             onClick={continuePayment}
@@ -844,7 +845,7 @@ const OrderDetails: React.FC<{ className?: string }> = ({
               <span>Continue Shopping</span>
             </Link>
 
-            {isPaymentPending && !isCancelled && (
+            {isPaymentPending && !isGenuinelyCancelled && (
               <button
                 type="button"
                 onClick={cancelOrder}
@@ -861,7 +862,7 @@ const OrderDetails: React.FC<{ className?: string }> = ({
         {/* Right sidebar area (col-span-4) */}
         <div className="lg:col-span-4 space-y-4 w-full">
           {/* Download Invoice Button */}
-          {!isCancelled && (!isOnlinePayment || isPaymentPaid) && (
+          {!isGenuinelyCancelled && (!isOnlinePayment || isPaymentPaid) && (
             <button
               type="button"
               onClick={handleDownloadInvoice}
@@ -902,7 +903,7 @@ const OrderDetails: React.FC<{ className?: string }> = ({
             </div>
 
             <div className={`rounded p-2.5 mt-4 text-xs font-bold text-center border ${
-              isCancelled
+              isGenuinelyCancelled
                 ? 'bg-rose-50 border-rose-100 text-rose-700'
                 : isPaymentPaid && paymentProvider !== 'pp_system_default'
                   ? 'bg-[#F4F9F6] border-[#E8F1EC] text-[#008755]'
@@ -910,7 +911,7 @@ const OrderDetails: React.FC<{ className?: string }> = ({
                       ? 'bg-amber-50 border-amber-100 text-[#D97706]'
                       : 'bg-rose-50 border-rose-100 text-rose-700')
             }`}>
-              {isCancelled
+              {isGenuinelyCancelled
                 ? 'Order Cancelled'
                 : isPaymentPaid && paymentProvider !== 'pp_system_default'
                   ? `Paid By ${paymentMethodName}`
