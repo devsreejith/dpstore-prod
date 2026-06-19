@@ -10,7 +10,7 @@ export const CategoryFilter = () => {
   const router = useRouter();
   const { pathname, query } = router;
   const { data, isLoading } = useCategoriesQuery({
-    limit: 10,
+    limit: 100,
   });
 
   const selectedCategories = query?.category

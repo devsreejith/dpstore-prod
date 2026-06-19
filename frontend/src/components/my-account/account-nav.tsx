@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { useRouter } from "next/router";
 import {
-  IoCartOutline,
+  IoBagOutline,
   IoPersonOutline,
   IoLocationOutline,
   IoSettingsOutline,
@@ -48,7 +48,7 @@ export default function AccountNav({ customerName }: { customerName?: string | n
           className="flex items-center justify-between px-5 py-3.5 hover:bg-gray-50 transition"
         >
           <div className="flex items-center gap-3">
-            <IoCartOutline className="w-5 h-5 text-[#008755]" />
+            <IoBagOutline className="w-5 h-5 text-[#008755]" />
             <span className="text-[13px] font-semibold uppercase tracking-wide text-[#008755] font-body">
               MY ORDERS
             </span>

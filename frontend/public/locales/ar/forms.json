@@ -43,7 +43,7 @@
   "postcode-required": "الرمز البريدي مطلوب",
   "postcode-invalid": "يجب أن يحتوي الرمز البريدي على أرقام فقط",
   "phone-invalid": "يجب أن يحتوي رقم الهاتف على أرقام فقط",
-  "placeholder-search": "بحث ...",
+  "placeholder-search": "ابحث هنا",
   "placeholder-name": "أدخل اسمك",
   "placeholder-email": "أدخل بريدك الإلكتروني",
   "placeholder-subject": "أدخل موضوعك",

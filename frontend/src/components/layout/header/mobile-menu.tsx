@@ -4,47 +4,10 @@ import Scrollbar from '@components/common/scrollbar';
 import { IoIosArrowDown } from 'react-icons/io';
 import Logo from '@components/ui/logo';
 import { useUI } from '@contexts/ui.context';
-import {
-  IoLogoInstagram,
-  IoLogoTwitter,
-  IoLogoFacebook,
-  IoLogoYoutube,
-  IoClose,
-} from 'react-icons/io5';
+import { IoClose } from 'react-icons/io5';
 import { useTranslation } from 'next-i18next';
 import { useCategoriesQuery } from '@framework/category/get-all-categories';
 import { ROUTES } from '@utils/routes';
-
-const social = [
-  {
-    id: 0,
-    link: 'https://www.facebook.com/',
-    icon: <IoLogoFacebook />,
-    className: 'facebook',
-    title: 'text-facebook',
-  },
-  {
-    id: 1,
-    link: 'https://twitter.com/',
-    icon: <IoLogoTwitter />,
-    className: 'twitter',
-    title: 'text-twitter',
-  },
-  {
-    id: 2,
-    link: 'https://www.youtube.com/',
-    icon: <IoLogoYoutube />,
-    className: 'youtube',
-    title: 'text-youtube',
-  },
-  {
-    id: 3,
-    link: 'https://www.instagram.com/',
-    icon: <IoLogoInstagram />,
-    className: 'instagram',
-    title: 'text-instagram',
-  },
-];
 
 export default function MobileMenu() {
   const [activeMenus, setActiveMenus] = useState<any>([]);
@@ -191,20 +154,6 @@ export default function MobileMenu() {
             </ul>
           </div>
         </Scrollbar>
-
-        <div className="flex items-center justify-center flex-shrink-0 bg-white border-t border-gray-100 px-7 gap-x-1">
-          {social?.map((item, index) => (
-            <a
-              href={item.link}
-              className={`text-heading p-5 opacity-60 ltr:first:-ml-4 rtl:first:-mr-4 transition duration-300 ease-in hover:opacity-100 ${item.className}`}
-              target="_blank"
-              key={index}
-            >
-              <span className="sr-only">{t(`${item.title}`)}</span>
-              {item.icon}
-            </a>
-          ))}
-        </div>
       </div>
     </>
   );

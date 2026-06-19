@@ -1,8 +1,7 @@
-import SearchIcon from "@components/icons/search-icon";
 import React from "react";
 import cn from "classnames";
 import { useTranslation } from "next-i18next";
-import { IoCloseOutline } from "react-icons/io5";
+import { IoCloseOutline, IoSearchOutline } from "react-icons/io5";
 
 type SearchProps = {
   className?: string;
@@ -28,7 +27,7 @@ const SearchBox = React.forwardRef<HTMLInputElement, SearchProps>(
       >
         <label htmlFor="search" className="flex items-center py-0.5">
           <span className="flex items-center justify-center flex-shrink-0 w-12 h-full cursor-pointer md:w-14 focus:outline-none">
-            <SearchIcon color="text-heading" className="w-4 h-4" />
+            <IoSearchOutline className="w-5 h-5 text-heading" />
           </span>
           <input
             id="search"

@@ -1,5 +1,5 @@
 import Link from "@components/ui/link";
-import SearchIcon from "@components/icons/search-icon";
+import { IoSearchOutline } from "react-icons/io5";
 import UserIcon from "@components/icons/user-icon";
 import MenuIcon from "@components/icons/menu-icon";
 import HomeIcon from "@components/icons/home-icon";
@@ -59,7 +59,7 @@ const BottomNavigation: React.FC = () => {
           onClick={openSearch}
           aria-label="search-button"
         >
-          <SearchIcon />
+          <IoSearchOutline className="w-5 h-5 text-heading" />
         </button>
         <Link href="/" className="flex-shrink-0">
           <HomeIcon />

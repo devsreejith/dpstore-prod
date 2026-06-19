@@ -1,51 +1,23 @@
-
-
 export const footer = {
   widgets: [
     {
-      id: 2,
-      widgetTitle: 'widget-title-contact',
-      lists: [
-        {
-          id: 1,
-          title: 'link-contact-us',
-          path: '/contact-us',
-        },
-        {
-          id: 2,
-          title: 'link-email',
-          path: '/',
-        },
-        {
-          id: 3,
-          title: 'link-phone',
-          path: '/',
-        },
-      ],
-    },
-    {
       id: 3,
-      widgetTitle: 'widget-title-about',
+      widgetTitle: 'widget-title-quick-links',
       lists: [
         {
           id: 1,
-          title: 'link-support-center',
-          path: '/contact-us',
+          title: 'link-home',
+          path: '/',
         },
         {
           id: 2,
-          title: 'link-customer-support',
-          path: '/',
-        },
-        {
-          id: 3,
-          title: 'link-about-us',
+          title: 'link-about',
           path: '/contact-us',
         },
         {
-          id: 4,
-          title: 'link-copyright',
-          path: '/',
+          id: 3,
+          title: 'link-contact',
+          path: '/contact-us',
         },
       ],
     },
@@ -62,11 +34,6 @@ export const footer = {
           id: 2,
           title: 'link-shipping',
           path: '/',
-        },
-        {
-          id: 3,
-          title: 'link-return-policy',
-          path: '/return-policy',
         },
       ],
     },
@@ -85,11 +52,6 @@ export const footer = {
           path: '/terms',
         },
         {
-          id: 3,
-          title: 'link-return-policy',
-          path: '/return-policy',
-        },
-        {
           id: 4,
           title: 'link-site-map',
           path: '/',
@@ -97,28 +59,22 @@ export const footer = {
       ],
     },
     {
-      id: 6,
-      widgetTitle: 'widget-title-top-categories',
+      id: 2,
+      widgetTitle: 'widget-title-contact',
       lists: [
         {
           id: 1,
-          title: 'link-men-wear',
-          path: '/search',
+          title: 'text-footer-address',
         },
         {
           id: 2,
-          title: 'link-men-wear',
-          path: '/search',
+          title: 'link-email',
+          path: '/',
         },
         {
           id: 3,
-          title: 'link-kids-wear',
-          path: '/search',
-        },
-        {
-          id: 4,
-          title: 'link-sports-wear',
-          path: '/search',
+          title: 'link-phone',
+          path: '/',
         },
       ],
     },
@@ -174,55 +130,26 @@ export const footerContemporary = {
       isCompanyIntroduction: true,
       description:
         'The Authorized online store for all Dubai Police Official merchandise, proudly representing excellence.',
-
-      lists: [
-
-      ],
-    },
-    {
-      id: 2,
-      widgetTitle: 'widget-title-contact',
-      lists: [
-        {
-          id: 1,
-          title: 'link-contact-us',
-          path: '/contact-us',
-        },
-        {
-          id: 2,
-          title: 'link-email',
-          path: '/',
-        },
-        {
-          id: 3,
-          title: 'link-phone',
-          path: '/',
-        },
-      ],
+      lists: [],
     },
     {
       id: 3,
-      widgetTitle: 'widget-title-about',
+      widgetTitle: 'widget-title-quick-links',
       lists: [
         {
           id: 1,
-          title: 'link-support-center',
-          path: '/contact-us',
+          title: 'link-home',
+          path: '/',
         },
         {
           id: 2,
-          title: 'link-customer-support',
-          path: '/',
-        },
-        {
-          id: 3,
-          title: 'link-about-us',
+          title: 'link-about',
           path: '/contact-us',
         },
         {
-          id: 4,
-          title: 'link-copyright',
-          path: '/',
+          id: 3,
+          title: 'link-contact',
+          path: '/contact-us',
         },
       ],
     },
@@ -239,11 +166,6 @@ export const footerContemporary = {
           id: 2,
           title: 'link-shipping',
           path: '/',
-        },
-        {
-          id: 3,
-          title: 'link-return-policy',
-          path: '/return-policy',
         },
       ],
     },
@@ -262,13 +184,28 @@ export const footerContemporary = {
           path: '/terms',
         },
         {
-          id: 3,
-          title: 'link-return-policy',
-          path: '/return-policy',
-        },
-        {
           id: 4,
           title: 'link-site-map',
+          path: '/',
+        },
+      ],
+    },
+    {
+      id: 2,
+      widgetTitle: 'widget-title-contact',
+      lists: [
+        {
+          id: 1,
+          title: 'text-footer-address',
+        },
+        {
+          id: 2,
+          title: 'link-email',
+          path: '/',
+        },
+        {
+          id: 3,
+          title: 'link-phone',
           path: '/',
         },
       ],

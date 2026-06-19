@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/router";
-import SearchIcon from "@components/icons/search-icon";
 import HeaderMenu from "@components/layout/header/header-menu";
 import Logo from "@components/ui/logo";
 import Link from "@components/ui/link";
@@ -10,7 +9,6 @@ import { useAddActiveScroll } from "@utils/use-add-active-scroll";
 import dynamic from "next/dynamic";
 import { useTranslation } from "next-i18next";
 import WishButton from "@components/ui/wish-button";
-import { UserLineIcon } from "@components/icons/UserLineIcon";
 import CategoryMenu from "@components/ui/category-menu";
 import { useCategoriesQuery } from "@framework/category/get-all-categories";
 import Image from "next/image";
@@ -27,6 +25,8 @@ import {
   IoBagOutline,
   IoSettingsOutline,
   IoLogOutOutline,
+  IoSearchOutline,
+  IoCloseOutline,
 } from "react-icons/io5";
 
 const AuthMenu = dynamic(() => import("@components/layout/header/auth-menu"), {
@@ -41,7 +41,7 @@ const { site_header } = siteSettings;
 export default function Header() {
   const { openSidebar, setDrawerView, openModal, setModalView, isAuthorized } =
     useUI();
-  const { t } = useTranslation();
+  const { t } = useTranslation(["common", "forms"]);
   const { mutate: logout, isPending: isLoggingOut } = useLogoutMutation();
   const { data: categoriesData } = useCategoriesQuery({ limit: 100 });
   const siteHeaderRef = useRef<HTMLDivElement>(null);
@@ -72,6 +72,21 @@ export default function Header() {
       });
     }
   }
+  
+  const activeQuery = typeof router.query.q === "string" ? router.query.q : "";
+  const isSearchCompleted = !!activeQuery && searchTerm === activeQuery;
+
+  function handleSearchButtonClick(e: React.MouseEvent<HTMLButtonElement>) {
+    if (isSearchCompleted) {
+      e.preventDefault();
+      setSearchTerm("");
+      const { q, ...restQuery } = router.query;
+      router.push({
+        pathname: ROUTES.SEARCH,
+        query: restQuery,
+      }, undefined, { scroll: false });
+    }
+  }
 
   // Fetch logged in customer profile to show customer name dynamically in the header dropdown
   const customerQuery = useQuery({
@@ -87,9 +102,7 @@ export default function Header() {
   const customerName = (() => {
     const c: any = customerQuery.data;
     const first = String(c?.first_name ?? "").trim();
-    const last = String(c?.last_name ?? "").trim();
-    const full = `${first} ${last}`.trim();
-    if (full) return full;
+    if (first) return first;
     const email = String(c?.email ?? "").trim();
     if (email) return email.split("@")[0] || email;
     return "My Account";
@@ -292,13 +305,15 @@ export default function Header() {
             >
               <label htmlFor="search" className="flex items-center">
                 <button
-                  type="submit"
-                  className="absolute top-0 left-0 flex items-center justify-center flex-shrink-0 w-12 h-full cursor-pointer md:w-14 focus:outline-none"
+                  type={isSearchCompleted ? "button" : "submit"}
+                  onClick={handleSearchButtonClick}
+                  className="absolute top-0 ltr:right-0 rtl:left-0 flex items-center justify-center flex-shrink-0 w-12 h-full cursor-pointer md:w-14 focus:outline-none text-heading hover:bg-heading hover:text-white transition-all duration-200"
                 >
-                  <SearchIcon
-                    color="text-heading"
-                    className="w-[18px] h-[18px]"
-                  />
+                  {isSearchCompleted ? (
+                    <IoCloseOutline className="w-6 h-6" />
+                  ) : (
+                    <IoSearchOutline className="w-5 h-5" />
+                  )}
                 </button>
                 <input
                   id="search"
@@ -314,8 +329,8 @@ export default function Header() {
                       }, undefined, { scroll: false });
                     }
                   }}
-                  className="w-full text-sm placeholder-gray-400 bg-transparent rounded-md outline-none focus:border-2 focus:border-gray-600 ltr:pr-4 rtl:pl-4 ltr:pl-14 rtl:pr-14 h-14 text-heading lg:text-base"
-                  placeholder={"Search Anything..."}
+                  className="w-full text-sm placeholder-gray-400 bg-transparent rounded-md outline-none focus:border-2 focus:border-gray-600 ltr:pl-4 rtl:pr-4 ltr:pr-14 rtl:pl-14 h-14 text-heading lg:text-base"
+                  placeholder={t("forms:placeholder-search")}
                   aria-label="Search"
                   autoComplete="off"
                 />
@@ -364,7 +379,7 @@ export default function Header() {
                   onClick={() => setDropdownOpen(!dropdownOpen)}
                   className="flex items-center gap-x-2 text-sm xl:text-base font-normal text-heading focus:outline-none py-2 px-3 hover:bg-gray-50 rounded-lg transition font-body"
                 >
-                  <UserLineIcon className="w-4 xl:w-[17px] h-auto text-black" />
+                  <IoPersonOutline className="w-4 xl:w-[17px] h-auto text-black" />
                   <span>{customerName}</span>
                   <svg
                     className={`w-4 h-4 text-gray-500 transition-transform duration-200 ${
@@ -386,7 +401,7 @@ export default function Header() {
                     />
                     <div className="absolute right-0 mt-2.5 w-52 bg-white border border-gray-150 rounded-xl shadow-lg py-2.5 z-40 animate-fade-in origin-top-right font-body">
                       <Link
-                        href={ROUTES.ACCOUNT}
+                        href={ROUTES.ACCOUNT_DETAILS}
                         onClick={() => setDropdownOpen(false)}
                         className="flex items-center gap-3 px-4 py-2.5 text-sm text-heading hover:bg-[#E8F5E9] hover:text-[#005844] font-normal transition"
                       >
@@ -399,7 +414,7 @@ export default function Header() {
                         className="flex items-center gap-3 px-4 py-2.5 text-sm text-heading hover:bg-[#E8F5E9] hover:text-[#005844] font-normal transition"
                       >
                         <IoBagOutline className="text-lg text-gray-400" />
-                        <span>Orders</span>
+                        <span>{t("menu:menu-shopping")}</span>
                       </Link>
                       <Link
                         href={ROUTES.CHANGE_PASSWORD}
@@ -434,7 +449,7 @@ export default function Header() {
                 btnProps={{
                   children: (
                     <>
-                      <UserLineIcon className="w-4 xl:w-[17px] h-auto text-black" />
+                      <IoPersonOutline className="w-4 xl:w-[17px] h-auto text-black" />
                       {t("text-login")}
                     </>
                   ),
