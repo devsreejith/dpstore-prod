@@ -44,7 +44,7 @@ const fetchProducts = async ({ queryKey, pageParam }: any) => {
 		limit: isClientSideFiltered ? 200 : (safeOptions?.limit ?? 10),
 		offset: isClientSideFiltered ? 0 : (typeof pageParam === "number" ? pageParam : 0),
 		region_id: process.env.NEXT_PUBLIC_MEDUSA_REGION_ID,
-		fields: "id,title,handle,description,thumbnail,images.url,collection.id,collection.title,variants.id,variants.sku,variants.inventory_quantity,variants.calculated_price,metadata,created_at",
+		fields: "id,title,handle,description,thumbnail,images.url,collection.id,collection.title,categories.id,categories.name,categories.handle,variants.id,variants.sku,variants.inventory_quantity,variants.calculated_price,metadata,created_at",
 	};
 
 	if (safeOptions?.collection_id) {

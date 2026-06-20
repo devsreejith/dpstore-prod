@@ -42,7 +42,7 @@ async function signUp(input: SignUpInputType) {
   const loginToken = String(loginRes?.data?.token ?? "").trim();
   if (!loginToken) throw new Error("Signup failed");
 
-  Cookies.set("auth_token", loginToken);
+  Cookies.set("auth_token", loginToken, { path: "/" });
 
   await http.post(
     "/auth/session",

@@ -1,7 +1,7 @@
 import Input from '@components/ui/input';
 import TextArea from '@components/ui/text-area';
 import Button from '@components/ui/button';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useCart } from '@contexts/cart/cart.context';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -10,7 +10,7 @@ import { useUI } from '@contexts/ui.context';
 import Alert from '@components/ui/alert';
 import { ROUTES } from '@utils/routes';
 import { useRouter } from 'next/router';
-import { IoTrashOutline } from 'react-icons/io5';
+import { IoTrashOutline, IoHomeOutline, IoBriefcaseOutline, IoPricetagOutline } from 'react-icons/io5';
 import { formatPrice } from '@framework/product/use-price';
 
 interface CheckoutInputType {
@@ -35,6 +35,7 @@ type AddressInput = {
   postal_code?: string;
   country_code: string;
   phone?: string;
+  address_type?: string;
 };
 
 const PHONE_ONLY_REGEX = /^[0-9]{6,15}$/;
@@ -75,10 +76,13 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
     register: registerNewAddress,
     handleSubmit: handleSubmitNewAddress,
     reset: resetNewAddress,
+    watch: watchNewAddress,
     formState: { errors: newAddressErrors },
   } = useForm<AddressInput>({
-    defaultValues: { country_code: 'ae' },
+    defaultValues: { country_code: 'ae', address_type: 'Home' },
   });
+
+  const selectedAddressType = watchNewAddress('address_type') ?? 'Home';
 
   const customerQuery = useQuery({
     queryKey: ['store.customer.me.checkout'],
@@ -112,6 +116,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
         postal_code: String(input.postal_code || '').trim() || undefined,
         country_code: String(input.country_code || 'ae').trim().toLowerCase(),
         phone: String(input.phone || '').trim() || undefined,
+        company: input.address_type || 'Home',
       };
       if (!payload.address_1) throw new Error('Address is required');
       const { data } = await http.post('/store/customers/me/addresses', payload);
@@ -131,11 +136,9 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
         }
         applyAddressToForm(maybeAddress);
       }
-      resetNewAddress({ country_code: 'ae' } as any);
+      resetNewAddress({ country_code: 'ae', address_type: 'Home' } as any);
       setShowAddAddress(false);
       await queryClient.invalidateQueries({ queryKey: ['store.customer.addresses.checkout'] });
-      // Transition to Step 3 after saving new address
-      setActiveStep(3);
     },
   });
 
@@ -249,24 +252,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
     return Array.isArray((addressesQuery.data as any)?.addresses) ? (addressesQuery.data as any).addresses : [];
   }, [addressesQuery.data]);
 
-  useEffect(() => {
-    if (showAddAddress) return;
-    const defaultAddress =
-      addresses.find((a: any) => a?.is_default_shipping) ||
-      addresses?.[0] ||
-      null;
-    if (!defaultAddress) return;
-    const defaultId = String(defaultAddress.id || '');
-    if (!defaultId) return;
-    setSelectedAddressId((prev) => {
-      if (prev) return prev;
-      setSelectedAddress(defaultAddress);
-      applyAddressToForm(defaultAddress);
-      return defaultId;
-    });
-  }, [addresses, showAddAddress]);
-
-  const applyAddressToForm = (a: any) => {
+  const applyAddressToForm = useCallback((a: any) => {
     const first = String(a?.first_name ?? '').trim();
     const last = String(a?.last_name ?? '').trim();
     const phone = String(a?.phone ?? '').trim();
@@ -279,7 +265,23 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
     if (city) setValue('city', city);
     if (state) setValue('state', state);
     if (zip) setValue('zipCode', zip);
-  };
+  }, [setValue]);
+
+  useEffect(() => {
+    if (showAddAddress) return;
+    const defaultAddress =
+      addresses.find((a: any) => a?.is_default_shipping) ||
+      addresses?.[0] ||
+      null;
+    if (!defaultAddress) return;
+    const defaultId = String(defaultAddress.id || '');
+    if (!defaultId) return;
+    if (!selectedAddressId) {
+      setSelectedAddressId(defaultId);
+      setSelectedAddress(defaultAddress);
+      applyAddressToForm(defaultAddress);
+    }
+  }, [addresses, showAddAddress, selectedAddressId, setSelectedAddress, applyAddressToForm]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -351,12 +353,25 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
                     errorKey={(newAddressErrors as any)?.city?.message}
                     variant="solid"
                   />
-                  <Input
-                    labelKey="forms:label-state"
-                    {...registerNewAddress('province', { required: 'forms:state-required' } as any)}
-                    errorKey={(newAddressErrors as any)?.province?.message}
-                    variant="solid"
-                  />
+                  <div className="flex flex-col space-y-2">
+                    <label className="text-heading font-semibold text-sm leading-none cursor-pointer">Emirate *</label>
+                    <select
+                      {...registerNewAddress('province', { required: 'forms:state-required' } as any)}
+                      className="form-select py-2 px-4 w-full transition duration-150 ease-in-out border text-input text-13px lg:text-sm font-body rounded-md placeholder-body min-h-12 bg-white border-gray-300 focus:outline-none focus:border-heading h-11 md:h-12"
+                    >
+                      <option value="">Select Emirate</option>
+                      <option value="Abu Dhabi">Abu Dhabi</option>
+                      <option value="Dubai">Dubai</option>
+                      <option value="Sharjah">Sharjah</option>
+                      <option value="Ajman">Ajman</option>
+                      <option value="Umm Al Quwain">Umm Al Quwain</option>
+                      <option value="Ras Al Khaimah">Ras Al Khaimah</option>
+                      <option value="Fujairah">Fujairah</option>
+                    </select>
+                    {(newAddressErrors as any)?.province && (
+                      <p className="my-2 text-13px text-brandRed">{(newAddressErrors as any).province.message}</p>
+                    )}
+                  </div>
                   <Input
                     labelKey="forms:label-postcode"
                     inputMode="numeric"
@@ -369,6 +384,43 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
                   />
                 </div>
 
+                <div className="mt-4 pb-2">
+                  <label className="block text-sm font-bold text-heading font-body mb-1">Address Type</label>
+                  <p className="text-sm text-body mb-3">Choose a label for this address</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <label className="cursor-pointer">
+                      <input type="radio" value="Home" {...registerNewAddress("address_type")} className="sr-only" />
+                      <div className={`flex items-center justify-between px-4 py-3 border rounded-md transition ${selectedAddressType === 'Home' ? 'border-[#008755] bg-[#F4F9F6]' : 'border-gray-200 bg-white'}`}>
+                        <div className="flex items-center gap-3">
+                          <IoHomeOutline className={`w-5 h-5 ${selectedAddressType === 'Home' ? 'text-[#008755]' : 'text-gray-500'}`} />
+                          <span className="text-sm font-medium text-heading">Home</span>
+                        </div>
+                        <div className={`w-4 h-4 rounded-full border transition-all ${selectedAddressType === 'Home' ? 'border-[#008755] border-[4px] bg-white' : 'border-gray-300 bg-white'}`}></div>
+                      </div>
+                    </label>
+                    <label className="cursor-pointer">
+                      <input type="radio" value="Office" {...registerNewAddress("address_type")} className="sr-only" />
+                      <div className={`flex items-center justify-between px-4 py-3 border rounded-md transition ${selectedAddressType === 'Office' ? 'border-[#008755] bg-[#F4F9F6]' : 'border-gray-200 bg-white'}`}>
+                        <div className="flex items-center gap-3">
+                          <IoBriefcaseOutline className={`w-5 h-5 ${selectedAddressType === 'Office' ? 'text-[#008755]' : 'text-gray-500'}`} />
+                          <span className="text-sm font-medium text-heading">Office</span>
+                        </div>
+                        <div className={`w-4 h-4 rounded-full border transition-all ${selectedAddressType === 'Office' ? 'border-[#008755] border-[4px] bg-white' : 'border-gray-300 bg-white'}`}></div>
+                      </div>
+                    </label>
+                    <label className="cursor-pointer">
+                      <input type="radio" value="Other" {...registerNewAddress("address_type")} className="sr-only" />
+                      <div className={`flex items-center justify-between px-4 py-3 border rounded-md transition ${selectedAddressType === 'Other' ? 'border-[#008755] bg-[#F4F9F6]' : 'border-gray-200 bg-white'}`}>
+                        <div className="flex items-center gap-3">
+                          <IoPricetagOutline className={`w-5 h-5 ${selectedAddressType === 'Other' ? 'text-[#008755]' : 'text-gray-500'}`} />
+                          <span className="text-sm font-medium text-heading">Other</span>
+                        </div>
+                        <div className={`w-4 h-4 rounded-full border transition-all ${selectedAddressType === 'Other' ? 'border-[#008755] border-[4px] bg-white' : 'border-gray-300 bg-white'}`}></div>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
                 <div className="flex gap-3">
                   <Button
                     type="submit"
@@ -376,13 +428,12 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
                     loading={createAddressMutation.isPending}
                     disabled={createAddressMutation.isPending}
                   >
-                    Save and Deliver Here
+                    Save
                   </Button>
                   <Button
                     type="button"
-                    variant="smoke"
-                    className="h-11 px-6 !bg-white !text-black border border-gray-300 font-bold font-body text-xs uppercase"
                     onClick={() => setShowAddAddress(false)}
+                    className="h-11 px-6 bg-[#000000] hover:bg-gray-800 text-white font-semibold font-body rounded transition duration-150 text-xs uppercase"
                   >
                     Cancel
                   </Button>
@@ -424,7 +475,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
                           <div className="text-sm text-heading font-bold flex items-center gap-2 font-body">
                             <span>{name || 'Address'}</span>
                             <span className="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded font-semibold uppercase tracking-wide">
-                              SAVED
+                              {a?.company || 'Saved'}
                             </span>
                           </div>
                           <div className="mt-1.5 text-xs md:text-sm text-gray-600 leading-relaxed font-body">{line || '-'}</div>
@@ -454,7 +505,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
                         <div className="pt-2 flex justify-start">
                           <button
                             type="button"
-                            className="h-10 px-6 font-bold uppercase tracking-wider text-xs font-body bg-[#005844] hover:bg-black text-white rounded transition duration-200"
+                            className="h-10 px-6 font-bold uppercase tracking-wider text-xs font-body bg-[#005844] hover:bg-[#008755] text-white rounded transition duration-200"
                             onClick={(e) => {
                               e.stopPropagation();
                               setActiveStep(3);
@@ -617,7 +668,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
             <div className="pt-3 flex flex-col gap-2.5">
               <Button
                 type="submit"
-                className="w-full h-10 font-bold uppercase tracking-wider text-xs font-body bg-[#005844] hover:bg-black text-white rounded transition duration-200"
+                className="w-full h-10 font-bold uppercase tracking-wider text-xs font-body bg-[#005844] hover:bg-[#008755] text-white rounded transition duration-200"
                 loading={submitting}
                 disabled={submitting || isEmpty}
               >

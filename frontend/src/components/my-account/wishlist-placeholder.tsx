@@ -39,7 +39,7 @@ export default function WishlistPlaceholder() {
         </div>
         <Link
           href={ROUTES.HOME}
-          className="text-sm font-semibold bg-[#005844] text-white px-4 py-2 inline-block rounded hover:bg-gray-600 transition whitespace-nowrap font-body"
+          className="text-sm font-semibold bg-[#005844] text-white px-4 py-2 inline-block rounded hover:bg-[#008755] transition whitespace-nowrap font-body"
         >
           Browse Products
         </Link>
@@ -102,7 +102,7 @@ export default function WishlistPlaceholder() {
                     {/* Product Metadata */}
                     <div className="min-w-0 flex-1">
                       <Link
-                        href={`${ROUTES.PRODUCT}/${product?.slug}`}
+                        href={`${ROUTES.PRODUCT}/${product?.slug}?from=wishlist`}
                         className="text-sm md:text-base font-semibold text-heading hover:text-[#008755] transition line-clamp-2 leading-snug font-body"
                       >
                         {product?.name}

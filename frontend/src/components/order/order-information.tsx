@@ -404,7 +404,7 @@ export default function OrderInformation() {
                     type="button"
                     onClick={continuePayment}
                     disabled={paying || canceling}
-                    className="w-full h-11 bg-[#005844] hover:bg-black text-white font-bold text-xs md:text-sm rounded-lg transition duration-200 flex items-center justify-center font-body"
+                    className="w-full h-11 bg-[#005844] hover:bg-[#008755] text-white font-bold text-xs md:text-sm rounded-lg transition duration-200 flex items-center justify-center font-body"
                   >
                     {paying ? 'Processing...' : 'Retry Payment'}
                   </button>
@@ -581,7 +581,7 @@ export default function OrderInformation() {
                   <button
                     type="button"
                     onClick={() => setShowDetails(true)}
-                    className="w-full h-11 bg-[#005844] hover:bg-black text-white font-bold text-xs md:text-sm rounded-lg transition duration-200 flex items-center justify-center font-body"
+                    className="w-full h-11 bg-[#005844] hover:bg-[#008755] text-white font-bold text-xs md:text-sm rounded-lg transition duration-200 flex items-center justify-center font-body"
                   >
                     View Order Details
                   </button>

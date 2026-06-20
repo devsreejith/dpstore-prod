@@ -39,7 +39,7 @@ const CartButton = dynamic(() => import("@components/cart/cart-button"), {
 const { site_header } = siteSettings;
 
 export default function Header() {
-  const { openSidebar, setDrawerView, openModal, setModalView, isAuthorized } =
+  const { openSidebar, setDrawerView, openModal, setModalView, isAuthorized, openWishlist, openCart } =
     useUI();
   const { t } = useTranslation(["common", "forms"]);
   const { mutate: logout, isPending: isLoggingOut } = useLogoutMutation();
@@ -342,18 +342,21 @@ export default function Header() {
           </div>
           <div className="flex items-center justify-end flex-shrink-0">
             <div className="flex items-center transition-all wishlistShopping gap-x-7 lg:gap-x-6 xl:gap-x-8 2xl:gap-x-10 ltr:pl-3 rtl:pr-3">
-              <Link href={ROUTES.WISHLIST} className="flex md:gap-x-4 align-center group">
+              <button onClick={openWishlist} className="flex md:gap-x-4 align-center group focus:outline-none">
                 <WishButton />
                 <span className="hidden text-sm font-semibold transition-all duration-100 ease-in-out cursor-pointer lg:font-normal lg:block xl:text-base text-heading group-hover:text-black">
                   {t("menu:menu-wishlist")}
                 </span>
-              </Link>
-              <div className="hidden lg:flex md:gap-x-4 align-center">
-                <CartButton />
-                <span className="hidden text-sm font-semibold transition-all duration-100 ease-in-out cursor-pointer lg:font-normal lg:block xl:text-base text-heading">
-                  {t("menu:menu-shopping")}
+              </button>
+              <button
+                onClick={openCart}
+                className="hidden lg:flex md:gap-x-4 align-center group focus:outline-none"
+              >
+                <CartButton asDiv={true} />
+                <span className="hidden text-sm font-semibold transition-all duration-100 ease-in-out cursor-pointer lg:font-normal lg:block xl:text-base text-heading group-hover:text-black">
+                  {t("menu:menu-cart")}
                 </span>
-              </div>
+              </button>
             </div>
           </div>
         </div>

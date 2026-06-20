@@ -1,17 +1,12 @@
 import { useWishlist } from "@utils/use-wishlist";
-import { useRouter } from "next/router";
-import { ROUTES } from "@utils/routes";
 
 export default function WishButton() {
   const { wishlist } = useWishlist();
-  const router = useRouter();
 
   return (
-    <button
-      onClick={() => router.push(ROUTES.WISHLIST)}
-      className="relative flex items-center justify-center flex-shrink-0 h-auto transform focus:outline-none"
+    <div
+      className="relative flex items-center justify-center flex-shrink-0 h-auto transform"
       aria-label="wishlist-button"
-      type="button"
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -33,6 +28,7 @@ export default function WishButton() {
           {wishlist.length}
         </span>
       )}
-    </button>
+    </div>
   );
 }
+

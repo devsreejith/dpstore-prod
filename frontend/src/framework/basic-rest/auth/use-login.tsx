@@ -16,7 +16,7 @@ async function login(input: LoginInputType) {
   const token = String(res?.data?.token ?? '').trim();
   if (!token) throw new Error('Login failed');
   
-  Cookies.set('auth_token', token);
+  Cookies.set('auth_token', token, { path: '/' });
   
   await http.post(
     '/auth/session',

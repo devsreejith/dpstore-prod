@@ -23,6 +23,12 @@ export function mapMedusaProduct(medusaProduct: any): Product {
 		})) ?? [],
 		sku: medusaProduct.variants?.[0]?.sku,
 		variant_id: medusaProduct.variants?.[0]?.id,
+		range: medusaProduct.collection?.title,
+		category: medusaProduct.categories?.[0] ? {
+			id: medusaProduct.categories[0].id,
+			name: medusaProduct.categories[0].name,
+			slug: medusaProduct.categories[0].handle,
+		} : undefined,
 		isNewArrival: medusaProduct.metadata?.isNewArrival === true || medusaProduct.metadata?.isNewArrival === "true" || medusaProduct.isNewArrival === true,
 		isTrending: medusaProduct.metadata?.trending === true || medusaProduct.metadata?.trending === "true" || medusaProduct.trending === true,
 	};

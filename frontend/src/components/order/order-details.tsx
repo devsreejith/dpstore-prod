@@ -682,7 +682,7 @@ const OrderDetails: React.FC<{ className?: string }> = ({
             type="button"
             onClick={continuePayment}
             disabled={paying || canceling}
-            className="md:self-center self-start h-9 px-5 bg-[#005844] hover:bg-black text-white font-bold text-xs md:text-sm rounded-lg transition duration-200 flex items-center justify-center font-body shadow-sm"
+            className="md:self-center self-start h-9 px-5 bg-[#005844] hover:bg-[#008755] text-white font-bold text-xs md:text-sm rounded-lg transition duration-200 flex items-center justify-center font-body shadow-sm"
           >
             <span>{paying ? 'Processing...' : 'Retry Payment'}</span>
           </button>

@@ -8,6 +8,7 @@ import usePrice from '@framework/product/use-price';
 import { ROUTES } from '@utils/routes';
 import { generateCartItemName } from '@utils/generate-cart-item-name';
 import { useTranslation } from 'next-i18next';
+import { useUI } from '@contexts/ui.context';
 
 type CartItemProps = {
   item: any;
@@ -15,6 +16,7 @@ type CartItemProps = {
 
 const CartItem: React.FC<CartItemProps> = ({ item }) => {
   const { t } = useTranslation('common');
+  const { closeCart } = useUI();
   const { addItemToCart, removeItemFromCart, clearItemFromCart, inventoryMap } = useCart();
   const stock = inventoryMap[item.variant_id];
   const isOutOfStock = stock !== undefined && stock <= 0;
@@ -52,17 +54,22 @@ const CartItem: React.FC<CartItemProps> = ({ item }) => {
           className="w-full h-full object-cover bg-gray-300"
         />
         <div
-          className="absolute top-0 flex items-center justify-center w-full h-full transition duration-200 ease-in-out bg-black ltr:left-0 rtl:right-0 bg-opacity-30 md:bg-opacity-0 md:group-hover:bg-opacity-30"
+          className="absolute top-0 flex flex-col items-center justify-center w-full h-full transition duration-200 ease-in-out bg-black ltr:left-0 rtl:right-0 bg-opacity-30 md:bg-opacity-0 md:group-hover:bg-opacity-30 cursor-pointer"
           onClick={() => clearItemFromCart(item.id)}
           role="button"
+          title="Remove Product"
         >
           <IoIosCloseCircle className="relative text-2xl text-white transition duration-300 ease-in-out transform md:scale-0 md:opacity-0 md:group-hover:scale-100 md:group-hover:opacity-100" />
+          <span className="text-[10px] text-white font-semibold mt-1 tracking-wide uppercase transition duration-300 ease-in-out transform md:scale-0 md:opacity-0 md:group-hover:scale-100 md:group-hover:opacity-100 font-body">
+            Remove
+          </span>
         </div>
       </div>
 
       <div className="flex flex-col w-full overflow-hidden">
         <Link
-          href={`${ROUTES.PRODUCT}/${item?.slug}`}
+          href={`${ROUTES.PRODUCT}/${item?.slug}?from=cart`}
+          onClick={closeCart}
           className="truncate text-sm text-heading mb-1.5 -mt-1"
         >
           {generateCartItemName(item.name, item.attributes)}

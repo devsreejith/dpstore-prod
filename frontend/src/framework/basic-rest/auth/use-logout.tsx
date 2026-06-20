@@ -11,8 +11,23 @@ export interface LoginInputType {
 
 import Cookies from "js-cookie";
 
+let isLoggingOutInProgress = false;
+
 async function logout() {
-  await http.delete("/auth/session");
+  if (isLoggingOutInProgress) {
+    return { ok: true };
+  }
+
+  const token = Cookies.get("auth_token");
+  if (token) {
+    isLoggingOutInProgress = true;
+    http.delete("/auth/session")
+      .catch(() => {})
+      .finally(() => {
+        isLoggingOutInProgress = false;
+      });
+  }
+  Cookies.remove("auth_token", { path: "/" });
   Cookies.remove("auth_token");
   return { ok: true };
 }

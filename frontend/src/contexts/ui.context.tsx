@@ -2,6 +2,7 @@ import React from "react";
 import { CartProvider } from "./cart/cart.context";
 import http from "@framework/utils/http";
 import { getToken } from "@framework/utils/get-token";
+import Cookies from "js-cookie";
 
 export interface State {
   isAuthorized: boolean;
@@ -12,6 +13,7 @@ export interface State {
   displayShop: boolean;
   displayCart: boolean;
   displaySearch: boolean;
+  displayWishlist: boolean;
   modalView: string;
   modalData: any;
   drawerView: string | null;
@@ -27,6 +29,7 @@ const initialState = {
   displayShop: false,
   displayCart: false,
   displaySearch: false,
+  displayWishlist: false,
   modalView: "LOGIN_VIEW",
   drawerView: null,
   modalData: null,
@@ -51,6 +54,12 @@ type Action =
     }
   | {
       type: "CLOSE_CART";
+    }
+  | {
+      type: "OPEN_WISHLIST";
+    }
+  | {
+      type: "CLOSE_WISHLIST";
     }
   | {
       type: "OPEN_SEARCH";
@@ -150,6 +159,18 @@ function uiReducer(state: State, action: Action) {
         displayCart: false,
       };
     }
+    case "OPEN_WISHLIST": {
+      return {
+        ...state,
+        displayWishlist: true,
+      };
+    }
+    case "CLOSE_WISHLIST": {
+      return {
+        ...state,
+        displayWishlist: false,
+      };
+    }
     case "OPEN_SEARCH": {
       return {
         ...state,
@@ -236,7 +257,11 @@ export const UIProvider: React.FC = (props) => {
   const [state, dispatch] = React.useReducer(uiReducer, initialState);
 
   const authorize = () => dispatch({ type: "SET_AUTHORIZED" });
-  const unauthorize = () => dispatch({ type: "SET_UNAUTHORIZED" });
+  const unauthorize = () => {
+    Cookies.remove("auth_token", { path: "/" });
+    Cookies.remove("auth_token");
+    dispatch({ type: "SET_UNAUTHORIZED" });
+  };
   const openSidebar = () => dispatch({ type: "OPEN_SIDEBAR" });
   const closeSidebar = () => dispatch({ type: "CLOSE_SIDEBAR" });
   const toggleSidebar = () =>
@@ -253,6 +278,8 @@ export const UIProvider: React.FC = (props) => {
       : dispatch({ type: "OPEN_CART" });
   const closeCartIfPresent = () =>
     state.displaySidebar && dispatch({ type: "CLOSE_CART" });
+  const openWishlist = () => dispatch({ type: "OPEN_WISHLIST" });
+  const closeWishlist = () => dispatch({ type: "CLOSE_WISHLIST" });
 
   const openFilter = () => dispatch({ type: "OPEN_FILTER" });
   const closeFilter = () => dispatch({ type: "CLOSE_FILTER" });
@@ -308,6 +335,8 @@ export const UIProvider: React.FC = (props) => {
       closeCart,
       toggleCart,
       closeCartIfPresent,
+      openWishlist,
+      closeWishlist,
       openFilter,
       closeFilter,
       openShop,

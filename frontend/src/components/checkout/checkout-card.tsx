@@ -2,6 +2,35 @@ import usePrice from "@framework/product/use-price";
 import { useCart } from "@contexts/cart/cart.context";
 import { useEffect, useState } from "react";
 
+const CheckoutItemRow = ({ item }: { item: any }) => {
+  const { price } = usePrice({
+    amount: item.price * (item.quantity ?? 1),
+    currencyCode: "AED",
+  });
+  return (
+    <div className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+      <div className="w-12 h-12 rounded border border-gray-200 overflow-hidden bg-gray-50 flex-shrink-0 flex items-center justify-center p-0.5">
+        <img
+          src={item.image}
+          alt={item.name}
+          className="object-contain max-h-full max-w-full"
+        />
+      </div>
+      <div className="min-w-0 flex-1 text-left">
+        <h3 className="text-xs md:text-sm font-semibold text-heading truncate">
+          {item.name}
+        </h3>
+        <p className="text-[11px] md:text-xs text-gray-500 mt-0.5 font-normal">
+          Qty: {item.quantity ?? 1}
+        </p>
+      </div>
+      <div className="text-xs md:text-sm font-bold text-heading font-mono flex-shrink-0">
+        {price}
+      </div>
+    </div>
+  );
+};
+
 interface CheckoutCardProps {
   activeStep: 1 | 2 | 3;
   setActiveStep: React.Dispatch<React.SetStateAction<1 | 2 | 3>>;
@@ -76,6 +105,23 @@ const CheckoutCard: React.FC<CheckoutCardProps> = ({
           </button>
         </div>
       )}
+      {/* Order Summary Block */}
+      <div className="border border-gray-200 rounded-md bg-white overflow-hidden shadow-sm flex flex-col mb-5">
+        <div className="px-5 pt-5 pb-3 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+          <h2 className="text-sm md:text-base font-bold text-heading uppercase tracking-wider font-body">
+            Order Summary
+          </h2>
+          <span className="text-xs text-gray-500 font-semibold bg-gray-200/60 px-2 py-0.5 rounded">
+            {items.length} Item{items.length > 1 ? "s" : ""}
+          </span>
+        </div>
+        <div className="p-5 pt-2 pb-2 divide-y divide-gray-150 max-h-[260px] overflow-y-auto scrollbar">
+          {items.map((item: any) => (
+            <CheckoutItemRow item={item} key={item.id} />
+          ))}
+        </div>
+      </div>
+
       <div className="border border-gray-200 rounded-md bg-white overflow-hidden shadow-sm flex flex-col">
         {/* Price details header */}
         <div className="px-5 pt-5 pb-2">

@@ -252,17 +252,47 @@ export const CartProvider: React.FC = (props) => {
   }, [ensureCart]);
 
   React.useEffect(() => {
-    if (!isAuthorized) return;
-    if (!cart?.id) return;
-    if (cart?.customer?.id) return;
+    if (!isAuthorized) {
+      if (cart?.customer?.id) {
+        setCart(null);
+        setCartId(null);
+      }
+      return;
+    }
+
     (async () => {
-      try {
-        const res = await http.post(`/store/carts/${cart.id}/customer`, {});
-        const next = res?.data?.cart;
-        if (next?.id) setCart(next);
-      } catch {}
+      // Case A: User has a local guest cart with items -> associate it with the logged-in customer
+      if (cart?.id && !cart?.customer?.id && (cart?.items?.length ?? 0) > 0) {
+        try {
+          const res = await http.post(`/store/carts/${cart.id}/customer`, {});
+          const next = res?.data?.cart;
+          if (next?.id) {
+            setCart(next);
+            return;
+          }
+        } catch (e) {
+          console.error("Failed to associate cart with customer:", e);
+        }
+      }
+
+      // Case B: User has no local cart or cart is empty -> load customer's saved active cart from DB
+      if (!cart?.id || (cart?.items?.length ?? 0) === 0) {
+        try {
+          const res = await http.get('/store/custom/cart');
+          if (res?.data?.cart_id) {
+            setCartId(res.data.cart_id);
+            const retrieved = await retrieveCart(res.data.cart_id);
+            if (retrieved?.id) {
+              setCart(retrieved);
+            }
+          }
+        } catch (e) {
+          console.error("Failed to retrieve customer's active cart:", e);
+        }
+      }
     })();
-  }, [isAuthorized, cart?.customer?.id, cart?.id]);
+  }, [isAuthorized, cart?.id, cart?.customer?.id, cart?.items]);
+
 
   const items = React.useMemo(() => {
     const src = Array.isArray(cart?.items) ? cart.items : [];

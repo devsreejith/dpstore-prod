@@ -18,6 +18,7 @@ import Carousel from "@components/ui/carousel/carousel";
 import { SwiperSlide } from "swiper/react";
 import ProductMetaReview from "@components/product/product-meta-review";
 import { useSsrCompatible } from "@utils/use-ssr-compatible";
+import { useUI } from "@contexts/ui.context";
 
 const productGalleryCarouselResponsive = {
   "768": {
@@ -29,15 +30,19 @@ const productGalleryCarouselResponsive = {
 };
 
 const ProductSingleDetails: React.FC = () => {
-  const {
-    query: { slug },
-  } = useRouter();
+  const router = useRouter();
+  const { slug, from } = router.query;
+  const isFromDrawerOrWishlist = from === "cart" || from === "wishlist";
   const { width } = useSsrCompatible(useWindowSize(), { width: 0, height: 0 });
   const { data, isLoading, error } = useProductQuery(slug as string);
-  const { addItemToCart } = useCart();
+  const { addItemToCart, isInCart } = useCart();
+  const { openCart } = useUI();
   const [attributes, setAttributes] = useState<{ [key: string]: string }>({});
   const [quantity, setQuantity] = useState(1);
   const [addToCartLoader, setAddToCartLoader] = useState<boolean>(false);
+
+  const cartItemCandidate = data ? generateCartItem(data, attributes) : null;
+  const isAlreadyInCart = cartItemCandidate ? isInCart(cartItemCandidate.id) : false;
 
   const isOutOfStock = data && typeof data.quantity === "number" ? data.quantity <= 0 : false;
 
@@ -89,6 +94,28 @@ const ProductSingleDetails: React.FC = () => {
       draggable: true,
     });
     console.log(item, "item");
+  }
+
+  function buyNow() {
+    if (!data) return;
+    const item = generateCartItem(data, attributes);
+    if (!isInCart(item.id)) {
+      addItemToCart(item, quantity);
+    }
+    router.push(ROUTES.CHECKOUT);
+  }
+
+  function proceedToCheckout() {
+    if (!data) return;
+    const item = generateCartItem(data, attributes);
+    if (!isInCart(item.id)) {
+      addItemToCart(item, quantity);
+    }
+    router.push(ROUTES.CHECKOUT);
+  }
+
+  function handleGoToCart() {
+    openCart();
   }
 
   function handleAttribute(attribute: any) {
@@ -180,30 +207,66 @@ const ProductSingleDetails: React.FC = () => {
               );
             })}
         </div>
-        <div className="flex items-center gap-x-4 ltr:md:pr-32 rtl:md:pl-32 ltr:lg:pr-12 rtl:lg:pl-12 ltr:2xl:pr-32 rtl:2xl:pl-32 ltr:3xl:pr-48 rtl:3xl:pl-48  border-b border-gray-300 py-8">
-          <Counter
-            quantity={quantity}
-            onIncrement={() => setQuantity((prev) => prev + 1)}
-            onDecrement={() =>
-              setQuantity((prev) => (prev !== 1 ? prev - 1 : 1))
-            }
-            disableDecrement={quantity <= 1 || isOutOfStock}
-            disableIncrement={isOutOfStock}
-          />
-          <Button
-            onClick={addToCart}
-            variant="slim"
-            className={cn(
-              "w-full md:w-6/12 xl:w-full",
-              isOutOfStock && "bg-gray-300 hover:bg-gray-300 text-gray-400 cursor-not-allowed"
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 border-b border-gray-300 py-8">
+          <div className="flex items-center gap-x-4">
+            <Counter
+              quantity={quantity}
+              onIncrement={() => setQuantity((prev) => prev + 1)}
+              onDecrement={() =>
+                setQuantity((prev) => (prev !== 1 ? prev - 1 : 1))
+              }
+              disableDecrement={quantity <= 1 || isOutOfStock}
+              disableIncrement={isOutOfStock}
+            />
+          </div>
+          <div className="flex-grow flex flex-row gap-3">
+            {isFromDrawerOrWishlist ? (
+              <Button
+                onClick={proceedToCheckout}
+                variant="slim"
+                className={cn(
+                  "flex-1",
+                  isOutOfStock && "bg-gray-300 hover:bg-gray-300 text-gray-400 cursor-not-allowed"
+                )}
+                disabled={isOutOfStock}
+              >
+                <span className="py-2">Proceed to Checkout</span>
+              </Button>
+            ) : isAlreadyInCart ? (
+              <Button
+                onClick={handleGoToCart}
+                variant="slim"
+                className="flex-1 bg-heading hover:bg-black text-white"
+              >
+                <span className="py-2">Go to Cart</span>
+              </Button>
+            ) : (
+              <Button
+                onClick={addToCart}
+                variant="slim"
+                className={cn(
+                  "flex-1",
+                  isOutOfStock && "bg-gray-300 hover:bg-gray-300 text-gray-400 cursor-not-allowed"
+                )}
+                loading={addToCartLoader}
+                disabled={isOutOfStock}
+              >
+                <span className="py-2">Add to cart</span>
+              </Button>
             )}
-            loading={addToCartLoader}
-            disabled={isOutOfStock}
-          >
-            <span className="py-2 3xl:px-8">
-              {isOutOfStock ? "Out of stock" : "Add to cart"}
-            </span>
-          </Button>
+
+            <Button
+              onClick={buyNow}
+              variant="slim"
+              className={cn(
+                "flex-1 bg-black text-white hover:bg-[#008755]",
+                isOutOfStock && "bg-gray-300 hover:bg-gray-300 text-gray-400 cursor-not-allowed"
+              )}
+              disabled={isOutOfStock}
+            >
+              <span className="py-2">Buy Now</span>
+            </Button>
+          </div>
         </div>
         <div className="py-6">
           <ul className="text-sm space-y-5 pb-1">
