@@ -772,7 +772,11 @@ const OrderDetails: React.FC<{ className?: string }> = ({
                     {/* Product Details (6 Cols) */}
                     <div className="md:col-span-6 flex gap-4 items-center">
                       <div className="w-16 h-16 rounded border border-gray-150 overflow-hidden bg-white p-1 flex items-center justify-center flex-shrink-0">
-                        <img src={itemThumb} alt="" className="object-contain max-h-full max-w-full" />
+                        {itemThumb ? (
+                          <img src={itemThumb} alt="" className="object-contain max-h-full max-w-full" />
+                        ) : (
+                          <div className="w-full h-full bg-gray-100 flex items-center justify-center text-[9px] text-gray-400 font-body">No Image</div>
+                        )}
                       </div>
                       <div className="min-w-0 text-left">
                         <h4 className="text-sm font-bold text-heading truncate">{it.title || it.product_title}</h4>

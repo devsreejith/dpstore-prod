@@ -253,7 +253,7 @@ export const CartProvider: React.FC = (props) => {
 
   React.useEffect(() => {
     if (!isAuthorized) {
-      if (cart?.customer?.id) {
+      if (cart?.customer_id) {
         setCart(null);
         setCartId(null);
       }
@@ -262,7 +262,7 @@ export const CartProvider: React.FC = (props) => {
 
     (async () => {
       // Case A: User has a local guest cart with items -> associate it with the logged-in customer
-      if (cart?.id && !cart?.customer?.id && (cart?.items?.length ?? 0) > 0) {
+      if (cart?.id && !cart?.customer_id && (cart?.items?.length ?? 0) > 0) {
         try {
           const res = await http.post(`/store/carts/${cart.id}/customer`, {});
           const next = res?.data?.cart;
@@ -291,7 +291,7 @@ export const CartProvider: React.FC = (props) => {
         }
       }
     })();
-  }, [isAuthorized, cart?.id, cart?.customer?.id, cart?.items]);
+  }, [isAuthorized, cart?.id, cart?.customer_id, cart?.items]);
 
 
   const items = React.useMemo(() => {

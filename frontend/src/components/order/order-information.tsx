@@ -496,7 +496,18 @@ export default function OrderInformation() {
               {/* Main Content Column (Left) */}
               <div className="lg:col-span-2 w-full bg-white border border-gray-150 rounded-xl p-5 md:p-8 shadow-sm flex flex-col items-center">
                 {/* Icon Selection based on payment method */}
-                {!isOnlinePayment ? (
+                {isCancelled ? (
+                  /* Cancelled Icon: Rose Circle with Close Symbol */
+                  <div className="relative mb-5 flex items-center justify-center">
+                    <div className="absolute w-24 h-24 border border-rose-100 rounded-full opacity-60 animate-ping duration-1000"></div>
+                    <div className="absolute w-20 h-20 border border-dashed border-rose-200 rounded-full"></div>
+                    <div className="w-12 h-12 rounded-full bg-rose-500 flex items-center justify-center shadow-sm relative z-10">
+                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </div>
+                  </div>
+                ) : !isOnlinePayment ? (
                   /* COD Icon: Box/Package Icon */
                   <div className="relative mb-5 flex items-center justify-center">
                     <div className="absolute w-24 h-24 border border-emerald-100 rounded-full opacity-60 animate-ping duration-1000"></div>
@@ -536,12 +547,16 @@ export default function OrderInformation() {
                 )}
 
                 <h1 className="text-lg md:text-xl font-bold text-heading font-body mb-1 text-center">
-                  {!isOnlinePayment ? "Order Placed Successfully" : "Payment Successful"}
+                  {isCancelled
+                    ? "Order Cancelled"
+                    : (!isOnlinePayment ? "Order Placed Successfully" : "Payment Successful")}
                 </h1>
                 <p className="text-xs md:text-sm text-gray-500 font-body mb-6 text-center max-w-md leading-relaxed">
-                  {!isOnlinePayment
-                    ? "Your order has been placed and will be processed shortly. Payment will be collected upon delivery."
-                    : "Your payment has been completed successfully. Thank you for your order."}
+                  {isCancelled
+                    ? "This order has been cancelled."
+                    : (!isOnlinePayment
+                      ? "Your order has been placed and will be processed shortly. Payment will be collected upon delivery."
+                      : "Your payment has been completed successfully. Thank you for your order.")}
                 </p>
 
                 {/* Order ID & Order Date Card */}
@@ -596,13 +611,19 @@ export default function OrderInformation() {
 
                 {/* Footer confirmation email */}
                 <div className="flex items-start gap-2.5 text-center text-xs text-gray-400 font-body max-w-sm mt-1 justify-center leading-relaxed">
-                  {isOnlinePayment ? (
+                  {isCancelled ? (
+                    <IoAlertCircleOutline className="text-base flex-shrink-0 mt-0.5 text-gray-400" />
+                  ) : isOnlinePayment ? (
                     <IoLockClosedOutline className="text-base flex-shrink-0 mt-0.5 text-gray-400" />
                   ) : (
                     <IoMailOutline className="text-base flex-shrink-0 mt-0.5 text-gray-400" />
                   )}
                   <div className="flex flex-col items-center">
-                    <span>A confirmation email has been sent to</span>
+                    <span>
+                      {isCancelled
+                        ? "A cancellation confirmation has been sent to"
+                        : "A confirmation email has been sent to"}
+                    </span>
                     <span className="font-bold text-heading mt-0.5">{data?.email}</span>
                   </div>
                 </div>

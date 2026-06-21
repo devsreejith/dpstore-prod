@@ -12,6 +12,6 @@ qa-tests/reports
 qa-tests.zip
 backend/scratch/
 backend/webhook-logs/
-
+frontend/next-env.d.ts
 
 
