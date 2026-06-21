@@ -274,7 +274,8 @@ const OrderDetails: React.FC<{ className?: string }> = ({
     ? isPaymentSuccessful(paymentCollection)
     : (paymentStatus === 'captured' || paymentStatus === 'paid' || paymentStatus === 'authorized');
   
-  const isGenuinelyCancelled = isCancelled && (!isOnlinePayment || isPaymentPaid);
+  const isCustomerCancelled = order?.metadata?.customer_cancelled === 'true' || order?.metadata?.customer_cancelled === true;
+  const isGenuinelyCancelled = isCancelled && (!isOnlinePayment || isPaymentPaid || isCustomerCancelled);
   const isPaymentPending = !isPaymentPaid;
 
   const display = order?.display_id ?? order?.custom_display_id ?? order?.id;
@@ -353,7 +354,7 @@ const OrderDetails: React.FC<{ className?: string }> = ({
   };
 
   const cancelOrder = async () => {
-    if (isCancelled) return;
+    if (isGenuinelyCancelled) return;
     if (typeof window !== 'undefined' && !window.confirm('Cancel this order?')) return;
     setCancelError(null);
     setCanceling(true);

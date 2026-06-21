@@ -48,7 +48,11 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
     const query = req.scope.resolve(ContainerRegistrationKeys.QUERY);
     const { data: orders } = await query.graph({
       entity: "order",
-      fields: ["id", "customer_id", "status", "email", "payment_status"],
+      fields: [
+        "id", "customer_id", "status", "email", "payment_status",
+        "payment_collections.payments.provider_id",
+        "payment_collections.payment_sessions.provider_id"
+      ],
       filters: { id: targetOrderId },
     });
 
@@ -78,6 +82,39 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
     // 4. Enforce that the order is not already canceled (using string conversion for strict enums)
     const statusStr = String(order.status).toLowerCase();
     if (statusStr === "canceled" || statusStr === "cancelled") {
+      const paymentStatus = String((order as any).payment_status ?? "").toLowerCase();
+      let paymentProvider = '';
+      if (Array.isArray((order as any)?.payment_collections) && (order as any).payment_collections.length) {
+        const col = (order as any).payment_collections[0] as any;
+        if (col) {
+          if (Array.isArray(col.payments) && col.payments.length) {
+            const p = col.payments.find((py: any) => py.provider_id && py.provider_id !== "pp_system_default");
+            paymentProvider = p ? String(p.provider_id) : String(col.payments[0]?.provider_id ?? "");
+          } else if (Array.isArray(col.payment_sessions) && col.payment_sessions.length) {
+            const s = col.payment_sessions.find((sn: any) => sn.provider_id && sn.provider_id !== "pp_system_default");
+            paymentProvider = s ? String(s.provider_id) : String(col.payment_sessions[0]?.provider_id ?? "");
+          }
+        }
+      }
+      const isOnlinePayment = paymentProvider && paymentProvider !== "pp_system_default";
+
+      if (isOnlinePayment && paymentStatus !== "captured" && paymentStatus !== "paid") {
+        const client = new pg.Client({
+          connectionString: process.env.DATABASE_URL,
+        });
+        await client.connect();
+        try {
+          await client.query(
+            `UPDATE "order" SET metadata = jsonb_set(coalesce(metadata, '{}'::jsonb), '{customer_cancelled}', '"true"'::jsonb) WHERE id = $1`,
+            [targetOrderId]
+          );
+        } finally {
+          await client.end();
+        }
+        res.json({ message: "Order canceled successfully." });
+        return;
+      }
+
       res.status(400).json({ message: "Order is already canceled." });
       return;
     }
@@ -89,6 +126,20 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
         order_id: targetOrderId,
       },
     });
+
+    // Also update metadata to show customer cancelled for standard cancellation
+    const client = new pg.Client({
+      connectionString: process.env.DATABASE_URL,
+    });
+    await client.connect();
+    try {
+      await client.query(
+        `UPDATE "order" SET metadata = jsonb_set(coalesce(metadata, '{}'::jsonb), '{customer_cancelled}', '"true"'::jsonb) WHERE id = $1`,
+        [targetOrderId]
+      );
+    } finally {
+      await client.end();
+    }
 
     res.json({ message: "Order canceled successfully." });
   } catch (e: any) {
