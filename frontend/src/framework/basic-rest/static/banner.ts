@@ -1416,7 +1416,7 @@ export const bannerDataContemporary = [
   {
     id: 2,
     title: "Mug",
-    slug: "mug",
+    slug: "gs-mug",
     image: {
       mobile: {
         url: "/assets/images/banner/masonry/banner-13.png",
