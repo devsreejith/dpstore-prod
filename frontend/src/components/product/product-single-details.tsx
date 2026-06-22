@@ -41,6 +41,8 @@ const ProductSingleDetails: React.FC = () => {
   const [quantity, setQuantity] = useState(1);
   const [addToCartLoader, setAddToCartLoader] = useState<boolean>(false);
 
+  const [selectedImage, setSelectedImage] = useState(0);
+
   const cartItemCandidate = data ? generateCartItem(data, attributes) : null;
   const isAlreadyInCart = cartItemCandidate ? isInCart(cartItemCandidate.id) : false;
 
@@ -53,6 +55,7 @@ const ProductSingleDetails: React.FC = () => {
       setQuantity(1);
     }
   }, [data]);
+
   const { price, basePrice, discount } = usePrice(
     data && {
       amount: (data.sale_price ? data.sale_price : data.price) * quantity,
@@ -60,6 +63,13 @@ const ProductSingleDetails: React.FC = () => {
       currencyCode: "AED",
     }
   );
+
+  const images = Array.isArray(data?.gallery) && data.gallery.length
+    ? data.gallery
+    : data?.image
+    ? [data?.image]
+    : [{ original: "/assets/placeholder/products/product-gallery.svg", thumbnail: "/assets/placeholder/products/product-gallery.svg" }];
+
   if (isLoading) return <Loader size="large" text="Loading..." />;
   if (error) return <p>{error.message}</p>;
   if (!data) return <p>Product not found</p>;
@@ -136,53 +146,59 @@ const ProductSingleDetails: React.FC = () => {
           className="product-gallery"
           buttonGroupClassName="hidden"
         >
-          {(Array.isArray(data?.gallery) && data.gallery.length
-            ? data.gallery
-            : [{ original: "/assets/placeholder/products/product-gallery.svg" }]
-          ).map((item: any, index: number) => (
+          {images.map((item: any, index: number) => (
             <SwiperSlide key={`product-gallery-key-${index}`}>
               <div className="col-span-1 transition duration-150 ease-in hover:opacity-90">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={item?.original || item?.thumbnail || "/assets/placeholder/products/product-gallery.svg"}
                   alt={`${data?.name}--${index}`}
-                  className="object-cover w-full"
+                  className="object-cover w-full rounded-lg bg-gray-100"
                 />
               </div>
             </SwiperSlide>
           ))}
         </Carousel>
       ) : (
-        <div className="col-span-5 grid grid-cols-2 gap-2.5">
-          {(Array.isArray(data?.gallery) && data.gallery.length
-            ? data.gallery
-            : [{ original: "/assets/placeholder/products/product-gallery.svg" }]
-          ).map((item: any, index: number) => (
-            <div
-              key={index}
-              className="col-span-1 transition duration-150 ease-in hover:opacity-90"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={item?.original || item?.thumbnail || "/assets/placeholder/products/product-gallery.svg"}
-                alt={`${data?.name}--${index}`}
-                className="object-cover w-full"
-              />
+        <div className="col-span-5 flex flex-col gap-4">
+          <div className="w-full bg-gray-100 rounded-lg overflow-hidden transition duration-150 ease-in hover:opacity-90 aspect-square sm:aspect-[4/3] flex items-center justify-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={images[selectedImage]?.original || images[selectedImage]?.thumbnail || "/assets/placeholder/products/product-gallery.svg"}
+              alt={`${data?.name} - main`}
+              className="object-contain w-full h-full max-h-full"
+            />
+          </div>
+          {images.length > 1 && (
+            <div className="flex gap-4 overflow-x-auto pb-2">
+              {images.map((item: any, index: number) => (
+                <button
+                  key={index}
+                  onClick={() => setSelectedImage(index)}
+                  className={`w-20 h-20 md:w-24 md:h-24 flex-shrink-0 rounded-lg overflow-hidden border-2 transition-all ${
+                    selectedImage === index ? "border-[#005844]" : "border-transparent opacity-70 hover:opacity-100"
+                  }`}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={item?.thumbnail || item?.original || "/assets/placeholder/products/product-gallery.svg"}
+                    alt={`${data?.name} thumbnail ${index}`}
+                    className="w-full h-full object-cover bg-gray-100"
+                  />
+                </button>
+              ))}
             </div>
-          ))}
+          )}
         </div>
       )}
 
       <div className="col-span-4 pt-8 lg:pt-0">
         <div className="pb-7 mb-7 border-b border-gray-300">
-          <h2 className="text-heading text-lg md:text-xl lg:text-2xl 2xl:text-3xl font-bold hover:text-black mb-3.5">
+          <h2 className="text-[#005844] uppercase text-xl md:text-2xl lg:text-3xl 2xl:text-4xl font-bold mb-3.5 font-body tracking-wider">
             {data?.name}
           </h2>
-          <p className="text-body text-sm lg:text-base leading-6 lg:leading-8">
-            {data?.description}
-          </p>
           <div className="flex items-center mt-5">
-            <div className="text-heading font-bold text-base md:text-xl lg:text-2xl 2xl:text-4xl ltr:pr-2 rtl:pl-2 ltr:md:pr-0 rtl:md:pl-0 ltr:lg:pr-2 rtl:lg:pl-2 ltr:2xl:pr-0 rtl:2xl:pl-0">
+            <div className="text-[#005844] font-bold text-2xl md:text-3xl lg:text-4xl 2xl:text-5xl ltr:pr-2 rtl:pl-2 ltr:md:pr-0 rtl:md:pl-0 ltr:lg:pr-2 rtl:lg:pl-2 ltr:2xl:pr-0 rtl:2xl:pl-0 font-body">
               {price}
             </div>
             {discount && (
@@ -225,7 +241,7 @@ const ProductSingleDetails: React.FC = () => {
                 onClick={proceedToCheckout}
                 variant="slim"
                 className={cn(
-                  "flex-1",
+                  "flex-1 bg-[#005844] text-white hover:bg-black font-body font-bold rounded-md",
                   isOutOfStock && "bg-gray-300 hover:bg-gray-300 text-gray-400 cursor-not-allowed"
                 )}
                 disabled={isOutOfStock}
@@ -236,22 +252,22 @@ const ProductSingleDetails: React.FC = () => {
               <Button
                 onClick={handleGoToCart}
                 variant="slim"
-                className="flex-1 bg-heading hover:bg-black text-white"
+                className="flex-1 bg-[#005844] text-white hover:bg-black font-body font-bold rounded-md"
               >
-                <span className="py-2">Go to Cart</span>
+                <span className="py-2">Proceed to Checkout</span>
               </Button>
             ) : (
               <Button
                 onClick={addToCart}
                 variant="slim"
                 className={cn(
-                  "flex-1",
+                  "flex-1 bg-[#005844] text-white hover:bg-black font-body font-bold rounded-md",
                   isOutOfStock && "bg-gray-300 hover:bg-gray-300 text-gray-400 cursor-not-allowed"
                 )}
                 loading={addToCartLoader}
                 disabled={isOutOfStock}
               >
-                <span className="py-2">Add to cart</span>
+                <span className="py-2">Proceed to Checkout</span>
               </Button>
             )}
 
@@ -259,7 +275,7 @@ const ProductSingleDetails: React.FC = () => {
               onClick={buyNow}
               variant="slim"
               className={cn(
-                "flex-1 bg-black text-white hover:bg-[#008755]",
+                "flex-1 bg-[#005844] text-white hover:bg-black font-body font-bold rounded-md",
                 isOutOfStock && "bg-gray-300 hover:bg-gray-300 text-gray-400 cursor-not-allowed"
               )}
               disabled={isOutOfStock}
@@ -269,26 +285,26 @@ const ProductSingleDetails: React.FC = () => {
           </div>
         </div>
         <div className="py-6">
-          <ul className="text-sm space-y-5 pb-1">
+          <ul className="text-sm space-y-5 pb-1 font-body text-black">
             <li>
-              <span className="font-semibold text-heading inline-block ltr:pr-2 rtl:pl-2">
-                Item code:
+              <span className="font-bold text-[#005844] inline-block ltr:pr-2 rtl:pl-2">
+                Barcode:
               </span>
               {data?.item_code || data?.sku || "-"}
             </li>
             <li>
-              <span className="font-semibold text-heading inline-block ltr:pr-2 rtl:pl-2">
+              <span className="font-bold text-[#005844] inline-block ltr:pr-2 rtl:pl-2">
                 Range:
               </span>
               {data?.range || "-"}
             </li>
             <li>
-              <span className="font-semibold text-heading inline-block ltr:pr-2 rtl:pl-2">
+              <span className="font-bold text-[#005844] inline-block ltr:pr-2 rtl:pl-2">
                 Category:
               </span>
               <Link
                 href="/"
-                className="transition hover:underline hover:text-heading"
+                className="transition hover:underline hover:text-black uppercase"
               >
                 {data?.category?.name}
               </Link>

@@ -10,7 +10,7 @@ import { useUI } from '@contexts/ui.context';
 import Alert from '@components/ui/alert';
 import { ROUTES } from '@utils/routes';
 import { useRouter } from 'next/router';
-import { IoTrashOutline, IoHomeOutline, IoBriefcaseOutline, IoPricetagOutline } from 'react-icons/io5';
+import { IoTrashOutline, IoHomeOutline, IoBriefcaseOutline, IoPricetagOutline, IoShieldCheckmarkOutline, IoLocationOutline } from 'react-icons/io5';
 import { formatPrice } from '@framework/product/use-price';
 
 interface CheckoutInputType {
@@ -461,66 +461,100 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
                         setSelectedAddress(a);
                         applyAddressToForm(a);
                       }}
-                      className={`border rounded-lg p-5 cursor-pointer flex flex-col gap-4 relative transition ${
+                      className={`border rounded-xl p-5 cursor-pointer transition ${
                         checked ? 'border-[#008755] bg-white shadow-sm' : 'border-gray-200 bg-white hover:bg-gray-50/20'
                       }`}
                     >
                       <div className="flex items-start gap-3">
-                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition ${
-                          checked ? 'border-[#008755]' : 'border-gray-300'
+                        {/* Radio circle */}
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-1 transition ${
+                          checked ? 'border-[#008755] bg-[#008755]' : 'border-gray-300'
                         }`}>
-                          {checked && <div className="w-2.5 h-2.5 rounded-full bg-[#008755]" />}
+                          {checked && (
+                            <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
                         </div>
-                        <div className="min-w-0 flex-1 pr-8">
-                          <div className="text-sm text-heading font-bold flex items-center gap-2 font-body">
-                            <span>{name || 'Address'}</span>
-                            <span className="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded font-semibold uppercase tracking-wide">
-                              {a?.company || 'Saved'}
+                        {/* Content */}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <span className="text-[10px] bg-[#E8F5E9] text-[#008755] px-2 py-1 rounded md:rounded-md font-bold uppercase tracking-wide border border-[#008755]/20 flex items-center gap-1 w-fit">
+                              {(a?.company || '').toLowerCase() === 'office' ? (
+                                <IoBriefcaseOutline className="text-xs" />
+                              ) : (
+                                <IoHomeOutline className="text-xs" />
+                              )}
+                              {a?.company || 'Home'}
                             </span>
+                            {a?.is_default_shipping && (
+                              <span className="text-[10px] bg-gray-100 text-gray-600 px-2 py-1 rounded font-semibold flex items-center gap-1">
+                                <IoHomeOutline className="text-xs" /> Default
+                              </span>
+                            )}
                           </div>
-                          <div className="mt-1.5 text-xs md:text-sm text-gray-600 leading-relaxed font-body">{line || '-'}</div>
-                          {a?.phone && <div className="mt-1.5 text-xs md:text-sm text-gray-600 font-normal font-body">{String(a.phone)}</div>}
+                          <h4 className="text-sm font-bold text-heading font-body">{name || 'Address'}</h4>
+                          <div className="flex items-start gap-1.5 mt-1.5">
+                            <IoLocationOutline className="text-sm text-gray-400 mt-0.5 flex-shrink-0" />
+                            <span className="text-xs text-black font-medium leading-relaxed">{line || '-'}</span>
+                          </div>
+                          {a?.phone && (
+                            <div className="flex items-center gap-1.5 mt-1.5">
+                              <svg className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                              </svg>
+                              <span className="text-xs text-black font-medium">{String(a.phone)}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
-
-                      {/* Delete inline button */}
-                      <button
-                        type="button"
-                        className="absolute top-4 right-4 p-1.5 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 transition"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          if (!id) return;
-                          if (typeof window !== 'undefined' && !window.confirm('Delete this address?')) return;
-                          deleteAddressMutation.mutate(id);
-                        }}
-                        disabled={deleteAddressMutation.isPending}
-                        aria-label="Delete address"
-                      >
-                        <IoTrashOutline className="text-lg" />
-                      </button>
-
-                      {/* Deliver Here Inline Action */}
-                      {checked && (
-                        <div className="pt-2 flex justify-start">
-                          <button
-                            type="button"
-                            className="h-10 px-6 font-bold uppercase tracking-wider text-xs font-body bg-[#005844] hover:bg-[#008755] text-white rounded transition duration-200"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setActiveStep(3);
-                            }}
-                          >
-                            Deliver Here
-                          </button>
-                        </div>
-                      )}
+                      {/* Bottom actions */}
+                      <div className="flex items-center justify-end gap-3 mt-3 pt-3 border-t border-gray-100">
+                        <button
+                          type="button"
+                          className="flex items-center gap-1 text-xs font-semibold text-[#005844] hover:text-[#008755] transition font-body"
+                          onClick={(e) => { e.stopPropagation(); }}
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                          </svg>
+                          Edit Address
+                        </button>
+                        <span className="text-gray-300">|</span>
+                        <button
+                          type="button"
+                          className="flex items-center gap-1 text-xs font-semibold text-rose-500 hover:text-rose-700 transition font-body"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (!id) return;
+                            if (typeof window !== 'undefined' && !window.confirm('Delete this address?')) return;
+                            deleteAddressMutation.mutate(id);
+                          }}
+                          disabled={deleteAddressMutation.isPending}
+                        >
+                          <IoTrashOutline className="text-sm" />
+                          Delete
+                        </button>
+                      </div>
                     </div>
                   );
                 })
               ) : (
-                <div className="text-sm text-body py-4 text-center">No saved addresses yet. Click "+ Add new address" to create one.</div>
+                <div className="text-sm text-body py-4 text-center">No saved addresses yet. Click &quot;+ Add new address&quot; to create one.</div>
               )}
+
+
+              {/* Continue to Payment Button */}
+              <button
+                type="button"
+                onClick={() => { if (selectedAddressId) setActiveStep(3); }}
+                disabled={!selectedAddressId}
+                className="w-full h-12 bg-[#005844] hover:bg-[#008755] text-white font-bold text-sm rounded-lg transition duration-200 flex items-center justify-center gap-2 font-body mt-3 disabled:opacity-50 tracking-wider uppercase"
+              >
+                <span>Continue to Payment</span>
+                <span className="text-lg font-normal mb-0.5">→</span>
+              </button>
             </div>
           )}
         </div>
@@ -528,20 +562,10 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
 
 
       {/* STEP 3: SELECT PAYMENT METHOD */}
-      {/* STEP 3: SELECT PAYMENT METHOD */}
       {activeStep === 3 && (
         <div className="flex flex-col gap-3">
-          {/* Back button */}
-          <button
-            type="button"
-            onClick={() => setActiveStep(2)}
-            className="flex items-center gap-1.5 text-xs font-bold text-heading hover:opacity-80 transition font-body self-start"
-          >
-            <span className="text-sm">←</span> Back
-          </button>
-
           {/* Heading */}
-          <h2 className="text-sm md:text-base font-bold text-[#008755] uppercase tracking-wider font-body mt-1">
+          <h2 className="text-sm md:text-base font-bold text-[#005844] uppercase tracking-wider font-body mb-2">
             Select Payment Method
           </h2>
 
@@ -597,7 +621,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
                     <h3 className="text-xs md:text-sm font-semibold text-heading font-body">
                       Cash on Delivery
                     </h3>
-                    <p className="text-[11px] md:text-xs text-gray-400 font-body mt-0.5">
+                    <p className="text-[11px] md:text-xs text-black font-body mt-0.5">
                       Pay in cash when you receive your order.
                     </p>
                   </div>
@@ -627,10 +651,10 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded bg-gray-100 flex items-center justify-center flex-shrink-0">
+                  <div className="w-10 h-10 rounded bg-[#E8F5E9] flex items-center justify-center flex-shrink-0">
                     {/* Card icon with lock */}
                     <svg
-                      className="w-5 h-5 text-gray-600"
+                      className="w-5 h-5 text-[#008755]"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -643,9 +667,9 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
                   </div>
                   <div>
                     <h3 className="text-xs md:text-sm font-semibold text-heading font-body">
-                      Pay Now
+                      Pay Online
                     </h3>
-                    <p className="text-[11px] md:text-xs text-gray-400 font-body mt-0.5">
+                    <p className="text-[11px] md:text-xs text-black font-body mt-0.5">
                       Pay securely using your card or other available methods.
                     </p>
                   </div>
@@ -665,31 +689,22 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
             </div>
 
             {/* CTA Button and Disclaimer */}
-            <div className="pt-3 flex flex-col gap-2.5">
+            <div className="pt-3 flex flex-col gap-3">
               <Button
                 type="submit"
-                className="w-full h-10 font-bold uppercase tracking-wider text-xs font-body bg-[#005844] hover:bg-[#008755] text-white rounded transition duration-200"
+                className="w-full h-12 flex items-center justify-center gap-2 font-bold uppercase tracking-wider text-xs md:text-sm font-body bg-[#005844] hover:bg-[#008755] text-white rounded transition duration-200"
                 loading={submitting}
                 disabled={submitting || isEmpty}
               >
-                {selectedPaymentProvider === 'pp_system_default'
-                  ? 'Place Order'
-                  : 'Continue to Payment'}
-              </Button>
-              <div className="flex items-center justify-center gap-1.5 text-[10px] text-gray-400 font-body">
-                <svg
-                  className="w-3.5 h-3.5"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
-                    clipRule="evenodd"
-                  />
+                <span>
+                  {selectedPaymentProvider === 'pp_system_default'
+                    ? 'Place Order'
+                    : 'Pay Now'}
+                </span>
+                <svg className="w-5 h-5 ml-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
                 </svg>
-                <span>Your payment information is secure and encrypted.</span>
-              </div>
+              </Button>
             </div>
           </form>
         </div>

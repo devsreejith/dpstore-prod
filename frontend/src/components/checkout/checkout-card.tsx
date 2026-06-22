@@ -17,14 +17,14 @@ const CheckoutItemRow = ({ item }: { item: any }) => {
         />
       </div>
       <div className="min-w-0 flex-1 text-left">
-        <h3 className="text-xs md:text-sm font-semibold text-heading truncate">
+        <h3 className="text-xs md:text-sm font-semibold text-black truncate">
           {item.name}
         </h3>
-        <p className="text-[11px] md:text-xs text-gray-500 mt-0.5 font-normal">
+        <p className="text-[11px] md:text-xs text-black mt-0.5 font-normal">
           Qty: {item.quantity ?? 1}
         </p>
       </div>
-      <div className="text-xs md:text-sm font-bold text-heading font-mono flex-shrink-0">
+      <div className="text-xs md:text-sm font-bold text-black flex-shrink-0">
         {price}
       </div>
     </div>
@@ -70,7 +70,7 @@ const CheckoutCard: React.FC<CheckoutCardProps> = ({
   if (isEmpty) return null;
 
   return (
-    <div className="pt-0 lg:pt-0 ltr:2xl:pl-4 rtl:2xl:pr-4">
+    <div className="pt-0 lg:pt-0">
       {/* DELIVERY ADDRESS summary block (Step 3 only) */}
       {activeStep === 3 && (
         <div className="border border-gray-200 rounded-md bg-white p-5 mb-5 shadow-sm flex justify-between items-start">
@@ -79,7 +79,7 @@ const CheckoutCard: React.FC<CheckoutCardProps> = ({
               DELIVERY ADDRESS
             </h2>
             {selectedAddress ? (
-              <div className="text-xs md:text-sm text-gray-600 font-body space-y-1 leading-relaxed">
+              <div className="text-xs md:text-sm text-black font-body space-y-1 leading-relaxed">
                 <div className="font-bold text-heading text-xs md:text-sm">
                   {selectedAddress.first_name} {selectedAddress.last_name}
                 </div>
@@ -89,7 +89,7 @@ const CheckoutCard: React.FC<CheckoutCardProps> = ({
                     .join(', ')}
                 </div>
                 {selectedAddress.phone && (
-                  <div className="text-gray-500 font-normal text-xs">{selectedAddress.phone}</div>
+                  <div className="text-black font-normal text-xs">{selectedAddress.phone}</div>
                 )}
               </div>
             ) : (
@@ -106,12 +106,12 @@ const CheckoutCard: React.FC<CheckoutCardProps> = ({
         </div>
       )}
       {/* Order Summary Block */}
-      <div className="border border-gray-200 rounded-md bg-white overflow-hidden shadow-sm flex flex-col mb-5">
-        <div className="px-5 pt-5 pb-3 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-          <h2 className="text-sm md:text-base font-bold text-heading uppercase tracking-wider font-body">
+      <div className="border border-gray-200 rounded-xl bg-white overflow-hidden shadow-sm flex flex-col mb-4">
+        <div className="px-5 pt-5 pb-3 border-b border-gray-100 flex justify-between items-center">
+          <h2 className="text-sm md:text-base font-bold text-[#008755] uppercase tracking-wider font-body">
             Order Summary
           </h2>
-          <span className="text-xs text-gray-500 font-semibold bg-gray-200/60 px-2 py-0.5 rounded">
+          <span className="text-xs text-[#008755] font-semibold bg-[#E8F5E9] px-2.5 py-0.5 rounded-full">
             {items.length} Item{items.length > 1 ? "s" : ""}
           </span>
         </div>
@@ -122,44 +122,66 @@ const CheckoutCard: React.FC<CheckoutCardProps> = ({
         </div>
       </div>
 
-      <div className="border border-gray-200 rounded-md bg-white overflow-hidden shadow-sm flex flex-col">
-        {/* Price details header */}
+      {/* Price Details */}
+      <div className="border border-gray-200 rounded-xl bg-white overflow-hidden shadow-sm flex flex-col">
         <div className="px-5 pt-5 pb-2">
           <h2 className="text-sm md:text-base font-bold text-heading uppercase tracking-wider font-body">
             PRICE DETAILS
           </h2>
         </div>
 
-        {/* Details list */}
-        <div className="p-5 pt-2 space-y-4 text-xs md:text-sm text-heading font-medium font-body">
+        <div className="p-5 pt-2 space-y-3 text-xs md:text-sm text-heading font-medium font-body">
           <div className="flex justify-between items-center">
-            <span className="text-gray-700 font-normal">Price ({items.length} item{items.length > 1 ? "s" : ""})</span>
-            <span className="font-mono text-heading font-semibold">{priceOriginal}</span>
+            <span className="text-black font-normal">Subtotal ({items.length} item{items.length > 1 ? "s" : ""})</span>
+            <span className="text-black font-semibold">{priceOriginal}</span>
           </div>
 
           <div className="flex justify-between items-center">
-            <span className="text-gray-700 font-normal">Discount</span>
-            <span className="text-[#008755] font-mono font-semibold">AED 00.00</span>
+            <span className="text-black font-normal">Delivery Charges</span>
+            <span className="text-black font-semibold">AED 25.00</span>
           </div>
 
           <div className="flex justify-between items-center">
-            <span className="text-gray-700 font-normal">Delivery Charges</span>
-            <span className="font-mono text-heading font-semibold">AED 25.00</span>
+            <span className="text-black font-normal">VAT (5%)</span>
+            <span className="text-black font-semibold">AED 0.00</span>
           </div>
 
-          <div className="border-t border-gray-150 pt-4 flex justify-between items-center font-bold text-sm md:text-base text-heading">
+          <div className="border-t border-gray-150 pt-3 flex justify-between items-center font-bold text-sm md:text-base text-heading">
             <span>Total Amount</span>
-            <span className="font-mono">{priceTotal}</span>
+            <span className="text-[#008755]">{priceTotal}</span>
           </div>
         </div>
       </div>
 
-      {/* Security note */}
-      <div className="mt-5 px-1 flex items-start gap-2.5 text-[10px] md:text-xs text-gray-500 font-normal uppercase tracking-wider">
-        <span className="text-xl text-gray-400 mt-0.5">🛡️</span>
-        <div className="flex flex-col text-left leading-normal font-body">
-          <span>Safe and Secure Payments.</span>
-          <span>100% Authentic products.</span>
+      {/* Estimated Delivery */}
+      <div className="border border-gray-150 rounded-xl bg-[#F4F9F6] p-4 flex items-start gap-3 mt-4">
+        <div className="w-9 h-9 rounded-lg bg-[#E8F5E9] flex items-center justify-center flex-shrink-0">
+          <svg className="w-5 h-5 text-[#008755]" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+            <rect x="1" y="3" width="15" height="13" rx="2" ry="2" />
+            <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
+            <circle cx="5.5" cy="18.5" r="2.5" />
+            <circle cx="18.5" cy="18.5" r="2.5" />
+          </svg>
+        </div>
+        <div>
+          <h4 className="text-sm font-bold text-heading">Estimated Delivery</h4>
+          <p className="text-[11px] text-black mt-0.5">2 – 3 working days<br/>from the date of shipment</p>
+        </div>
+      </div>
+
+
+      {/* Safe & Secure */}
+      <div className="border border-gray-150 rounded-xl bg-white p-4 font-body shadow-sm mt-4">
+        <div className="flex items-start gap-3">
+          <div className="w-8 h-8 rounded-full bg-[#E8F5E9] flex items-center justify-center flex-shrink-0">
+            <svg className="w-4 h-4 text-[#008755]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+          </div>
+          <div>
+            <h4 className="text-sm font-bold text-heading">Safe & Secure</h4>
+            <p className="text-[11px] text-black mt-0.5">Your payment information is 100% secure and encrypted.</p>
+          </div>
         </div>
       </div>
     </div>

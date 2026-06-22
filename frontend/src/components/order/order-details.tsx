@@ -630,134 +630,241 @@ const OrderDetails: React.FC<{ className?: string }> = ({
     invoiceWindow.document.close();
   };
 
+  // Determine order status step for the timeline
+  const getOrderStep = () => {
+    if (isGenuinelyCancelled) return -1;
+    if (isDelivered) return 4;
+    if (isShipped) return 3;
+    if (fulfillmentStatus === 'processing' || fulfillmentStatus === 'packed') return 2;
+    // If order is confirmed (not cancelled, payment ok)
+    if (isPaymentPaid || !isOnlinePayment) return 1;
+    return 0;
+  };
+  const orderStep = getOrderStep();
+
+  const timelineSteps = [
+    { label: 'Order Placed', key: 'placed' },
+    { label: 'Confirmed', key: 'confirmed' },
+    { label: 'Processing', key: 'processing' },
+    { label: 'Shipped', key: 'shipped' },
+    { label: 'Delivered', key: 'delivered' },
+  ];
+
+  const estimatedDelivery = getEstimatedDeliveryDate(order?.created_at);
+
   return (
     <div className={`${className} bg-transparent min-h-screen pb-12 font-body`}>
+      {/* Back to Orders */}
       <Link href={ROUTES.ORDERS} className="inline-flex items-center text-sm font-semibold text-gray-600 hover:text-black transition gap-2 mb-5 font-body">
         <IoArrowBackOutline className="text-base" /> Back to Orders
       </Link>
 
-      <h1 className="text-xl md:text-2xl font-bold text-heading font-body mb-4 text-left">
+      {/* Page Title + Header Row */}
+      <h1 className="text-xl md:text-2xl font-bold text-heading font-body mb-1 text-left">
         Order Details
       </h1>
 
-      {/* Payment Status Alert Box */}
-      <div className={`w-full border rounded-xl p-4 mb-5 flex flex-col md:flex-row md:items-center justify-between gap-4 ${
-        isGenuinelyCancelled
-          ? 'bg-[#FEF2F2] border-[#FEE2E2] text-rose-700'
-          : isPaymentPaid || !isOnlinePayment
-            ? 'bg-[#F4F9F6] border-[#E8F1EC] text-[#008755]'
-            : 'bg-[#FEF2F2] border-[#FEE2E2] text-rose-700'
-      }`}>
-        <div className="flex items-center gap-3.5">
-          {isGenuinelyCancelled ? (
-            <IoCloseCircleOutline className="text-xl text-rose-500 flex-shrink-0" />
-          ) : isPaymentPaid || !isOnlinePayment ? (
-            <IoCheckmarkCircle className="text-xl text-[#008755] flex-shrink-0" />
-          ) : (
-            <IoAlertCircleOutline className="text-xl text-rose-500 flex-shrink-0" />
-          )}
-          <div className="text-left font-body">
-            <h4 className="text-xs md:text-sm font-bold">
-              {isGenuinelyCancelled
-                ? 'Order Cancelled'
-                : !isOnlinePayment
-                  ? 'Order Confirmed'
-                  : isPaymentPaid
-                    ? 'Payment Successful'
-                    : 'Payment Failed'}
-            </h4>
-            <p className="text-[11px] md:text-xs text-gray-500 mt-0.5">
-              {isGenuinelyCancelled
-                ? 'This order has been cancelled.'
-                : !isOnlinePayment
-                  ? 'Your order has been placed successfully. Payment will be collected upon delivery.'
-                  : isPaymentPaid
-                    ? 'Your order has been placed successfully.'
-                    : 'Your payment attempt was unsuccessful. Please retry payment.'}
-            </p>
-          </div>
+      {/* Order Number + Placed On + Action Buttons */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-5">
+        <div>
+          <h2 className="text-sm md:text-base font-medium text-heading">Order ID : <span className="text-[#008755] font-bold">#{formattedOrderNumber}</span></h2>
+          <p className="text-xs text-black mt-0.5">Placed on {fmtOrderDateTime(order?.created_at)}</p>
         </div>
-
-        {isPaymentPending && !isGenuinelyCancelled && isOnlinePayment && (
-          <button
-            type="button"
-            onClick={continuePayment}
-            disabled={paying || canceling}
-            className="md:self-center self-start h-9 px-5 bg-[#005844] hover:bg-[#008755] text-white font-bold text-xs md:text-sm rounded-lg transition duration-200 flex items-center justify-center font-body shadow-sm"
-          >
-            <span>{paying ? 'Processing...' : 'Retry Payment'}</span>
-          </button>
-        )}
+        <div className="flex gap-3 flex-wrap">
+          {/* Download Invoice */}
+          {!isGenuinelyCancelled && (!isOnlinePayment || isPaymentPaid) && (
+            <button
+              type="button"
+              onClick={handleDownloadInvoice}
+              className="h-10 px-5 border border-gray-300 hover:bg-gray-50 text-heading font-bold text-xs md:text-sm rounded-lg transition duration-200 flex items-center justify-center gap-2 font-body bg-white"
+            >
+              <IoDownloadOutline className="text-base" />
+              <span>Download Invoice</span>
+            </button>
+          )}
+          {/* Track Order - only show after shipping started */}
+          {isShipped && !isGenuinelyCancelled && (
+            <button
+              type="button"
+              className="h-10 px-5 bg-[#005844] hover:bg-[#008755] text-white font-bold text-xs md:text-sm rounded-lg transition duration-200 flex items-center justify-center gap-2 font-body shadow-sm"
+            >
+              <TruckIcon className="text-base" style={{ width: '1em', height: '1em' }} />
+              <span>Track Order</span>
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start font-body">
         {/* Left main area (col-span-8) */}
         <div className="lg:col-span-8 space-y-4 w-full">
-          {/* Metadata details card */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:divide-x md:divide-gray-200 border border-gray-150 rounded-xl bg-white p-5 mb-5 font-body text-left shadow-sm">
-            <div className="flex flex-col">
-              <span className="text-gray-500 text-[10px] md:text-[11px] font-bold uppercase tracking-wider mb-1">Order ID</span>
-              <span className="text-xs md:text-sm font-semibold text-heading">{formattedOrderNumber}</span>
+
+          {/* Order Status Banner */}
+          <div className={`w-full border rounded-xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 ${
+            isGenuinelyCancelled
+              ? 'bg-[#FEF2F2] border-[#FEE2E2]'
+              : isPaymentPaid || !isOnlinePayment
+                ? 'bg-[#F4F9F6] border-[#E8F1EC]'
+                : 'bg-[#FEF2F2] border-[#FEE2E2]'
+          }`}>
+            <div className="flex items-center gap-3.5">
+              {isGenuinelyCancelled ? (
+                <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center flex-shrink-0">
+                  <IoCloseCircleOutline className="text-2xl text-rose-500" />
+                </div>
+              ) : isPaymentPaid || !isOnlinePayment ? (
+                <div className="w-10 h-10 rounded-full bg-[#E8F5E9] flex items-center justify-center flex-shrink-0">
+                  <IoCheckmarkCircle className="text-2xl text-[#008755]" />
+                </div>
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center flex-shrink-0">
+                  <IoAlertCircleOutline className="text-2xl text-rose-500" />
+                </div>
+              )}
+              <div className="text-left font-body">
+                <h4 className={`text-sm md:text-base font-bold ${
+                  isGenuinelyCancelled ? 'text-rose-700' : isPaymentPaid || !isOnlinePayment ? 'text-[#008755]' : 'text-rose-700'
+                }`}>
+                  {isGenuinelyCancelled
+                    ? 'Order Cancelled'
+                    : !isOnlinePayment
+                      ? 'Order Confirmed'
+                      : isPaymentPaid
+                        ? 'Payment Successful'
+                        : 'Payment Failed'}
+                </h4>
+                <p className="text-[11px] md:text-xs text-black mt-0.5">
+                  {isGenuinelyCancelled
+                    ? 'This order has been cancelled.'
+                    : !isOnlinePayment
+                      ? 'Your order has been placed successfully. Payment will be collected upon delivery.'
+                      : isPaymentPaid
+                        ? 'Your order has been placed successfully.'
+                        : 'Your payment attempt was unsuccessful. Please retry payment.'}
+                </p>
+              </div>
             </div>
-            <div className="flex flex-col md:pl-6">
-              <span className="text-gray-500 text-[10px] md:text-[11px] font-bold uppercase tracking-wider mb-1">Order Date</span>
-              <span className="text-xs md:text-sm font-semibold text-heading">{fmtOrderDateTime(order?.created_at)}</span>
-            </div>
-            <div className="flex flex-col md:pl-6">
-              <span className="text-gray-500 text-[10px] md:text-[11px] font-bold uppercase tracking-wider mb-1">Payment Method</span>
-              <span className="text-xs md:text-sm font-semibold text-heading">
-                {displayPaymentMethod}
-              </span>
-            </div>
-            <div className="flex flex-col md:pl-6">
-              <span className="text-gray-500 text-[10px] md:text-[11px] font-bold uppercase tracking-wider mb-1">Total Amount</span>
-              <span className="text-xs md:text-sm font-semibold text-heading">{fmt(totalAmount, currency)}</span>
-            </div>
+
+            {/* Right side: Retry button for failed payments */}
+            {isPaymentPending && !isGenuinelyCancelled && isOnlinePayment && (
+              <button
+                type="button"
+                onClick={continuePayment}
+                disabled={paying || canceling}
+                className="md:self-center self-start h-9 px-5 bg-[#005844] hover:bg-[#008755] text-white font-bold text-xs md:text-sm rounded-lg transition duration-200 flex items-center justify-center font-body shadow-sm"
+              >
+                <span>{paying ? 'Processing...' : 'Retry Payment'}</span>
+              </button>
+            )}
           </div>
 
-          {/* Delivery Details Card */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:divide-x md:divide-gray-200 border border-gray-150 rounded-xl p-5 bg-white mb-5 text-left font-body shadow-sm">
-            <div className="flex flex-col">
-              <div className="flex justify-between items-center mb-3">
-                <h4 className="font-bold text-sm text-heading uppercase tracking-wide">Delivery Address</h4>
-                <span className="text-emerald-600 text-xs font-bold hover:underline cursor-pointer">Change</span>
+          {/* Progress Timeline */}
+          {!isGenuinelyCancelled && (
+            <div className="border border-gray-150 rounded-xl bg-white px-6 py-5 shadow-sm">
+              <div className="flex items-center justify-between w-full relative">
+                {timelineSteps.map((step, idx) => {
+                  const isCompleted = orderStep >= idx;
+                  return (
+                    <div key={step.key} className="flex flex-col items-center relative" style={{ flex: 1 }}>
+                      {/* Connector line (left side) - z-0 so it goes behind circles */}
+                      {idx > 0 && (
+                        <div
+                          className="absolute top-3 right-1/2 h-0.5"
+                          style={{
+                            width: '100%',
+                            backgroundColor: orderStep >= idx ? '#008755' : '#E5E7EB',
+                            zIndex: 0,
+                          }}
+                        />
+                      )}
+                      {/* Circle - z-10 so it appears above the connector line */}
+                      <div
+                        className={`w-6 h-6 rounded-full flex items-center justify-center border-2 transition-all ${
+                          isCompleted
+                            ? 'bg-[#008755] border-[#008755]'
+                            : 'bg-white border-gray-300'
+                        }`}
+                        style={{ position: 'relative', zIndex: 10 }}
+                      >
+                        {isCompleted && (
+                          <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </div>
+                      {/* Label */}
+                      <span className={`text-[10px] md:text-[11px] mt-2 font-semibold text-center leading-tight ${
+                        isCompleted ? 'text-[#008755]' : 'text-black'
+                      }`}>
+                        {step.label}
+                      </span>
+                      {/* Sub-label */}
+                      <span className={`text-[9px] mt-0.5 text-center ${
+                        isCompleted ? 'text-black' : 'text-black'
+                      }`}>
+                        {isCompleted && idx <= 1
+                          ? fmtTimelineTime(order?.created_at, idx * 2)
+                          : isCompleted
+                            ? fmtTimelineTime(order?.created_at, idx * 30)
+                            : 'Pending'}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
-              <div className="text-xs md:text-sm text-gray-700 font-medium leading-relaxed space-y-0.5">
-                {shippingAddress.name && <div className="font-bold text-heading mb-0.5">{shippingAddress.name}</div>}
-                {shippingAddress.lines.map((l: any, idx: number) => (
-                  <div key={idx}>{l}</div>
-                ))}
-                {shippingAddress.phone && <div className="mt-1 font-semibold text-heading">{shippingAddress.phone}</div>}
+            </div>
+          )}
+
+
+
+          {/* Delivery Details Card */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:divide-x md:divide-gray-200 border border-gray-150 rounded-xl p-5 bg-white text-left font-body shadow-sm">
+            <div className="flex flex-col">
+              <h4 className="font-bold text-sm text-heading uppercase tracking-wide mb-3">Delivery Address</h4>
+              <div className="flex items-start gap-2">
+                <IoLocationOutline className="text-base text-gray-400 mt-0.5 flex-shrink-0" />
+                <div className="text-xs md:text-sm text-black font-medium leading-relaxed space-y-0.5">
+                  {shippingAddress.name && <div className="font-bold text-heading mb-0.5">{shippingAddress.name}</div>}
+                  {shippingAddress.lines.map((l: any, idx: number) => (
+                    <div key={idx}>{l}</div>
+                  ))}
+                  {shippingAddress.phone && (
+                    <div className="flex items-center gap-1.5 mt-1.5 text-heading font-semibold">
+                      <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                      </svg>
+                      {shippingAddress.phone}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
             <div className="flex flex-col md:pl-6 pt-5 md:pt-0">
               <h4 className="font-bold text-sm text-heading uppercase tracking-wide mb-3">Delivery Method</h4>
-              <div className="flex items-center gap-2 text-xs md:text-sm font-bold text-heading">
-                <TruckIcon className="text-lg text-gray-400 flex-shrink-0" />
-                <span>{shippingMethod}</span>
-              </div>
-              <p className="text-[11px] md:text-xs text-gray-600 font-medium mt-1">
-                Estimated delivery: {getEstimatedDeliveryDate(order?.created_at)}
-              </p>
-              <div className={`font-bold text-xs md:text-sm mt-1 uppercase ${
-                shippingAmount === 0 ? 'text-[#008755]' : 'text-heading font-mono'
-              }`}>
-                {shippingAmount === 0 ? 'FREE' : fmt(shippingAmount, currency)}
+              <div className="flex items-start gap-2">
+                <TruckIcon className="text-lg text-gray-400 flex-shrink-0 mt-0.5" />
+                <div>
+                  <span className="text-xs md:text-sm font-bold text-heading">{shippingMethod}</span>
+                  <p className="text-[11px] md:text-xs text-black font-medium mt-1">
+                    Estimated Delivery: {estimatedDelivery}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
 
           {/* Order Items Table Card */}
-          <div className="border border-gray-150 rounded-xl bg-white p-5 mb-5 font-body text-left shadow-sm">
+          <div className="border border-gray-150 rounded-xl bg-white p-5 font-body text-left shadow-sm">
             <h3 className="font-bold text-sm text-heading border-b border-gray-100 pb-3 mb-4 uppercase tracking-wider">
               Order Items ({items.length})
             </h3>
             
-            <div className="hidden md:grid grid-cols-12 gap-4 pb-2.5 border-b border-gray-100 text-[10px] font-bold text-gray-600 uppercase tracking-wider">
-              <div className="col-span-6">Product</div>
+            <div className="hidden md:grid grid-cols-12 gap-4 pb-2.5 border-b border-gray-100 text-[10px] font-bold text-black uppercase tracking-wider">
+              <div className="col-span-5">Product</div>
+              <div className="col-span-2 text-center">SKU</div>
               <div className="col-span-2 text-center">Unit Price</div>
-              <div className="col-span-2 text-center">Qty</div>
+              <div className="col-span-1 text-center">Qty</div>
               <div className="col-span-2 text-right">Total</div>
             </div>
 
@@ -770,9 +877,9 @@ const OrderDetails: React.FC<{ className?: string }> = ({
 
                 return (
                   <div key={it.id} className="py-4 first:pt-4 last:pb-0 grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
-                    {/* Product Details (6 Cols) */}
-                    <div className="md:col-span-6 flex gap-4 items-center">
-                      <div className="w-16 h-16 rounded border border-gray-150 overflow-hidden bg-white p-1 flex items-center justify-center flex-shrink-0">
+                    {/* Product Details (5 Cols) */}
+                    <div className="md:col-span-5 flex gap-3 items-center">
+                      <div className="w-14 h-14 rounded-lg border border-gray-150 overflow-hidden bg-gray-50 p-1 flex items-center justify-center flex-shrink-0">
                         {itemThumb ? (
                           <img src={itemThumb} alt="" className="object-contain max-h-full max-w-full" />
                         ) : (
@@ -780,27 +887,32 @@ const OrderDetails: React.FC<{ className?: string }> = ({
                         )}
                       </div>
                       <div className="min-w-0 text-left">
-                        <h4 className="text-sm font-bold text-heading truncate">{it.title || it.product_title}</h4>
-                        <p className="text-[11px] text-gray-600 font-medium mt-0.5">SKU: {it.variant?.sku || 'N/A'}</p>
+                        <h4 className="text-xs md:text-sm font-bold text-heading truncate uppercase">{it.title || it.product_title}</h4>
                       </div>
+                    </div>
+
+                    {/* SKU (2 Cols) */}
+                    <div className="md:col-span-2 text-left md:text-center">
+                      <span className="text-xs text-gray-400 md:hidden block uppercase tracking-wider font-semibold mb-0.5">SKU</span>
+                      <span className="text-xs text-black font-medium">{it.variant?.sku || 'N/A'}</span>
                     </div>
                     
                     {/* Unit Price (2 Cols) */}
                     <div className="md:col-span-2 text-left md:text-center">
                       <span className="text-xs text-gray-400 md:hidden block uppercase tracking-wider font-semibold mb-0.5">Unit Price</span>
-                      <span className="text-sm font-bold text-heading font-mono">{fmt(itemUnitVal, currency)}</span>
+                      <span className="text-sm font-semibold text-heading">{fmt(itemUnitVal, currency)}</span>
                     </div>
 
-                    {/* Qty (2 Cols) */}
-                    <div className="md:col-span-2 text-left md:text-center">
+                    {/* Qty (1 Col) */}
+                    <div className="md:col-span-1 text-left md:text-center">
                       <span className="text-xs text-gray-400 md:hidden block uppercase tracking-wider font-semibold mb-0.5">Qty</span>
-                      <span className="text-sm font-semibold text-heading font-mono">{itemQty}</span>
+                      <span className="text-sm font-semibold text-heading">{itemQty}</span>
                     </div>
 
                     {/* Total (2 Cols) */}
                     <div className="md:col-span-2 text-left md:text-right">
                       <span className="text-xs text-gray-400 md:hidden block uppercase tracking-wider font-semibold mb-0.5">Total</span>
-                      <span className="text-sm font-bold text-heading font-mono">{fmt(itemTotalVal, currency)}</span>
+                      <span className="text-sm font-bold text-[#008755]">{fmt(itemTotalVal, currency)}</span>
                     </div>
                   </div>
                 );
@@ -810,21 +922,21 @@ const OrderDetails: React.FC<{ className?: string }> = ({
 
           {/* Error messages */}
           {payError && (
-            <div className="w-full bg-red-50 border border-red-200 text-red-600 rounded-lg p-3.5 text-xs font-semibold mt-4 flex items-center gap-2 font-body text-left">
+            <div className="w-full bg-red-50 border border-red-200 text-red-600 rounded-lg p-3.5 text-xs font-semibold flex items-center gap-2 font-body text-left">
               <span>⚠️</span> {payError}
             </div>
           )}
           {cancelError && (
-            <div className="w-full bg-red-50 border border-red-200 text-red-600 rounded-lg p-3.5 text-xs font-semibold mt-4 flex items-center gap-2 font-body text-left">
+            <div className="w-full bg-red-50 border border-red-200 text-red-600 rounded-lg p-3.5 text-xs font-semibold flex items-center gap-2 font-body text-left">
               <span>⚠️</span> {cancelError}
             </div>
           )}
 
           {/* Action buttons at the bottom */}
-          <div className="flex gap-3 w-full justify-start mt-6 flex-wrap">
+          <div className="flex gap-3 w-full justify-start mt-2 flex-wrap">
             <Link
               href="/"
-              className="h-9 px-4 border border-gray-300 hover:bg-gray-50 text-heading font-bold text-xs md:text-sm rounded-lg transition duration-200 flex items-center justify-center gap-1.5 font-body"
+              className="h-10 px-5 border border-gray-300 hover:bg-gray-50 text-heading font-bold text-xs md:text-sm rounded-lg transition duration-200 flex items-center justify-center gap-1.5 font-body bg-white"
             >
               <IoArrowBackOutline className="text-base" />
               <span>Continue Shopping</span>
@@ -835,7 +947,7 @@ const OrderDetails: React.FC<{ className?: string }> = ({
                 type="button"
                 onClick={cancelOrder}
                 disabled={paying || canceling}
-                className="h-9 px-4 border border-red-200 hover:bg-red-50 text-red-500 font-bold text-xs md:text-sm rounded-lg transition duration-200 flex items-center justify-center gap-1.5 font-body"
+                className="h-10 px-5 border border-red-300 hover:bg-red-50 text-red-500 font-bold text-xs md:text-sm rounded-lg transition duration-200 flex items-center justify-center gap-1.5 font-body bg-white"
               >
                 <IoTrashOutline className="text-base" />
                 <span>{canceling ? 'Cancelling...' : 'Cancel Order'}</span>
@@ -846,72 +958,121 @@ const OrderDetails: React.FC<{ className?: string }> = ({
 
         {/* Right sidebar area (col-span-4) */}
         <div className="lg:col-span-4 space-y-4 w-full">
-          {/* Download Invoice Button */}
-          {!isGenuinelyCancelled && (!isOnlinePayment || isPaymentPaid) && (
-            <button
-              type="button"
-              onClick={handleDownloadInvoice}
-              className="w-full h-11 border border-gray-300 hover:bg-gray-50 text-heading font-bold text-xs md:text-sm rounded-lg transition duration-200 flex items-center justify-center gap-2 font-body mb-1"
-            >
-              <svg className="w-4 h-4 text-heading" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-              <span>Download Invoice</span>
-            </button>
-          )}
 
           {/* PRICE DETAILS Card */}
           <div className="border border-gray-150 rounded-xl bg-white p-5 text-left font-body shadow-sm">
-            <h3 className="font-bold text-xs text-heading border-b border-gray-100 pb-2.5 mb-3.5 uppercase tracking-wider font-body">
-              Price details
+            <h3 className="font-bold text-sm text-heading border-b border-gray-100 pb-2.5 mb-3.5 uppercase tracking-wider font-body">
+              Price Details
             </h3>
 
-            <div className="space-y-4 text-xs md:text-sm text-heading font-medium">
+            <div className="space-y-3 text-xs md:text-sm text-heading font-medium">
               <div className="flex justify-between items-center">
-                <span className="text-gray-600 font-normal">Price ({items.length} item{items.length > 1 ? "s" : ""})</span>
-                <span className="font-mono text-heading font-semibold">{fmt(subtotalAmount, currency)}</span>
+                <span className="text-black font-normal">Subtotal ({items.length} item{items.length > 1 ? "s" : ""})</span>
+                <span className="font-semibold text-heading">{fmt(subtotalAmount, currency)}</span>
               </div>
 
               <div className="flex justify-between items-center">
-                <span className="text-gray-600 font-normal">Delivery Charges</span>
-                <span className={`text-xs ${
-                  shippingAmount === 0 ? 'text-emerald-600 font-bold uppercase' : 'text-heading font-semibold font-mono'
+                <span className="text-black font-normal">Delivery Charges</span>
+                <span className={`font-semibold ${
+                  shippingAmount === 0 ? 'text-[#008755] font-bold uppercase' : 'text-heading'
                 }`}>
-                  {shippingAmount === 0 ? 'Free' : fmt(shippingAmount, currency)}
+                  {shippingAmount === 0 ? 'FREE' : fmt(shippingAmount, currency)}
                 </span>
               </div>
 
-              <div className="border-t border-gray-150 pt-4 flex justify-between items-center font-bold text-sm md:text-base text-heading">
-                <span>Total Amount</span>
-                <span className="font-mono">{fmt(totalAmount, currency)}</span>
+              <div className="flex justify-between items-center">
+                <span className="text-black font-normal">VAT (5%)</span>
+                <span className="font-semibold text-heading">{fmt(taxAmount, currency)}</span>
               </div>
-            </div>
 
-            <div className={`rounded p-2.5 mt-4 text-xs font-bold text-center border ${
-              isGenuinelyCancelled
-                ? 'bg-rose-50 border-rose-100 text-rose-700'
-                : isPaymentPaid && paymentProvider !== 'pp_system_default'
-                  ? 'bg-[#F4F9F6] border-[#E8F1EC] text-[#008755]'
-                  : (paymentProvider === 'pp_system_default' || !paymentProvider
-                      ? 'bg-amber-50 border-amber-100 text-[#D97706]'
-                      : 'bg-rose-50 border-rose-100 text-rose-700')
-            }`}>
-              {isGenuinelyCancelled
-                ? 'Order Cancelled'
-                : isPaymentPaid && paymentProvider !== 'pp_system_default'
-                  ? `Paid By ${paymentMethodName}`
-                  : (paymentProvider === 'pp_system_default' || !paymentProvider
-                      ? 'Pending (Pay on Delivery)'
-                      : 'Payment Failed')}
+              <div className="border-t border-gray-150 pt-3 flex justify-between items-center font-bold text-sm md:text-base text-heading">
+                <span>Total Amount</span>
+                <span className="text-[#008755]">{fmt(totalAmount, currency)}</span>
+              </div>
             </div>
           </div>
 
-          {/* Safe & secure badge */}
-          <div className="flex items-center gap-2 text-left font-body text-gray-400 py-1.5 px-0.5">
-            <IoShieldCheckmarkOutline className="text-xl text-gray-400 flex-shrink-0" />
-            <span className="text-[9px] md:text-[10px] font-bold leading-normal tracking-wide uppercase">
-              SAFE AND SECURE PAYMENTS. 100% AUTHENTIC PRODUCTS.
-            </span>
+          {/* Cash On Delivery / Payment Method Card */}
+          <div className={`border rounded-xl p-4 flex items-start gap-3 shadow-sm ${
+            isGenuinelyCancelled
+              ? 'bg-rose-50 border-rose-100'
+              : paymentProvider === 'pp_system_default' || !paymentProvider
+                ? 'bg-[#F4F9F6] border-[#E8F1EC]'
+                : isPaymentPaid
+                  ? 'bg-[#F4F9F6] border-[#E8F1EC]'
+                  : 'bg-rose-50 border-rose-100'
+          }`}>
+            <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${
+              isGenuinelyCancelled
+                ? 'bg-rose-100'
+                : 'bg-[#E8F5E9]'
+            }`}>
+              {paymentProvider === 'pp_system_default' || !paymentProvider ? (
+                <IoWalletOutline className="text-lg text-[#008755]" />
+              ) : (
+                <IoCardOutline className="text-lg text-[#008755]" />
+              )}
+            </div>
+            <div>
+              <h4 className={`text-sm font-bold ${
+                isGenuinelyCancelled ? 'text-rose-700' : 'text-[#008755]'
+              }`}>
+                {isGenuinelyCancelled
+                  ? 'Order Cancelled'
+                  : displayPaymentMethod}
+              </h4>
+              <p className="text-[11px] text-black mt-0.5">
+                {isGenuinelyCancelled
+                  ? 'This order has been cancelled.'
+                  : paymentProvider === 'pp_system_default' || !paymentProvider
+                    ? 'Payment will be collected upon delivery.'
+                    : isPaymentPaid
+                      ? 'Payment completed successfully.'
+                      : 'Payment pending. Please retry.'}
+              </p>
+            </div>
+          </div>
+
+          {/* Need Help Card */}
+          <div className="border border-gray-150 rounded-xl bg-white p-5 text-left font-body shadow-sm">
+            <h3 className="font-bold text-sm text-heading mb-1">Need Help?</h3>
+            <p className="text-[11px] text-black mb-4">If you have any questions about your order, we're here to help.</p>
+
+            <a
+              href="tel:+97146069999"
+              className="w-full h-10 border border-[#E8F1EC] hover:bg-[#F4F9F6] text-[#008755] font-bold text-xs md:text-sm rounded-lg transition duration-200 flex items-center justify-center gap-2 font-body mb-4"
+            >
+              <IoHeadsetOutline className="text-base" />
+              <span>Contact Support</span>
+            </a>
+
+            <div className="space-y-2.5 text-xs text-black">
+              <div className="flex items-center gap-2">
+                <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+                </svg>
+                <span>support@dubaipolicstore.ae</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
+                </svg>
+                <span>+97146069999</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Safe & Secure Card */}
+          <div className="border border-gray-150 rounded-xl bg-white p-4 font-body shadow-sm">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-full bg-[#E8F5E9] flex items-center justify-center flex-shrink-0">
+                <IoShieldCheckmarkOutline className="text-lg text-[#008755]" />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-heading">Safe & Secure</h4>
+                <p className="text-[11px] text-black mt-0.5">Your payment information is 100% secure and encrypted.</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>

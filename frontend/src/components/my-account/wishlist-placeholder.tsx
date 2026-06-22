@@ -32,7 +32,7 @@ export default function WishlistPlaceholder() {
       {/* Header and navigation block */}
       <div className="flex items-center justify-between gap-4 border-b border-gray-100 pb-5 mb-6">
         <div>
-          <h2 className="text-xl md:text-2xl font-bold text-heading font-body">Wishlist / Favorites</h2>
+          <h2 className="text-xl md:text-2xl font-bold text-[#005844] font-body">Wishlist / Favorites</h2>
           <p className="mt-1 text-sm text-gray-700">
             Manage your saved products and add them directly to your cart.
           </p>

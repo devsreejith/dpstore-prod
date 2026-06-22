@@ -215,7 +215,7 @@ export default function CustomerAddresses() {
       className="w-full"
     >
       {/* Header */}
-      <h2 className="text-lg md:text-xl font-bold text-[#005844] font-body mb-5">
+      <h2 className="text-xl md:text-2xl font-bold text-[#005844] mb-6 font-body">
         Manage Addresses
       </h2>
 

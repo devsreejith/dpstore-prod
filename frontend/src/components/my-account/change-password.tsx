@@ -51,7 +51,7 @@ const ChangePassword: React.FC = () => {
 	const newPassword = watch("newPassword");
 	return (
 		<>
-			<h2 className="text-xl md:text-2xl font-bold text-heading mb-6 font-body">
+			<h2 className="text-xl md:text-2xl font-bold text-[#005844] mb-6 font-body">
 				{t("common:text-change-password")}
 			</h2>
 			<motion.div

@@ -11,7 +11,7 @@ export default function ContactUsPage() {
   const { t } = useTranslation('common');
   return (
     <>
-      <PageHeader pageHeader="text-page-contact-us" />
+      <PageHeader pageHeader="text-page-contact-us" image="/assets/images/contact-header.webp" />
       <Container>
         <div className="my-14 lg:my-16 xl:my-20 px-0 pb-2 lg: xl:max-w-screen-xl mx-auto flex flex-col md:flex-row items-stretch w-full">
           <div className="md:w-full lg:w-2/5 2xl:w-2/6 flex flex-col">

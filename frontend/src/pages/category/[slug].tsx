@@ -9,8 +9,8 @@ import { GetServerSideProps } from "next";
 export default function Category() {
 	return (
 		<div className="border-t-2 border-borderBottom">
+			<CategoryBanner className="mb-8 lg:mb-12" />
 			<Container>
-				<CategoryBanner />
 				<div className="pb-16 lg:pb-20">
 					<ProductGrid className="3xl:grid-cols-6" />
 				</div>

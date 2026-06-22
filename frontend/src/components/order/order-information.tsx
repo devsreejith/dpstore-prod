@@ -340,351 +340,207 @@ export default function OrderInformation() {
           <OrderDetails className="p-0" />
         </div>
       ) : isPaymentFailed ? (
-          /* If payment failed, show the split-panel view */
-          <div className="flex flex-col w-full">
-            {/* Back to Orders */}
-            <Link
-              href="/my-account/orders"
-              className="inline-flex items-center text-sm font-semibold text-gray-600 hover:text-black transition gap-2 mb-5 font-body self-start"
-            >
-              <IoArrowBackOutline className="text-base" /> Back to Orders
-            </Link>
-
-            {/* Split Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start w-full max-w-[960px] mx-auto">
-              {/* Main Content Column (Left) */}
-              <div className="lg:col-span-2 w-full bg-white border border-gray-150 rounded-xl p-5 md:p-8 shadow-sm flex flex-col items-center">
-                {/* Gray Alert Icon */}
-                <div className="relative mb-5 flex items-center justify-center">
-                  <div className="absolute w-24 h-24 border border-gray-100 rounded-full opacity-60 animate-ping duration-1000"></div>
-                  <div className="absolute w-20 h-20 border border-dashed border-gray-200 rounded-full"></div>
-                  <div className="w-12 h-12 rounded-full bg-gray-400 flex items-center justify-center shadow-sm relative z-10">
-                    <IoAlertCircleOutline className="text-2xl text-white" />
-                  </div>
-                </div>
-
-                <h1 className="text-lg md:text-xl font-bold text-heading font-body mb-1 text-center">
-                  Payment Failed
-                </h1>
-                <p className="text-xs md:text-sm text-gray-500 font-body mb-6 text-center max-w-md">
-                  Your payment transaction was not completed. You can retry the payment below.
-                </p>
-
-                {/* Order ID & Total Amount Card */}
-                <div className="w-full border border-gray-150 rounded-xl overflow-hidden mb-5 bg-gray-50/30">
-                  <div className="flex justify-between items-center px-4 py-2.5 border-b border-gray-150">
-                    <div className="flex items-center gap-2.5 text-xs md:text-sm text-gray-500 font-body">
-                      <IoDocumentTextOutline className="text-base text-gray-400" />
-                      <span>Order ID</span>
-                    </div>
-                    <span className="text-xs md:text-sm font-bold text-heading font-body">
-                      {formattedOrderNumber}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center px-4 py-2.5">
-                    <div className="flex items-center gap-2.5 text-xs md:text-sm text-gray-500 font-body">
-                      <IoWalletOutline className="text-base text-gray-400" />
-                      <span>Total Amount</span>
-                    </div>
-                    <span className="text-xs md:text-sm font-bold text-heading font-body">
-                      {total}
-                    </span>
-                  </div>
-                </div>
-
-                {payError && (
-                  <div className="w-full bg-rose-50 border border-rose-100 rounded-xl p-3.5 mb-5 flex items-center gap-2.5 text-xs md:text-sm text-rose-700 font-semibold font-body text-left">
-                    <span>⚠️ {payError}</span>
-                  </div>
-                )}
-
-                {/* Stacked Button Actions */}
-                <div className="flex flex-col gap-3 w-full mb-6">
-                  <button
-                    type="button"
-                    onClick={continuePayment}
-                    disabled={paying || canceling}
-                    className="w-full h-11 bg-[#005844] hover:bg-[#008755] text-white font-bold text-xs md:text-sm rounded-lg transition duration-200 flex items-center justify-center font-body"
-                  >
-                    {paying ? 'Processing...' : 'Retry Payment'}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setShowDetails(true)}
-                    className="w-full h-11 border border-gray-300 hover:bg-gray-50 text-heading font-bold text-xs md:text-sm rounded-lg transition duration-200 flex items-center justify-center font-body"
-                  >
-                    View Order Details
-                  </button>
-
-                  <Link
-                    href="/"
-                    className="w-full h-11 border border-gray-300 hover:bg-gray-50 text-heading font-bold text-xs md:text-sm rounded-lg transition duration-200 flex items-center justify-center font-body"
-                  >
-                    Continue Shopping
-                  </Link>
-
-                  <Link
-                    href="/my-account/orders"
-                    className="w-full h-11 border border-gray-300 hover:bg-gray-50 text-heading font-bold text-xs md:text-sm rounded-lg transition duration-200 flex items-center justify-center font-body"
-                  >
-                    Back to Orders
-                  </Link>
+          /* Payment Failed View */
+          <div className="flex flex-col items-center w-full max-w-2xl mx-auto">
+            <div className="w-full bg-white border border-gray-150 rounded-2xl p-8 md:p-12 shadow-sm flex flex-col items-center">
+              {/* Failed Icon */}
+              <div className="relative mb-8 flex items-center justify-center" style={{ width: 96, height: 96 }}>
+                <div className="absolute inset-0 border-2 border-dashed border-[#FCA5A5] rounded-full" style={{ width: 96, height: 96 }}></div>
+                <span className="absolute" style={{ top: -4, left: 8, width: 6, height: 6, borderRadius: '50%', background: '#B91C1C' }}></span>
+                <span className="absolute" style={{ bottom: 4, right: 4, width: 5, height: 5, borderRadius: '50%', background: '#B91C1C' }}></span>
+                <span className="absolute" style={{ top: 12, right: -6, width: 5, height: 5, borderRadius: '50%', background: '#B91C1C' }}></span>
+                <span className="absolute" style={{ bottom: 16, left: -4, width: 4, height: 4, borderRadius: '50%', background: '#B91C1C' }}></span>
+                <div className="w-16 h-16 rounded-full bg-[#A52A2A] flex items-center justify-center shadow-md relative z-10">
+                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
                 </div>
               </div>
 
-              {/* Sidebar Column (Right) */}
-              <div className="lg:col-span-1 w-full flex flex-col gap-6">
-                {/* PRICE DETAILS Card */}
-                <div className="w-full bg-white border border-gray-150 rounded-xl p-5 shadow-sm">
-                  <h2 className="text-xs font-bold text-heading font-body mb-4 uppercase tracking-wider text-left">
-                    Price Details
-                  </h2>
-                  
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center text-xs md:text-sm font-body text-gray-600">
-                      <span>Price ({totalItemsCount} {totalItemsCount === 1 ? 'item' : 'items'})</span>
-                      <span className="text-heading font-medium">{subtotal}</span>
-                    </div>
+              <h1 className="text-2xl md:text-3xl font-bold text-[#A52A2A] font-body mb-2 text-center">
+                Payment Failed
+              </h1>
+              <p className="text-sm text-gray-600 font-body text-center max-w-md leading-relaxed">
+                We couldn&apos;t process your payment.
+              </p>
+              <p className="text-sm text-gray-600 font-body mb-8 text-center max-w-md">
+                Please try again or choose another payment method.
+              </p>
 
-                    {discountAmount > 0 && (
-                      <div className="flex justify-between items-center text-xs md:text-sm font-body text-emerald-600">
-                        <span>Discount</span>
-                        <span className="font-semibold">-{discount}</span>
-                      </div>
-                    )}
-
-                    <div className={`flex justify-between items-center text-xs md:text-sm font-body ${
-                      shippingAmount === 0 ? 'text-emerald-600' : 'text-gray-600'
-                    }`}>
-                      <span>Delivery Charges</span>
-                      <span className={shippingAmount === 0 ? 'font-bold uppercase' : 'font-semibold font-mono text-heading'}>
-                        {shippingAmount === 0 ? 'FREE' : shipping}
-                      </span>
-                    </div>
-
-                    <div className="border-t border-gray-150 pt-3 flex justify-between items-center text-sm md:text-base font-bold text-heading font-body">
-                      <span>Total Amount</span>
-                      <span>{total}</span>
-                    </div>
-                  </div>
+              {/* What happened? Info Box */}
+              <div className="w-full bg-[#FFF5F5] border border-[#FEE2E2] rounded-xl p-5 mb-8 flex items-start gap-3">
+                <div className="w-8 h-8 rounded-full bg-[#FEE2E2] flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span className="text-[#A52A2A] font-bold text-lg">!</span>
                 </div>
-
-                {/* Secure Payments Badge */}
-                <div className="flex items-center gap-2.5 text-left font-body text-gray-400 py-1.5 px-0.5">
-                  <IoShieldCheckmarkOutline className="text-xl text-gray-400 flex-shrink-0" />
-                  <span className="text-[9px] md:text-[10px] font-bold leading-normal tracking-wide uppercase">
-                    SAFE AND SECURE PAYMENTS. 100% AUTHENTIC PRODUCTS.
-                  </span>
+                <div className="flex flex-col text-left">
+                  <h4 className="text-sm font-bold text-heading mb-1">What happened?</h4>
+                  <p className="text-xs text-gray-600 leading-relaxed">
+                    Your payment was not completed. No amount has been deducted from your account.
+                  </p>
                 </div>
               </div>
+
+              {payError && (
+                <div className="w-full bg-rose-50 border border-rose-100 rounded-xl p-3.5 mb-5 flex items-center gap-2.5 text-xs md:text-sm text-rose-700 font-semibold font-body text-left">
+                  <span>⚠️ {payError}</span>
+                </div>
+              )}
+
+              {/* Action Buttons - side by side */}
+              <div className="flex flex-col sm:flex-row gap-4 w-full mb-4">
+                <button
+                  type="button"
+                  onClick={continuePayment}
+                  disabled={paying || canceling}
+                  className="flex-1 h-12 border-2 border-[#A52A2A] hover:bg-[#FFF5F5] text-[#A52A2A] font-bold text-sm rounded-xl transition duration-200 flex items-center justify-center gap-2 font-body"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                  </svg>
+                  {paying ? 'Processing...' : 'Try Again'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowDetails(true)}
+                  className="flex-1 h-12 bg-[#A52A2A] hover:bg-[#8B0000] text-white font-bold text-sm rounded-xl transition duration-200 flex items-center justify-center gap-2 font-body"
+                >
+                  <IoWalletOutline className="text-lg" />
+                  Change Payment Method
+                </button>
+              </div>
+
+              {cancelError && (
+                <div className="w-full bg-rose-50 border border-rose-100 rounded-xl p-3.5 mb-3 flex items-center gap-2.5 text-xs text-rose-700 font-semibold font-body text-left">
+                  <span>⚠️ {cancelError}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Safe & Secure Footer */}
+            <div className="flex flex-col items-center mt-6">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="h-px w-16 bg-gray-200"></div>
+                <div className="w-8 h-8 rounded-full bg-[#E8F5E9] flex items-center justify-center">
+                  <IoShieldCheckmarkOutline className="text-lg text-[#008755]" />
+                </div>
+                <div className="h-px w-16 bg-gray-200"></div>
+              </div>
+              <p className="text-xs text-black font-body text-center">
+                Safe and secure payments. 100% authentic products.
+              </p>
             </div>
           </div>
         ) : (
-          /* If payment succeeded, show the split-panel success view */
-          <div className="flex flex-col w-full">
-            {/* Back to Orders */}
-            <Link
-              href="/my-account/orders"
-              className="inline-flex items-center text-sm font-semibold text-gray-600 hover:text-black transition gap-2 mb-5 font-body self-start"
-            >
-              <IoArrowBackOutline className="text-base" /> Back to Orders
-            </Link>
-
-            {/* Split Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start w-full max-w-[960px] mx-auto">
-              {/* Main Content Column (Left) */}
-              <div className="lg:col-span-2 w-full bg-white border border-gray-150 rounded-xl p-5 md:p-8 shadow-sm flex flex-col items-center">
-                {/* Icon Selection based on payment method */}
-                {isCancelled ? (
-                  /* Cancelled Icon: Rose Circle with Close Symbol */
-                  <div className="relative mb-5 flex items-center justify-center">
-                    <div className="absolute w-24 h-24 border border-rose-100 rounded-full opacity-60 animate-ping duration-1000"></div>
-                    <div className="absolute w-20 h-20 border border-dashed border-rose-200 rounded-full"></div>
-                    <div className="w-12 h-12 rounded-full bg-rose-500 flex items-center justify-center shadow-sm relative z-10">
-                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </div>
-                  </div>
-                ) : !isOnlinePayment ? (
-                  /* COD Icon: Box/Package Icon */
-                  <div className="relative mb-5 flex items-center justify-center">
-                    <div className="absolute w-24 h-24 border border-emerald-100 rounded-full opacity-60 animate-ping duration-1000"></div>
-                    <div className="absolute w-20 h-20 border border-dashed border-emerald-200 rounded-full"></div>
-                    <div className="w-12 h-12 rounded-full bg-emerald-500 flex items-center justify-center shadow-sm relative z-10">
-                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.3" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                      </svg>
-                    </div>
-                  </div>
-                ) : (
-                  /* Online payment success icon: Green Circle Check Icon */
-                  <div className="relative mb-5 flex items-center justify-center">
-                    <div className="absolute w-24 h-24 border border-emerald-100 rounded-full opacity-60 animate-ping duration-1000"></div>
-                    <div className="absolute w-20 h-20 border border-dashed border-emerald-200 rounded-full"></div>
-                    <span className="absolute -top-1 -left-2 w-1.5 h-1.5 bg-emerald-300 rounded-full"></span>
-                    <span className="absolute -bottom-1 -right-2 w-1.5 h-1.5 bg-emerald-200 rounded-full"></span>
-                    <span className="absolute top-2 -right-3 w-1.5 h-1.5 bg-emerald-300 rounded-full"></span>
-                    <span className="absolute bottom-3 -left-3 w-1.5 h-1.5 bg-emerald-200 rounded-full"></span>
-                    
-                    <div className="w-12 h-12 rounded-full bg-emerald-500 flex items-center justify-center shadow-sm relative z-10">
-                      <svg
-                        className="w-6 h-6 text-white"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="4"
-                          d="M5 13l4 4L19 7"
-                        />
-                      </svg>
-                    </div>
-                  </div>
-                )}
-
-                <h1 className="text-lg md:text-xl font-bold text-heading font-body mb-1 text-center">
-                  {isCancelled
-                    ? "Order Cancelled"
-                    : (!isOnlinePayment ? "Order Placed Successfully" : "Payment Successful")}
-                </h1>
-                <p className="text-xs md:text-sm text-gray-500 font-body mb-6 text-center max-w-md leading-relaxed">
-                  {isCancelled
-                    ? "This order has been cancelled."
-                    : (!isOnlinePayment
-                      ? "Your order has been placed and will be processed shortly. Payment will be collected upon delivery."
-                      : "Your payment has been completed successfully. Thank you for your order.")}
-                </p>
-
-                {/* Order ID & Order Date Card */}
-                <div className="w-full border border-gray-150 rounded-xl overflow-hidden mb-5 bg-gray-50/30">
-                  <div className="flex justify-between items-center px-4 py-2.5 border-b border-gray-150">
-                    <div className="flex items-center gap-2.5 text-xs md:text-sm text-gray-500 font-body">
-                      <IoDocumentTextOutline className="text-base text-gray-400" />
-                      <span>Order ID</span>
-                    </div>
-                    <span className="text-xs md:text-sm font-bold text-heading font-body">
-                      {formattedOrderNumber}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center px-4 py-2.5">
-                    <div className="flex items-center gap-2.5 text-xs md:text-sm text-gray-500 font-body">
-                      <IoCalendarOutline className="text-base text-gray-400" />
-                      <span>Order Date</span>
-                    </div>
-                    <span className="text-xs md:text-sm font-bold text-heading font-body">
-                      {fmtOrderDateTime(data?.created_at)}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Green Discount Banner */}
-                {discountAmount > 0 && (
-                  <div className="w-full bg-emerald-50/50 border border-emerald-100 rounded-xl p-3.5 mb-5 flex items-center gap-2.5 text-xs md:text-sm text-emerald-700 font-semibold font-body">
-                    <svg className="w-4 h-4 text-emerald-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.504 1.172a3 3 0 012.121.879l8.313 8.314a3 3 0 010 4.243l-5.657 5.656a3 3 0 01-4.243 0L1.724 11.95A3 3 0 01.845 9.83V3a2 2 0 012-2h6.659zM5 5a1 1 0 100-2 1 1 0 000 2z" />
+          /* Payment Success / COD Success View */
+          <div className="flex flex-col items-center w-full max-w-2xl mx-auto">
+            <div className="w-full bg-white border border-gray-150 rounded-2xl p-8 md:p-12 shadow-sm flex flex-col items-center">
+              {/* Success Icon */}
+              {isCancelled ? (
+                <div className="relative mb-8 flex items-center justify-center" style={{ width: 96, height: 96 }}>
+                  <div className="absolute inset-0 border-2 border-dashed border-rose-200 rounded-full" style={{ width: 96, height: 96 }}></div>
+                  <div className="w-16 h-16 rounded-full bg-rose-500 flex items-center justify-center shadow-md relative z-10">
+                    <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" />
                     </svg>
-                    <span>You will save {discount} on this order</span>
-                  </div>
-                )}
-
-                {/* Stacked Button Actions */}
-                <div className="flex flex-col gap-3 w-full mb-6">
-                  <button
-                    type="button"
-                    onClick={() => setShowDetails(true)}
-                    className="w-full h-11 bg-[#005844] hover:bg-[#008755] text-white font-bold text-xs md:text-sm rounded-lg transition duration-200 flex items-center justify-center font-body"
-                  >
-                    View Order Details
-                  </button>
-
-                  <Link
-                    href="/"
-                    className="w-full h-11 border border-gray-300 hover:bg-gray-50 text-heading font-bold text-xs md:text-sm rounded-lg transition duration-200 flex items-center justify-center font-body"
-                  >
-                    Continue Shopping
-                  </Link>
-                </div>
-
-                {/* Footer confirmation email */}
-                <div className="flex items-start gap-2.5 text-center text-xs text-gray-400 font-body max-w-sm mt-1 justify-center leading-relaxed">
-                  {isCancelled ? (
-                    <IoAlertCircleOutline className="text-base flex-shrink-0 mt-0.5 text-gray-400" />
-                  ) : isOnlinePayment ? (
-                    <IoLockClosedOutline className="text-base flex-shrink-0 mt-0.5 text-gray-400" />
-                  ) : (
-                    <IoMailOutline className="text-base flex-shrink-0 mt-0.5 text-gray-400" />
-                  )}
-                  <div className="flex flex-col items-center">
-                    <span>
-                      {isCancelled
-                        ? "A cancellation confirmation has been sent to"
-                        : "A confirmation email has been sent to"}
-                    </span>
-                    <span className="font-bold text-heading mt-0.5">{data?.email}</span>
                   </div>
                 </div>
-              </div>
-
-              {/* Sidebar Column (Right) */}
-              <div className="lg:col-span-1 w-full flex flex-col gap-6">
-                {/* PRICE DETAILS Card */}
-                <div className="w-full bg-white border border-gray-150 rounded-xl p-5 shadow-sm">
-                  <h2 className="text-xs font-bold text-heading font-body mb-4 uppercase tracking-wider text-left">
-                    Price Details
-                  </h2>
-                  
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center text-xs md:text-sm font-body text-gray-600">
-                      <span>Price ({totalItemsCount} {totalItemsCount === 1 ? 'item' : 'items'})</span>
-                      <span className="text-heading font-medium">{subtotal}</span>
-                    </div>
-
-                    {discountAmount > 0 && (
-                      <div className="flex justify-between items-center text-xs md:text-sm font-body text-emerald-600">
-                        <span>Discount</span>
-                        <span className="font-semibold">-{discount}</span>
-                      </div>
-                    )}
-
-                    <div className={`flex justify-between items-center text-xs md:text-sm font-body ${
-                      shippingAmount === 0 ? 'text-emerald-600' : 'text-gray-600'
-                    }`}>
-                      <span>Delivery Charges</span>
-                      <span className={shippingAmount === 0 ? 'font-bold uppercase' : 'font-semibold font-mono text-heading'}>
-                        {shippingAmount === 0 ? 'FREE' : shipping}
-                      </span>
-                    </div>
-
-                    <div className="border-t border-gray-150 pt-3 flex justify-between items-center text-sm md:text-base font-bold text-heading font-body">
-                      <span>Total Amount</span>
-                      <span>{total}</span>
-                    </div>
+              ) : (
+                <div className="relative mb-8 flex items-center justify-center" style={{ width: 96, height: 96 }}>
+                  <div className="absolute inset-0 border-2 border-dashed border-[#A7D7C5] rounded-full" style={{ width: 96, height: 96 }}></div>
+                  <span className="absolute" style={{ top: -4, left: 8, width: 6, height: 6, borderRadius: '50%', background: '#008755' }}></span>
+                  <span className="absolute" style={{ bottom: 4, right: 4, width: 5, height: 5, borderRadius: '50%', background: '#A7D7C5' }}></span>
+                  <span className="absolute" style={{ top: 12, right: -6, width: 5, height: 5, borderRadius: '50%', background: '#008755' }}></span>
+                  <span className="absolute" style={{ bottom: 16, left: -4, width: 4, height: 4, borderRadius: '50%', background: '#A7D7C5' }}></span>
+                  <div className="w-16 h-16 rounded-full bg-[#008755] flex items-center justify-center shadow-md relative z-10">
+                    <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3.5" d="M5 13l4 4L19 7" />
+                    </svg>
                   </div>
-
-                  {/* Green discount banner inside price details */}
-                  {discountAmount > 0 && (
-                    <div className="w-full bg-emerald-50/50 border border-emerald-100 rounded-xl p-3 mt-4 flex items-center gap-2.5 text-xs text-emerald-700 font-semibold font-body">
-                      <svg className="w-4 h-4 text-emerald-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.504 1.172a3 3 0 012.121.879l8.313 8.314a3 3 0 010 4.243l-5.657 5.656a3 3 0 01-4.243 0L1.724 11.95A3 3 0 01.845 9.83V3a2 2 0 012-2h6.659zM5 5a1 1 0 100-2 1 1 0 000 2z" />
-                      </svg>
-                      <span>You will save {discount} on this order</span>
-                    </div>
-                  )}
                 </div>
+              )}
 
-                {/* Secure Payments Badge */}
-                <div className="flex items-center gap-2.5 text-left font-body text-gray-400 py-1.5 px-0.5">
-                  <IoShieldCheckmarkOutline className="text-xl text-gray-400 flex-shrink-0" />
-                  <span className="text-[9px] md:text-[10px] font-bold leading-normal tracking-wide uppercase">
-                    SAFE AND SECURE PAYMENTS. 100% AUTHENTIC PRODUCTS.
-                  </span>
+              <h1 className="text-2xl md:text-3xl font-bold text-[#005844] font-body mb-3 text-center">
+                {isCancelled
+                  ? "Order Cancelled"
+                  : (!isOnlinePayment ? "Order Placed Successfully!" : "Payment Successful!")}
+              </h1>
+              
+              {isCancelled ? (
+                <div className="text-sm text-gray-600 font-body mb-8 text-center max-w-md leading-relaxed">
+                  This order has been cancelled.
                 </div>
+              ) : !isOnlinePayment ? (
+                <div className="text-sm md:text-base text-gray-700 font-body mb-8 text-center max-w-lg leading-relaxed flex flex-col gap-1.5">
+                  <p>
+                    Your order has been placed successfully on <span className="font-bold text-[#008755]">Cash on Delivery</span>.
+                  </p>
+                  <p className="text-gray-500 text-sm">
+                    You will pay in cash when your order is delivered.
+                  </p>
+                </div>
+              ) : (
+                <div className="text-sm md:text-base text-gray-700 font-body mb-8 text-center max-w-lg leading-relaxed flex flex-col gap-1.5">
+                  <p>Your payment has been completed successfully.</p>
+                  <p className="text-gray-500 text-sm">Thank you for your order.</p>
+                </div>
+              )}
+
+              {/* Email Confirmation */}
+              {(isOnlinePayment || isCancelled) && (
+                <div className="flex items-center gap-3 mb-8">
+                  <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
+                    <IoMailOutline className="text-xl text-gray-500" />
+                  </div>
+                  <div className="text-sm text-black font-body">
+                    <span>{isCancelled ? "A cancellation confirmation has been sent to" : "A confirmation email has been sent to"}</span>
+                    <br />
+                    <span className="font-bold text-heading">{data?.email}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Divider for COD */}
+              {!isOnlinePayment && !isCancelled && (
+                <div className="w-full max-w-xl h-px bg-gray-100 mb-8"></div>
+              )}
+
+              {/* Action Buttons - side by side */}
+              <div className="flex flex-col sm:flex-row gap-4 w-full max-w-md">
+                <button
+                  type="button"
+                  onClick={() => setShowDetails(true)}
+                  className="flex-1 h-12 border border-[#005844] hover:bg-[#F4F9F6] text-[#005844] font-bold text-sm rounded-lg transition duration-200 flex items-center justify-center gap-2 font-body"
+                >
+                  <IoDocumentTextOutline className="text-lg" />
+                  View Order Details
+                </button>
+                <Link
+                  href="/"
+                  className="flex-1 h-12 bg-[#005844] hover:bg-[#008755] text-white font-bold text-sm rounded-lg transition duration-200 flex items-center justify-center gap-2 font-body"
+                >
+                  <svg className="w-4 h-4 mb-0.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                  </svg>
+                  Continue Shopping
+                </Link>
               </div>
             </div>
+
+            {/* Safe & Secure Footer - only for online payments */}
+            {isOnlinePayment && (
+              <div className="flex flex-col items-center mt-6">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="h-px w-16 bg-gray-200"></div>
+                  <div className="w-8 h-8 rounded-full bg-[#E8F5E9] flex items-center justify-center">
+                    <IoShieldCheckmarkOutline className="text-lg text-[#008755]" />
+                  </div>
+                  <div className="h-px w-16 bg-gray-200"></div>
+                </div>
+                <p className="text-xs text-black font-body text-center">
+                  Safe and secure payments. 100% authentic products.
+                </p>
+              </div>
+            )}
           </div>
         )}
     </div>

@@ -10,7 +10,7 @@ import { GetStaticProps } from "next";
 export default function FAQ() {
 	return (
 		<>
-			<PageHeader pageHeader="text-page-faq" />
+			<PageHeader pageHeader="text-page-faq" image="/assets/images/contact-header.webp" />
 			<Container>
 				<div className="py-16 lg:py-20 px-0 max-w-5xl mx-auto space-y-4">
 					<Accordion items={faq} translatorNS="faq" />

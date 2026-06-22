@@ -1397,8 +1397,8 @@ export const homeContemporaryHeroSlider = [
 export const bannerDataContemporary = [
   {
     id: 1,
-    title: "Backpacks",
-    slug: "backpacks",
+    title: "Keychain",
+    slug: "gs-others",
     image: {
       mobile: {
         url: "/assets/images/banner/masonry/banner-12.png",
@@ -1415,8 +1415,8 @@ export const bannerDataContemporary = [
   },
   {
     id: 2,
-    title: "Sneakers",
-    slug: "sneakers",
+    title: "Mug",
+    slug: "mug",
     image: {
       mobile: {
         url: "/assets/images/banner/masonry/banner-13.png",

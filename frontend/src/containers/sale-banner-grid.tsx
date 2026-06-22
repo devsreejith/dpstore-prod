@@ -50,7 +50,7 @@ const SaleBannerGrid: React.FC<BannerProps> = ({
               <SwiperSlide key={banner.id}>
                 <BannerCard
                   banner={banner}
-                  href={ROUTES.SEARCH}
+                  href={`${ROUTES.SEARCH}?category=${banner.slug}`}
                   className="h-full"
                   effectActive={true}
                 />
@@ -64,7 +64,7 @@ const SaleBannerGrid: React.FC<BannerProps> = ({
             <BannerCard
               key={banner.id}
               banner={banner}
-              href={ROUTES.SEARCH}
+              href={`${ROUTES.SEARCH}?category=${banner.slug}`}
               className={banner.type === 'large' ? 'col-span-2' : 'col-span-1'}
               effectActive={true}
             />

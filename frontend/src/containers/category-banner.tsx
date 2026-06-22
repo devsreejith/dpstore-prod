@@ -2,6 +2,8 @@ import Image from 'next/image';
 import { useRouter } from 'next/router';
 import { getDirection } from '@utils/get-direction';
 import { useCategoriesQuery } from '@framework/category/get-all-categories';
+import Link from "@components/ui/link";
+import Container from "@components/ui/container";
 
 interface CategoryBannerProps {
   className?: string;
@@ -42,26 +44,30 @@ const CategoryBanner: React.FC<CategoryBannerProps> = ({
 
   return (
     <div
-      className={`bg-gray-200 rounded-md relative flex flex-row ${className}`}
+      className={`relative w-full overflow-hidden bg-cover bg-center ${className}`}
+      style={{ backgroundImage: "url('/assets/images/product-header.webp')" }}
     >
-      <div className="hidden md:flex">
-        <Image
-          src={
-            dir === 'rtl'
-              ? '/assets/images/category-banner-reverse.jpg'
-              : '/assets/images/category-banner.jpg'
-          }
-          alt="Category Banner"
-          width={1800}
-          height={570}
-          className="rounded-md"
-        />
-      </div>
-      <div className="relative md:absolute top-0 ltr:left-0 rtl:right-0 h-auto md:h-full w-full md:w-2/5 flex items-center py-2 sm:py-3.5">
-        <h2 className="capitalize text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-heading p-7 text-center w-full">
-          {categoryTitle}
-        </h2>
-      </div>
+      <div className="absolute inset-0 bg-[#005844]/40" />
+      <Container>
+        <div className="py-10 md:py-16 xl:py-20 w-full relative z-10 flex flex-col justify-center min-h-[250px] md:min-h-[300px]">
+          {/* Breadcrumb */}
+          <div className="flex items-center text-xs md:text-sm text-gray-200 mb-4 font-body gap-2">
+            <Link href="/" className="hover:text-white transition">Home</Link>
+            <span className="opacity-70">&rsaquo;</span>
+            <span className="text-white capitalize">{categoryTitle}</span>
+          </div>
+
+          {/* Title */}
+          <h2 className="capitalize text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-4 font-body">
+            {categoryTitle}
+          </h2>
+
+          {/* Description */}
+          <p className="text-gray-200 text-xs md:text-sm max-w-xl font-body leading-relaxed">
+            Discover official Dubai Police products, exclusive collections, and premium merchandise designed for every enthusiast.
+          </p>
+        </div>
+      </Container>
     </div>
   );
 };

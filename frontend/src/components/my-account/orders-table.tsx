@@ -304,7 +304,7 @@ const OrdersTable: React.FC = () => {
   return (
     <div className="w-full">
       <div className="mb-6 font-body">
-        <h2 className="text-2xl md:text-3xl font-bold text-heading mb-1">Orders</h2>
+        <h2 className="text-xl md:text-2xl font-bold text-[#005844] mb-1 font-body">My Orders</h2>
         <p className="text-sm text-gray-700">Track, view and manage your orders</p>
       </div>
 
