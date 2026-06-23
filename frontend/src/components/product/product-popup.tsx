@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import ProductImageZoom from "@components/product/product-image-zoom";
 import cn from "classnames";
 import { useRouter } from "next/router";
 import { ROUTES } from "@utils/routes";
@@ -146,19 +147,18 @@ export default function ProductPopup() {
             onTouchEnd={onTouchEnd}
             className="relative w-full h-[360px] md:h-[380px] flex items-center justify-center bg-gray-50 border border-gray-150 rounded-xl overflow-hidden group shadow-sm"
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <ProductImageZoom
               src={data?.gallery?.[activeImageIndex]?.original || data?.gallery?.[activeImageIndex]?.thumbnail || imageSrc}
               alt={name}
-              className="object-contain w-full h-full p-4 transition-all duration-300 transform scale-100 hover:scale-102"
-              draggable="false"
+              className="w-full h-full"
+              zoomScale={2.5}
             />
             
             {/* Left Floating Arrow */}
             {data?.gallery && data.gallery.length > 1 && (
               <button
                 onClick={prevImage}
-                className="absolute left-3.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 hover:bg-white border border-gray-200 shadow-md flex items-center justify-center text-gray-500 hover:text-black transition-all duration-200"
+                className="absolute left-3.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 hover:bg-white border border-gray-200 shadow-md flex items-center justify-center text-gray-500 hover:text-black transition-all duration-200 z-10"
               >
                 <IoChevronBackOutline className="text-lg" />
               </button>
@@ -168,7 +168,7 @@ export default function ProductPopup() {
             {data?.gallery && data.gallery.length > 1 && (
               <button
                 onClick={nextImage}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 hover:bg-white border border-gray-200 shadow-md flex items-center justify-center text-gray-500 hover:text-black transition-all duration-200"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 hover:bg-white border border-gray-200 shadow-md flex items-center justify-center text-gray-500 hover:text-black transition-all duration-200 z-10"
               >
                 <IoChevronForwardOutline className="text-lg" />
               </button>
@@ -184,7 +184,7 @@ export default function ProductPopup() {
                   onClick={() => setActiveImageIndex(idx)}
                   className={`relative w-[65px] h-[65px] rounded-lg border-2 overflow-hidden flex-shrink-0 bg-white transition-all duration-200 ${
                     activeImageIndex === idx
-                      ? 'border-indigo-600 ring-2 ring-indigo-100 scale-95'
+                      ? 'border-[#005844] scale-95'
                       : 'border-gray-200 hover:border-gray-300'
                   }`}
                 >
@@ -213,7 +213,7 @@ export default function ProductPopup() {
                 {name}
               </h2>
             </div>
-            <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm text-gray-600">
+            <div className="flex flex-col gap-y-1 text-sm text-gray-600">
               {!!(data?.item_code || data?.sku) && (
                 <span className="flex items-center gap-x-2">
                   <span className="font-semibold text-heading">Item code:</span>
@@ -231,12 +231,13 @@ export default function ProductPopup() {
               {description}
             </p>
 
-            <div className="flex items-center mt-3">
+            <div className="mt-3 flex items-baseline gap-2">
+              <span className="text-sm font-semibold text-heading">Price</span>
               <div className="text-heading font-semibold text-base md:text-xl lg:text-2xl">
                 {price}
               </div>
               {discount && (
-                <del className="font-segoe text-gray-400 text-base lg:text-xl ltr:pl-2.5 rtl:pr-2.5 -mt-0.5 md:mt-0">
+                <del className="font-segoe text-gray-400 text-base lg:text-xl -mt-0.5 md:mt-0">
                   {basePrice}
                 </del>
               )}
@@ -257,7 +258,8 @@ export default function ProductPopup() {
             })}
 
           <div className="pt-2 md:pt-4">
-            <div className="flex items-center justify-between mb-4 gap-x-3 sm:gap-x-4">
+            <span className="block text-sm font-semibold text-heading mb-2">Quantity</span>
+            <div className="mb-4 w-fit">
               <Counter
                 quantity={quantity}
                 onIncrement={() => setQuantity((prev) => prev + 1)}
@@ -267,30 +269,29 @@ export default function ProductPopup() {
                 disableDecrement={quantity <= 1 || isOutOfStock}
                 disableIncrement={isOutOfStock}
               />
-              <Button
-                onClick={addToCart}
-                variant="flat"
-                className={cn(
-                  "w-full h-11 md:h-12 px-1.5",
-                  isOutOfStock && "bg-gray-300 hover:bg-gray-300 text-gray-400 cursor-not-allowed"
-                )}
-                loading={addToCartLoader}
-                disabled={isOutOfStock}
-              >
-                {isOutOfStock ? "Out of stock" : t("text-add-to-cart")}
-              </Button>
             </div>
-
-            {viewCartBtn && (
-              <button
-                onClick={navigateToCartPage}
-                className="w-full mb-4 h-11 md:h-12 rounded bg-gray-100 text-heading focus:outline-none border border-gray-300 transition-colors hover:bg-gray-50 focus:bg-gray-50"
-              >
-                {t("text-view-cart")}
-              </button>
-            )}
-
+            <Button
+              onClick={addToCart}
+              variant="flat"
+              className={cn(
+                "w-full h-11 md:h-12",
+                isOutOfStock && "bg-gray-300 hover:bg-gray-300 text-gray-400 cursor-not-allowed"
+              )}
+              loading={addToCartLoader}
+              disabled={isOutOfStock}
+            >
+              {isOutOfStock ? "Out of stock" : t("text-add-to-cart")}
+            </Button>
           </div>
+          {viewCartBtn && (
+            <button
+              onClick={navigateToCartPage}
+              className="w-full mb-4 h-11 md:h-12 rounded bg-gray-100 text-heading focus:outline-none border border-gray-300 transition-colors hover:bg-gray-50 focus:bg-gray-50"
+            >
+              {t("text-view-cart")}
+            </button>
+          )}
+
         </div>
       </div>
     </div>

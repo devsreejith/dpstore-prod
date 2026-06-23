@@ -206,7 +206,6 @@ export default function CustomerAddresses() {
 
   return (
     <motion.div
-      layout
       initial="from"
       animate="to"
       exit="from"

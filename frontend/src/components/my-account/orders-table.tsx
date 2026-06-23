@@ -333,7 +333,6 @@ const OrdersTable: React.FC = () => {
       </div>
 
       <motion.div
-        layout
         initial="from"
         animate="to"
         exit="from"

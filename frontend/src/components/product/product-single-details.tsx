@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import ProductImageZoom from "@components/product/product-image-zoom";
 import Loader from "@components/ui/loader";
 import cn from "classnames";
 import Button from "@components/ui/button";
@@ -148,12 +149,12 @@ const ProductSingleDetails: React.FC = () => {
         >
           {images.map((item: any, index: number) => (
             <SwiperSlide key={`product-gallery-key-${index}`}>
-              <div className="col-span-1 transition duration-150 ease-in hover:opacity-90">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+              <div className="col-span-1 rounded-lg bg-gray-100 overflow-hidden">
+                <ProductImageZoom
                   src={item?.original || item?.thumbnail || "/assets/placeholder/products/product-gallery.svg"}
                   alt={`${data?.name}--${index}`}
-                  className="object-cover w-full rounded-lg bg-gray-100"
+                  className="w-full aspect-square"
+                  zoomScale={2.5}
                 />
               </div>
             </SwiperSlide>
@@ -161,12 +162,12 @@ const ProductSingleDetails: React.FC = () => {
         </Carousel>
       ) : (
         <div className="col-span-5 flex flex-col gap-4">
-          <div className="w-full bg-gray-100 rounded-lg overflow-hidden transition duration-150 ease-in hover:opacity-90 aspect-square sm:aspect-[4/3] flex items-center justify-center">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+          <div className="w-full bg-gray-100 rounded-lg overflow-hidden aspect-square sm:aspect-[4/3]">
+            <ProductImageZoom
               src={images[selectedImage]?.original || images[selectedImage]?.thumbnail || "/assets/placeholder/products/product-gallery.svg"}
               alt={`${data?.name} - main`}
-              className="object-contain w-full h-full max-h-full"
+              className="w-full h-full"
+              zoomScale={2.5}
             />
           </div>
           {images.length > 1 && (

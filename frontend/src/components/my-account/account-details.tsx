@@ -53,7 +53,6 @@ const AccountDetails: React.FC = () => {
 
   return (
     <motion.div
-      layout
       initial="from"
       animate="to"
       exit="from"
@@ -149,7 +148,7 @@ const AccountDetails: React.FC = () => {
             <Button
               type="button"
               onClick={() => reset()}
-              className="h-11 px-8 bg-[#000000] hover:bg-gray-800 text-white font-semibold font-body rounded transition duration-150 mt-3 sm:w-auto"
+              className="h-11 px-8 bg-black hover:bg-gray-900 text-white font-semibold font-body rounded transition duration-150 mt-3 sm:w-auto"
             >
               Cancel
             </Button>

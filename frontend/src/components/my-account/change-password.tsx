@@ -55,7 +55,6 @@ const ChangePassword: React.FC = () => {
 				{t("common:text-change-password")}
 			</h2>
 			<motion.div
-				layout
 				initial="from"
 				animate="to"
 				exit="from"

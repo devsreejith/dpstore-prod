@@ -1401,12 +1401,12 @@ export const bannerDataContemporary = [
     slug: "gs-others",
     image: {
       mobile: {
-        url: "/assets/images/banner/masonry/banner-12.png",
+        url: "/assets/images/banner-12.webp",
         width: 690,
         height: 360,
       },
       desktop: {
-        url: "/assets/images/banner/masonry/banner-12.png",
+        url: "/assets/images/banner-12.webp",
         width: 885,
         height: 430,
       },

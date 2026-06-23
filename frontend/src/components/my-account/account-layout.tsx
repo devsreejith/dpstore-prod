@@ -51,7 +51,7 @@ const AccountLayout: React.FunctionComponent<{
 						<div className="flex flex-col md:flex-row md:items-start w-full gap-4">
 							<AccountNav customerName={customerName} />
 							<div className="w-full md:flex-1 min-w-0">
-								<div className="bg-white shadow-sm p-5 md:p-6 md:min-h-[450px]">
+								<div className="bg-white shadow-sm p-5 md:p-6 md:min-h-[450px] overflow-hidden">
 									{children}
 								</div>
 							</div>
