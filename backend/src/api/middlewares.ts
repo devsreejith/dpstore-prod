@@ -211,27 +211,57 @@ async function enforceSingleProductCategory(req: any, res: any, next: any) {
   const body = req?.body
   if (!body || typeof body !== "object") return next()
 
-  const pathName = String(req?.path || "")
-  const isCreate = method === "POST" && /^\/admin\/products\/?$/.test(pathName)
-  const hasCategoriesField = Object.prototype.hasOwnProperty.call(body, "categories")
-  const categories = Array.isArray((body as any).categories) ? (body as any).categories.filter(Boolean) : []
+  let categories: string[] = []
+  if (Array.isArray(body.category_ids)) {
+    categories = body.category_ids.filter(Boolean)
+  } else if (Array.isArray(body.categories)) {
+    categories = body.categories.filter(Boolean).map((c: any) => typeof c === 'string' ? c : c.id).filter(Boolean)
+  }
 
-  if (isCreate) {
-    if (categories.length !== 1) {
-      res.status(400).json({ message: "Select exactly one category." })
-      return
-    }
-  } else if (hasCategoriesField) {
-    if (categories.length > 1) {
-      res.status(400).json({ message: "Only one category is allowed per product." })
-      return
+  if (categories.length > 0) {
+    let client: any
+    try {
+      client = new pg.Client({ connectionString: process.env.DATABASE_URL })
+      await client.connect()
+      const placeholders = categories.map((_, i) => `$${i + 1}`).join(",")
+      const resDb = await client.query(`SELECT id, mpath FROM product_category WHERE id IN (${placeholders})`, categories)
+      
+      const level1Ids = new Set()
+      const level2Ids = new Set()
+      const level3Ids = new Set()
+
+      for (const row of resDb.rows) {
+        if (row.mpath) {
+          const parts = row.mpath.split('.').filter(Boolean)
+          if (parts[0]) level1Ids.add(parts[0])
+          if (parts[1]) level2Ids.add(parts[1])
+          if (parts[2]) level3Ids.add(parts[2])
+        }
+      }
+
+      if (level1Ids.size > 1) {
+        res.status(400).json({ message: "You can select a maximum of 1 distinct Level 1 category." })
+        return
+      }
+      if (level2Ids.size > 1) {
+        res.status(400).json({ message: "You can select a maximum of 1 distinct Level 2 category." })
+        return
+      }
+      if (level3Ids.size > 1) {
+        res.status(400).json({ message: "You can select a maximum of 1 distinct Level 3 category." })
+        return
+      }
+    } catch (e: any) {
+      console.error("[Category Validation Error]", e.message)
+    } finally {
+      if (client) await client.end()
     }
   }
 
   const isPublishing = String((body as any).status || "").toLowerCase() === "published"
   if (!isPublishing) return next()
 
-  if (categories.length === 1) return next()
+  if (categories.length > 0) return next()
 
   const match = String(req?.path || "").match(/^\/admin\/products\/([^/]+)/)
   const productId = match?.[1]
@@ -245,12 +275,12 @@ async function enforceSingleProductCategory(req: any, res: any, next: any) {
       })
       const existing = data?.[0]
       const existingCategories = Array.isArray(existing?.categories) ? existing.categories : []
-      if (existingCategories.length === 1) return next()
+      if (existingCategories.length > 0) return next()
     } catch {}
   }
 
   res.status(400).json({
-    message: "Exactly one category is required before publishing a product.",
+    message: "At least one category is required before publishing a product.",
   })
 }
 

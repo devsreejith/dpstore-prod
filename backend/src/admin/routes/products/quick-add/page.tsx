@@ -123,6 +123,7 @@ const QuickAddProductPage = () => {
     title.trim().length > 0 &&
     itemCode.trim().length > 0 &&
     price.trim().length > 0 &&
+    collectionId.trim().length > 0 &&
     !!mainCategoryId &&
     (!requiresCategory || !!categoryId) &&
     (!requiresChild || !!childCategoryId) &&
@@ -219,7 +220,7 @@ const QuickAddProductPage = () => {
               value={collectionId}
               onChange={(e) => setCollectionId(e.target.value)}
             >
-              <option value="">Collection (optional)</option>
+              <option value="">Collection (required)</option>
               {(collectionsQuery.data ?? []).map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.title}
@@ -245,7 +246,7 @@ const QuickAddProductPage = () => {
                   setChildCategoryId("")
                 }}
               >
-                <option value="">Level 1 (Main Category) (required)</option>
+                <option value="">Main Category (required)</option>
                 {categoryIndex.roots.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
@@ -263,7 +264,7 @@ const QuickAddProductPage = () => {
                 disabled={!mainCategoryId}
               >
                 <option value="">
-                  {`Level 2${requiresCategory ? " (required)" : " (optional)"}`}
+                  {`Sub Category${requiresCategory ? " (required)" : ""}`}
                 </option>
                 {categoryOptions.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -279,7 +280,7 @@ const QuickAddProductPage = () => {
                 disabled={!categoryId}
               >
                 <option value="">
-                  {`Level 3${requiresChild ? " (required)" : " (optional)"}`}
+                  {`Child Category${requiresChild ? " (required)" : ""}`}
                 </option>
                 {childOptions.map((c) => (
                   <option key={c.id} value={c.id}>

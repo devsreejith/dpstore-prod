@@ -158,7 +158,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
             options: [{ title: "Default", values: ["Default"] }],
             variants: [
               {
-                title: "Default",
+                title: parsed.data.name,
                 ...(sku ? { sku } : {}),
                 options: { Default: "Default" },
                 prices: [{ amount: parsed.data.price, currency_code: currency }],
