@@ -48,15 +48,21 @@ export const useLogoutMutation = () => {
   return useMutation({
     mutationFn: logout,
     onSuccess: (_data) => {
-      unauthorize();
       queryClient.clear();
-      Router.push("/");
+      Router.push("/").then(() => {
+        unauthorize();
+      }).catch(() => {
+        unauthorize();
+      });
     },
     onError: (data) => {
       console.error(data, "logout error response");
-      unauthorize();
       queryClient.clear();
-      Router.push("/");
+      Router.push("/").then(() => {
+        unauthorize();
+      }).catch(() => {
+        unauthorize();
+      });
     },
   });
 };

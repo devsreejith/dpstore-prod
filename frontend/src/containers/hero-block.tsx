@@ -39,7 +39,6 @@ const HeroBlock: React.FC = () => {
           >
             <BannerCard
               banner={banner}
-              href={`${ROUTES.COLLECTIONS}/${banner.slug}`}
             />
           </SwiperSlide>
         ))}

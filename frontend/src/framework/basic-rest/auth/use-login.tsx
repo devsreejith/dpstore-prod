@@ -1,6 +1,6 @@
 import { useUI } from '@contexts/ui.context';
 import http from '@framework/utils/http';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import Cookies from 'js-cookie';
 
 export interface LoginInputType {
@@ -32,9 +32,11 @@ async function login(input: LoginInputType) {
 
 export const useLoginMutation = () => {
   const { authorize, closeModal } = useUI();
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: LoginInputType) => login(input),
     onSuccess: () => {
+      queryClient.clear();
       authorize();
       closeModal();
     },

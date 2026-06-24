@@ -1,6 +1,6 @@
 import { useUI } from "@contexts/ui.context";
 import http from "@framework/utils/http";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import Cookies from "js-cookie";
 import { toast } from "react-toastify";
 
@@ -71,9 +71,11 @@ async function signUp(input: SignUpInputType) {
 
 export const useSignUpMutation = () => {
   const { authorize, closeModal } = useUI();
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: SignUpInputType) => signUp(input),
     onSuccess: () => {
+      queryClient.clear();
       authorize();
       closeModal();
       toast.success("Registration successfully done");

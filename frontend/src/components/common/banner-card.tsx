@@ -11,7 +11,7 @@ interface BannerProps {
   effectActive?: boolean;
   className?: string;
   classNameInner?: string;
-  href: LinkProps["href"];
+  href?: LinkProps["href"];
   disableBorderRadius?: boolean;
 }
 
@@ -36,27 +36,37 @@ export default function BannerCard({
   const { title, image } = banner;
   const selectedImage = getImage(width, image);
 
+  const imageContent = (
+    <Image
+      src={selectedImage.url}
+      width={selectedImage.width}
+      height={selectedImage.height}
+      alt={title}
+      quality={100}
+      className={cn("bg-gray-300 object-cover", {
+        "rounded-md": variant === "rounded" && !disableBorderRadius,
+      })}
+      priority={true}
+    />
+  );
+
   return (
     <div className={cn("mx-auto", className)}>
-      <Link
-        href={href}
-        className={cn("h-full group flex justify-center relative overflow-hidden", classNameInner)}
-      >
-        <Image
-          src={selectedImage.url}
-          width={selectedImage.width}
-          height={selectedImage.height}
-          alt={title}
-          quality={100}
-          className={cn("bg-gray-300 object-cover", {
-            "rounded-md": variant === "rounded" && !disableBorderRadius,
-          })}
-          priority={true}
-        />
-        {effectActive && (
-          <div className="absolute top-0 ltr:-left-[100%] rtl:-right-[100%] h-full w-1/2 z-5 block transform ltr:-skew-x-12 rtl:skew-x-12 bg-gradient-to-r from-transparent to-white opacity-40 ltr:group-hover:animate-shine rtl:group-hover:animate-shineRTL" />
-        )}
-      </Link>
+      {href ? (
+        <Link
+          href={href}
+          className={cn("h-full group flex justify-center relative overflow-hidden", classNameInner)}
+        >
+          {imageContent}
+          {effectActive && (
+            <div className="absolute top-0 ltr:-left-[100%] rtl:-right-[100%] h-full w-1/2 z-5 block transform ltr:-skew-x-12 rtl:skew-x-12 bg-gradient-to-r from-transparent to-white opacity-40 ltr:group-hover:animate-shine rtl:group-hover:animate-shineRTL" />
+          )}
+        </Link>
+      ) : (
+        <div className={cn("h-full flex justify-center relative overflow-hidden", classNameInner)}>
+          {imageContent}
+        </div>
+      )}
     </div>
   );
 }
