@@ -356,8 +356,83 @@ async function preventDuplicateCartCompletion(req: any, res: any, next: any) {
   next()
 }
 
+async function preventAdminLoginAsCustomer(req: any, res: any, next: any) {
+  const email = String(req.body?.email || "").trim().toLowerCase();
+  if (!email) {
+    return next();
+  }
+
+  try {
+    const query = req.scope.resolve(ContainerRegistrationKeys.QUERY);
+    const { data: users } = await query.graph({
+      entity: "user",
+      fields: ["id", "email"],
+      filters: { email },
+    });
+
+    if (users && users.length > 0) {
+      res.status(401).json({
+        message: "Admin credentials cannot be used for customer login.",
+      });
+      return;
+    }
+
+    try {
+      const adminUsersModule = req.scope.resolve("admin_users");
+      const adminUsers = await adminUsersModule.listAdminUsers({ email }, { take: 1 });
+      if (adminUsers && adminUsers.length > 0) {
+        res.status(401).json({
+          message: "Admin credentials cannot be used for customer login.",
+        });
+        return;
+      }
+    } catch (err) {
+      // ignore if admin_users module is not resolved
+    }
+  } catch (err: any) {
+    console.error("[Auth Middleware Error]", err.message);
+  }
+
+  next();
+}
+
+async function checkDuplicateCustomerRegistration(req: any, res: any, next: any) {
+  const email = String(req.body?.email || "").trim().toLowerCase();
+  if (!email) {
+    return next();
+  }
+
+  try {
+    const query = req.scope.resolve(ContainerRegistrationKeys.QUERY);
+    const { data: customers } = await query.graph({
+      entity: "customer",
+      fields: ["id", "email"],
+      filters: { email },
+    });
+
+    if (customers && customers.length > 0) {
+       res.status(409).json({
+         message: "User Email Address Already Exists",
+       });
+       return;
+     }
+  } catch (err: any) {
+    console.error("[Registration Pre-check Error]", err.message);
+  }
+
+  next();
+}
+
 export default defineMiddlewares({
   routes: [
+    {
+      matcher: "/auth/customer/emailpass",
+      middlewares: [preventAdminLoginAsCustomer],
+    },
+    {
+      matcher: "/auth/customer/emailpass/register",
+      middlewares: [preventAdminLoginAsCustomer, checkDuplicateCustomerRegistration],
+    },
     {
       matcher: "/v1/store/carts/*",
       middlewares: [preventDuplicateCartCompletion],

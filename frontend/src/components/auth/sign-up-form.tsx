@@ -13,7 +13,8 @@ import { useEffect } from 'react';
 
 const SignUpForm: React.FC = () => {
   const { t } = useTranslation();
-  const { mutate: signUp, isPending } = useSignUpMutation();
+  const { mutate: signUp, isPending, error } = useSignUpMutation();
+  const apiError = (error as any)?.response?.data?.message || (error as any)?.message;
   const { setModalView, openModal, closeModal, isAuthorized } = useUI();
   const router = useRouter();
   const isCheckoutRedirect = router.query.redirect === '/checkout' || router.asPath.includes('redirect=%2Fcheckout');
@@ -79,16 +80,28 @@ const SignUpForm: React.FC = () => {
           Please login or create an account to continue with checkout.
         </div>
       )}
+      {apiError && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-800 rounded-md text-sm text-center font-semibold shadow-sm animate-fade-in">
+          {apiError}
+        </div>
+      )}
       <form
         onSubmit={handleSubmit(onSubmit)}
         className="flex flex-col justify-center"
         noValidate
+        autoComplete="new-password"
       >
+        {/* Dummy inputs to absorb browser autofill */}
+        <div className="absolute opacity-0 pointer-events-none w-0 h-0 overflow-hidden" aria-hidden="true">
+          <input type="text" name="fake_email_prevent_autofill" tabIndex={-1} autoComplete="off" />
+          <input type="password" name="fake_password_prevent_autofill" tabIndex={-1} autoComplete="off" />
+        </div>
         <div className="flex flex-col space-y-4">
           <Input
             labelKey="forms:label-name"
             type="text"
             variant="solid"
+            autoComplete="new-name"
             {...register('name', {
               required: 'forms:name-required',
             })}
@@ -98,6 +111,7 @@ const SignUpForm: React.FC = () => {
             labelKey="forms:label-email"
             type="email"
             variant="solid"
+            autoComplete="new-email"
             {...register('email', {
               required: `${t('forms:email-required')}`,
               pattern: {
@@ -111,6 +125,7 @@ const SignUpForm: React.FC = () => {
           <PasswordInput
             labelKey="forms:label-password"
             errorKey={errors.password?.message}
+            autoComplete="new-password"
             {...register('password', {
               required: `${t('forms:password-required')}`,
             })}

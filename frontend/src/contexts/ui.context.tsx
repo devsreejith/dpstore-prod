@@ -132,6 +132,7 @@ function uiReducer(state: State, action: Action) {
         ...state,
         isAuthorized: false,
         checkingAuth: false,
+        userAvatar: null,
       };
     }
     case "OPEN_SIDEBAR": {

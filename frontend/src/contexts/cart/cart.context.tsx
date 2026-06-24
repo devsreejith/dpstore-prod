@@ -59,6 +59,16 @@ export const CartProvider: React.FC = (props) => {
   const [isLoading, setIsLoading] = React.useState(true);
   const [inventoryMap, setInventoryMap] = React.useState<Record<string, number>>({});
 
+  const prevIsAuthorizedRef = React.useRef(isAuthorized);
+
+  React.useEffect(() => {
+    if (prevIsAuthorizedRef.current && !isAuthorized) {
+      setCart(null);
+      setCartId(null);
+    }
+    prevIsAuthorizedRef.current = isAuthorized;
+  }, [isAuthorized]);
+
   const setCartId = (id: string | null) => {
     try {
       if (!id) localStorage.removeItem(CART_ID_KEY);

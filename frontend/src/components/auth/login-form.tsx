@@ -12,7 +12,8 @@ import { useEffect } from 'react';
 const LoginForm: React.FC = () => {
   const { t } = useTranslation();
   const { setModalView, openModal, closeModal, isAuthorized } = useUI();
-  const { mutate: login, isPending } = useLoginMutation();
+  const { mutate: login, isPending, error } = useLoginMutation();
+  const apiError = (error as any)?.response?.data?.message || (error as any)?.message;
   const router = useRouter();
   const isCheckoutRedirect = router.query.redirect === '/checkout' || router.asPath.includes('redirect=%2Fcheckout');
 
@@ -66,6 +67,11 @@ const LoginForm: React.FC = () => {
           Please login or create an account to continue with checkout.
         </div>
       )}
+      {apiError && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-800 rounded-md text-sm text-center font-semibold shadow-sm animate-fade-in">
+          {apiError}
+        </div>
+      )}
       <form
         onSubmit={handleSubmit(onSubmit)}
         className="flex flex-col justify-center"
@@ -93,33 +99,14 @@ const LoginForm: React.FC = () => {
               required: `${t('forms:password-required')}`,
             })}
           />
-          <div className="flex items-center justify-center">
-            <div className="flex items-center flex-shrink-0">
-              <label className="relative inline-block w-10 cursor-pointer switch">
-                <input
-                  id="remember"
-                  type="checkbox"
-                  className="w-0 h-0 opacity-0"
-                  {...register('remember_me')}
-                />
-                <span className="absolute inset-0 transition-all duration-300 ease-in bg-gray-500 slider round"></span>
-              </label>
-              <label
-                htmlFor="remember"
-                className="flex-shrink-0 text-sm cursor-pointer text-heading ltr:pl-3 rtl:pr-3"
-              >
-                {t('forms:label-remember-me')}
-              </label>
-            </div>
-            <div className="flex ltr:ml-auto rtl:mr-auto">
-              <button
-                type="button"
-                onClick={handleForgetPassword}
-                className="text-sm underline ltr:text-right rtl:text-left text-heading ltr:pl-3 rtl:pr-3 hover:no-underline focus:outline-none"
-              >
-                {t('common:text-forgot-password')}
-              </button>
-            </div>
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={handleForgetPassword}
+              className="text-sm underline text-heading hover:no-underline focus:outline-none"
+            >
+              {t('common:text-forgot-password')}
+            </button>
           </div>
           <div className="relative">
             <Button

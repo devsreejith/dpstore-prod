@@ -2,18 +2,30 @@ import { useUI } from "@contexts/ui.context";
 import http from "@framework/utils/http";
 import { useMutation } from "@tanstack/react-query";
 import Cookies from "js-cookie";
+import { toast } from "react-toastify";
 
 export interface SignUpInputType {
   email: string;
   password: string;
   name: string;
 }
+
 async function signUp(input: SignUpInputType) {
-  const regRes = await http.post("/auth/customer/emailpass/register", {
-    email: input.email,
-    password: input.password,
-  });
-  const registrationToken = String(regRes?.data?.token ?? "").trim();
+  let registrationToken = "";
+  try {
+    const regRes = await http.post("/auth/customer/emailpass/register", {
+      email: input.email,
+      password: input.password,
+    });
+    registrationToken = String(regRes?.data?.token ?? "").trim();
+  } catch (err: any) {
+    const msg = String(err?.response?.data?.message || err?.message || "").toLowerCase();
+    if (msg.includes("already exists") || msg.includes("exists") || err?.response?.status === 409) {
+      throw new Error("User Email Address Already Exists");
+    }
+    throw err;
+  }
+
   if (!registrationToken) throw new Error("Signup failed");
 
   const name = String(input.name || "").trim();
@@ -56,6 +68,7 @@ async function signUp(input: SignUpInputType) {
 
   return { ok: true };
 }
+
 export const useSignUpMutation = () => {
   const { authorize, closeModal } = useUI();
   return useMutation({
@@ -63,6 +76,7 @@ export const useSignUpMutation = () => {
     onSuccess: () => {
       authorize();
       closeModal();
+      toast.success("Registration successfully done");
     },
     onError: (data) => {
       console.log(data, "login error response");
