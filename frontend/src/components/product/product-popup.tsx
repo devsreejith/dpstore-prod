@@ -13,6 +13,8 @@ import usePrice from "@framework/product/use-price";
 import { getVariations } from "@framework/utils/get-variations";
 import { useTranslation } from "next-i18next";
 import { IoChevronBackOutline, IoChevronForwardOutline } from "react-icons/io5";
+import { useWishlist } from "@utils/use-wishlist";
+import ProductWishIcon from "@components/icons/product-wish-icon";
 
 export default function ProductPopup() {
   const { t } = useTranslation("common");
@@ -28,6 +30,8 @@ export default function ProductPopup() {
   const [viewCartBtn, setViewCartBtn] = useState<boolean>(false);
   const [addToCartLoader, setAddToCartLoader] = useState<boolean>(false);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const { toggleWishlist, isInWishlist } = useWishlist();
+  const productWishlisted = data ? isInWishlist(data.id) : false;
 
   const isOutOfStock = data && typeof data.quantity === "number" ? data.quantity <= 0 : false;
 
@@ -153,6 +157,20 @@ export default function ProductPopup() {
               className="w-full h-full"
               zoomScale={2.5}
             />
+            {/* Floating Wishlist Button */}
+            <button
+              type="button"
+              onClick={() => toggleWishlist(data)}
+              className={cn(
+                "absolute bottom-3.5 ltr:right-3.5 rtl:left-3.5 z-10 w-[45px] h-[35px] rounded-md bg-white shadow-md border border-gray-150 flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95 focus:outline-none"
+              )}
+              aria-label="Toggle Wishlist"
+            >
+              <ProductWishIcon
+                active={productWishlisted}
+                className="w-full h-full"
+              />
+            </button>
             
             {/* Left Floating Arrow */}
             {data?.gallery && data.gallery.length > 1 && (
@@ -270,18 +288,20 @@ export default function ProductPopup() {
                 disableIncrement={isOutOfStock}
               />
             </div>
-            <Button
-              onClick={addToCart}
-              variant="flat"
-              className={cn(
-                "w-full h-11 md:h-12",
-                isOutOfStock && "bg-gray-300 hover:bg-gray-300 text-gray-400 cursor-not-allowed"
-              )}
-              loading={addToCartLoader}
-              disabled={isOutOfStock}
-            >
-              {isOutOfStock ? "Out of stock" : t("text-add-to-cart")}
-            </Button>
+            <div className="flex gap-3">
+              <Button
+                onClick={addToCart}
+                variant="flat"
+                className={cn(
+                  "flex-1 h-11 md:h-12",
+                  isOutOfStock && "bg-gray-300 hover:bg-gray-300 text-gray-400 cursor-not-allowed"
+                )}
+                loading={addToCartLoader}
+                disabled={isOutOfStock}
+              >
+                {isOutOfStock ? "Out of stock" : t("text-add-to-cart")}
+              </Button>
+            </div>
           </div>
           {viewCartBtn && (
             <button

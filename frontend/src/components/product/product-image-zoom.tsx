@@ -25,6 +25,7 @@ const ProductImageZoom: React.FC<ProductImageZoomProps> = ({
   const lastPinchDist = useRef(0);
   const lastTap = useRef(0);
   const [isMobile, setIsMobile] = useState(false);
+  const showZoomIcon = imgLoaded && (!isMobile ? !isZoomed : mobileZoom === 1);
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 1025);
@@ -190,8 +191,8 @@ const ProductImageZoom: React.FC<ProductImageZoomProps> = ({
       )}
 
       {/* Zoom indicator icon */}
-      {!isMobile && !isZoomed && imgLoaded && (
-        <div className="absolute bottom-3 right-3 bg-white/80 backdrop-blur-sm rounded-full p-2 shadow-md pointer-events-none transition-opacity duration-300">
+      {showZoomIcon && (
+        <div className="absolute bottom-[53px] ltr:right-3.5 rtl:left-3.5 bg-white rounded-md w-[45px] h-[35px] shadow-md border border-gray-150 flex items-center justify-center transition-all duration-300 pointer-events-none z-10">
           <svg
             width="18"
             height="18"

@@ -4,6 +4,9 @@ import usePrice from "@framework/product/use-price";
 import { Product } from "@framework/types";
 import Text from "@components/ui/text";
 import cn from "classnames";
+import { useWishlist } from "@utils/use-wishlist";
+import ProductWishIcon from "@components/icons/product-wish-icon";
+import ProductViewIcon from "@components/icons/product-view-icon";
 
 interface ProductProps {
   product: Product;
@@ -46,6 +49,9 @@ const ProductOverlayCard: React.FC<ProductProps> = ({
   }
 
   const { openModal, setModalView, setModalData } = useUI();
+  const { toggleWishlist, isInWishlist } = useWishlist();
+  const productWishlisted = isInWishlist(product?.id);
+
   const { price, basePrice, discount } = usePrice({
     amount: product.sale_price ? product.sale_price : product.price,
     baseAmount: product.price,
@@ -66,13 +72,46 @@ const ProductOverlayCard: React.FC<ProductProps> = ({
     >
       <div
         className={cn(
-          "flex justify-center items-center p-4 h-full 3xl:min-h-[330px]",
+          "relative w-full flex justify-center items-center p-4 h-full 3xl:min-h-[330px]",
           {
             "!p-0": variant === "modern",
           }
         )}
         title={product?.name}
       >
+        {/* Floating Icons Stack (bottom-right of image) */}
+        <div className="absolute bottom-3.5 ltr:right-3.5 rtl:left-3.5 z-10 flex flex-col gap-y-2 items-center w-[45px]">
+          {/* Thumbnail/View Icon - only visible on hover */}
+          <button
+            type="button"
+            className="w-full h-[35px] flex items-center justify-center rounded-md bg-white shadow-md border border-gray-150 transition-all duration-300 opacity-100 sm:opacity-0 group-hover:opacity-100 hover:scale-105 active:scale-95 focus:outline-none"
+            onClick={(e) => {
+              e.stopPropagation();
+              handlePopupView();
+            }}
+            aria-label="Quick View"
+          >
+            <ProductViewIcon className="w-full h-full" />
+          </button>
+
+          {/* Wishlist Button - only visible on hover */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleWishlist(product);
+            }}
+            className={cn(
+              "w-full h-[35px] rounded-md bg-white shadow-md border border-gray-150 flex items-center justify-center transition-all duration-300 opacity-100 sm:opacity-0 group-hover:opacity-100 hover:scale-105 active:scale-95 focus:outline-none"
+            )}
+            aria-label="Toggle Wishlist"
+          >
+            <ProductWishIcon
+              active={productWishlisted}
+              className="w-full h-full"
+            />
+          </button>
+        </div>
         <Image
           src={
             product?.image?.original ??

@@ -20,6 +20,8 @@ import { SwiperSlide } from "swiper/react";
 import ProductMetaReview from "@components/product/product-meta-review";
 import { useSsrCompatible } from "@utils/use-ssr-compatible";
 import { useUI } from "@contexts/ui.context";
+import { useWishlist } from "@utils/use-wishlist";
+import ProductWishIcon from "@components/icons/product-wish-icon";
 
 const productGalleryCarouselResponsive = {
   "768": {
@@ -41,6 +43,8 @@ const ProductSingleDetails: React.FC = () => {
   const [attributes, setAttributes] = useState<{ [key: string]: string }>({});
   const [quantity, setQuantity] = useState(1);
   const [addToCartLoader, setAddToCartLoader] = useState<boolean>(false);
+  const { toggleWishlist, isInWishlist } = useWishlist();
+  const productWishlisted = data ? isInWishlist(data.id) : false;
 
   const [selectedImage, setSelectedImage] = useState(0);
 
@@ -139,36 +143,66 @@ const ProductSingleDetails: React.FC = () => {
   return (
     <div className="block lg:grid grid-cols-9 gap-x-10 xl:gap-x-14 pt-7 pb-10 lg:pb-14 2xl:pb-20 items-start">
       {width < 1025 ? (
-        <Carousel
-          pagination={{
-            clickable: true,
-          }}
-          breakpoints={productGalleryCarouselResponsive}
-          className="product-gallery"
-          buttonGroupClassName="hidden"
-        >
-          {images.map((item: any, index: number) => (
-            <SwiperSlide key={`product-gallery-key-${index}`}>
-              <div className="col-span-1 rounded-lg bg-gray-100 overflow-hidden">
-                <ProductImageZoom
-                  src={item?.original || item?.thumbnail || "/assets/placeholder/products/product-gallery.svg"}
-                  alt={`${data?.name}--${index}`}
-                  className="w-full aspect-square"
-                  zoomScale={2.5}
-                />
-              </div>
-            </SwiperSlide>
-          ))}
-        </Carousel>
+        <div className="relative w-full rounded-lg overflow-hidden aspect-square sm:aspect-[4/3] bg-gray-100">
+          <Carousel
+            pagination={{
+              clickable: true,
+            }}
+            breakpoints={productGalleryCarouselResponsive}
+            className="product-gallery w-full h-full"
+            buttonGroupClassName="hidden"
+          >
+            {images.map((item: any, index: number) => (
+              <SwiperSlide key={`product-gallery-key-${index}`}>
+                <div className="col-span-1 rounded-lg bg-gray-100 overflow-hidden w-full h-full">
+                  <ProductImageZoom
+                    src={item?.original || item?.thumbnail || "/assets/placeholder/products/product-gallery.svg"}
+                    alt={`${data?.name}--${index}`}
+                    className="w-full aspect-square"
+                    zoomScale={2.5}
+                  />
+                </div>
+              </SwiperSlide>
+            ))}
+          </Carousel>
+          {/* Floating Wishlist Button */}
+          <button
+            type="button"
+            onClick={() => toggleWishlist(data)}
+            className={cn(
+              "absolute bottom-3.5 ltr:right-3.5 rtl:left-3.5 z-10 w-[45px] h-[35px] rounded-md bg-white shadow-md border border-gray-150 flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95 focus:outline-none"
+            )}
+            aria-label="Toggle Wishlist"
+          >
+            <ProductWishIcon
+              active={productWishlisted}
+              className="w-full h-full"
+            />
+          </button>
+        </div>
       ) : (
         <div className="col-span-5 flex flex-col gap-4">
-          <div className="w-full bg-gray-100 rounded-lg overflow-hidden aspect-square sm:aspect-[4/3]">
+          <div className="relative w-full bg-gray-100 rounded-lg overflow-hidden aspect-square sm:aspect-[4/3]">
             <ProductImageZoom
               src={images[selectedImage]?.original || images[selectedImage]?.thumbnail || "/assets/placeholder/products/product-gallery.svg"}
               alt={`${data?.name} - main`}
               className="w-full h-full"
               zoomScale={2.5}
             />
+            {/* Floating Wishlist Button */}
+            <button
+              type="button"
+              onClick={() => toggleWishlist(data)}
+              className={cn(
+                "absolute bottom-3.5 ltr:right-3.5 rtl:left-3.5 z-10 w-[45px] h-[35px] rounded-md bg-white shadow-md border border-gray-150 flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95 focus:outline-none"
+              )}
+              aria-label="Toggle Wishlist"
+            >
+              <ProductWishIcon
+                active={productWishlisted}
+                className="w-full h-full"
+              />
+            </button>
           </div>
           {images.length > 1 && (
             <div className="flex gap-4 overflow-x-auto pb-2">

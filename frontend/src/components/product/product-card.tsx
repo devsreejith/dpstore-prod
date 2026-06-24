@@ -137,6 +137,39 @@ const ProductCard: FC<ProductProps> = ({
             style={{ width: "100%", height: resolvedHeight }}
           />
         </div>
+        {/* Floating Icons Stack (bottom-right of image) */}
+        <div className="absolute bottom-3.5 ltr:right-3.5 rtl:left-3.5 z-10 flex flex-col gap-y-2 items-center w-[45px]">
+          {/* Thumbnail/View Icon - only visible on hover */}
+          <button
+            type="button"
+            className="w-full h-[35px] flex items-center justify-center rounded-md bg-white shadow-md border border-gray-150 transition-all duration-300 opacity-100 sm:opacity-0 group-hover:opacity-100 hover:scale-105 active:scale-95 focus:outline-none"
+            onClick={(e) => {
+              e.stopPropagation();
+              handlePopupView();
+            }}
+            aria-label="Quick View"
+          >
+            <ProductViewIcon className="w-full h-full" />
+          </button>
+
+          {/* Wishlist Button - only visible on hover */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleWishlist(product);
+            }}
+            className={cn(
+              "w-full h-[35px] rounded-md bg-white shadow-md border border-gray-150 flex items-center justify-center transition-all duration-300 opacity-100 sm:opacity-0 group-hover:opacity-100 hover:scale-105 active:scale-95 focus:outline-none"
+            )}
+            aria-label="Toggle Wishlist"
+          >
+            <ProductWishIcon
+              active={productWishlisted}
+              className="w-full h-full"
+            />
+          </button>
+        </div>
         <div className="absolute top-3.5 ltr:left-3.5 rtl:right-3.5 ltr:sm:left-5 rtl:sm:right-5 flex flex-col gap-y-1.5">
           {product.quantity <= 0 && (
             <span className="bg-[#E4002B] text-white text-10px md:text-xs leading-5 rounded-md inline-block px-1.5 sm:px-1.5 xl:px-2 py-0.5 sm:py-1 font-semibold">
@@ -159,30 +192,7 @@ const ProductCard: FC<ProductProps> = ({
           )}
         </div>
 
-        {variant === "gridModernWide" && (
-          <div className="absolute ltr:right-2 rtl:left-2 ltr:sm:right-3 rtl:sm:left-3 bottom-6 space-y-2 w-[32px] sm:w-[42px] lg:w-[52px]">
-            <ProductViewIcon className="w-full transition duration-300 ease-in delay-100 bg-white rounded-md sm:opacity-0 group-hover:opacity-100" />
-            
-            {/* Interactive Wishlist Button */}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleWishlist(product);
-              }}
-              className="w-full flex items-center justify-center focus:outline-none"
-              aria-label="Toggle Wishlist"
-            >
-              <ProductWishIcon
-                active={productWishlisted}
-                className={cn(
-                  "w-full transition duration-300 ease-in bg-white rounded-md sm:opacity-0 group-hover:opacity-100",
-                  productWishlisted ? "text-red-500" : "text-heading"
-                )}
-              />
-            </button>
-          </div>
-        )}
+
       </div>
       <div
         className={cn(
@@ -231,28 +241,7 @@ const ProductCard: FC<ProductProps> = ({
         </div>
       </div>
 
-      {(variant === "gridTrendy" || variant === "gridModern") && (
-        <div className="absolute flex ltr:right-2 rtl:left-2 bottom-2 gap-x-2">
-          {/* Interactive Wishlist Button */}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              toggleWishlist(product);
-            }}
-            className="flex items-center justify-center focus:outline-none"
-            aria-label="Toggle Wishlist"
-          >
-            <ProductWishIcon
-              active={productWishlisted}
-              className={cn(
-                "transition ease-in duration-300 sm:opacity-0 group-hover:opacity-100 delay-200 w-[35px] sm:w-[42px] lg:w-[52px] rounded-md",
-                productWishlisted ? "bg-red-50 text-red-500 border border-red-100" : "bg-[#F1F3F4] text-heading"
-              )}
-            />
-          </button>
-        </div>
-      )}
+
     </div>
   );
 };
