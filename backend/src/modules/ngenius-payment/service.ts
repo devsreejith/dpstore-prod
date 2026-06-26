@@ -118,6 +118,7 @@ export class NGeniusPaymentService extends AbstractPaymentProvider<any> {
       let lineItems: any[] = [];
       let shippingAmountVal = 25.0; // Default flat rate
       let taxAmountVal = 0.0;
+      let shipTaxRate = 0;
 
       let dbClient: any;
       try {
@@ -156,24 +157,33 @@ export class NGeniusPaymentService extends AbstractPaymentProvider<any> {
               }
             }
 
-            // Fetch order items and quantities
+            // Fetch order items and quantities along with tax rates
             const itemsRes = await dbClient.query(`
-              SELECT oli.title, oi.quantity, oli.unit_price
+              SELECT oli.title, oi.quantity, oli.unit_price,
+                     COALESCE(
+                       (SELECT SUM(rate) FROM order_line_item_tax_line tl WHERE tl.item_id = oli.id AND tl.deleted_at IS NULL),
+                       0
+                     ) AS tax_rate
               FROM order_item oi
               JOIN order_line_item oli ON oi.item_id = oli.id
               WHERE oi.order_id = $1 AND oi.deleted_at IS NULL AND oli.deleted_at IS NULL
             `, [cartIdOrOrderId]);
             lineItems = itemsRes.rows;
 
-            // Fetch shipping amount
+            // Fetch shipping amount and tax rate
             const shipRes = await dbClient.query(`
-              SELECT osm.amount
+              SELECT osm.amount,
+                     COALESCE(
+                       (SELECT SUM(rate) FROM order_shipping_method_tax_line tl WHERE tl.shipping_method_id = osm.id AND tl.deleted_at IS NULL),
+                       0
+                     ) AS tax_rate
               FROM order_shipping os
               JOIN order_shipping_method osm ON os.shipping_method_id = osm.id
               WHERE os.order_id = $1 AND os.deleted_at IS NULL AND osm.deleted_at IS NULL
             `, [cartIdOrOrderId]);
             if (shipRes.rows.length > 0) {
               shippingAmountVal = Number(shipRes.rows[0].amount ?? 25);
+              shipTaxRate = Number(shipRes.rows[0].tax_rate ?? 0);
             }
           } else if (cartIdOrOrderId.startsWith("cart_")) {
             this.logger.info(`[N-Genius Service] Resolving payment for cart: ${cartIdOrOrderId}`);
@@ -243,22 +253,31 @@ export class NGeniusPaymentService extends AbstractPaymentProvider<any> {
               }
             }
 
-            // Fetch cart line items
+            // Fetch cart line items along with tax rate
             const itemsRes = await dbClient.query(`
-              SELECT title, quantity, unit_price
-              FROM cart_line_item
-              WHERE cart_id = $1 AND deleted_at IS NULL
+              SELECT cli.title, cli.quantity, cli.unit_price,
+                     COALESCE(
+                       (SELECT SUM(rate) FROM cart_line_item_tax_line tl WHERE tl.item_id = cli.id AND tl.deleted_at IS NULL),
+                       0
+                     ) AS tax_rate
+              FROM cart_line_item cli
+              WHERE cli.cart_id = $1 AND cli.deleted_at IS NULL
             `, [cartIdOrOrderId]);
             lineItems = itemsRes.rows;
 
-            // Fetch cart shipping methods
+            // Fetch cart shipping methods along with tax rate
             const shipRes = await dbClient.query(`
-              SELECT amount
-              FROM cart_shipping_method
-              WHERE cart_id = $1 AND deleted_at IS NULL
+              SELECT csm.amount,
+                     COALESCE(
+                       (SELECT SUM(rate) FROM cart_shipping_method_tax_line tl WHERE tl.shipping_method_id = csm.id AND tl.deleted_at IS NULL),
+                       0
+                     ) AS tax_rate
+              FROM cart_shipping_method csm
+              WHERE csm.cart_id = $1 AND csm.deleted_at IS NULL
             `, [cartIdOrOrderId]);
             if (shipRes.rows.length > 0) {
               shippingAmountVal = Number(shipRes.rows[0].amount ?? 25);
+              shipTaxRate = Number(shipRes.rows[0].tax_rate ?? 0);
             }
           }
         }
@@ -295,8 +314,19 @@ export class NGeniusPaymentService extends AbstractPaymentProvider<any> {
           0
         );
 
-        // VAT 5% of (Subtotal + Shipping)
-        taxAmountVal = (subtotalVal + shippingAmountVal) * 0.05;
+        // Calculate dynamic tax amount from line items and shipping tax lines
+        taxAmountVal = 0;
+        for (const item of lineItems) {
+          const itemQty = Number(item.quantity || 1);
+          const itemPrice = Number(item.unit_price || 0);
+          const itemTaxRate = Number(item.tax_rate || 0);
+          if (itemTaxRate > 0) {
+            taxAmountVal += (itemPrice * itemQty) * (itemTaxRate / 100);
+          }
+        }
+        if (shippingAmountVal > 0 && shipTaxRate > 0) {
+          taxAmountVal += shippingAmountVal * (shipTaxRate / 100);
+        }
 
         description += `▼ ${totalQty} Item${totalQty !== 1 ? "s" : ""}\n\n`;
         for (const item of lineItems) {
@@ -309,8 +339,10 @@ export class NGeniusPaymentService extends AbstractPaymentProvider<any> {
           
           description += `${title} ×${item.quantity || 1}    AED ${itemTotal.toFixed(2)}\n`;
         }
-        description += `\nDelivery Charge         AED ${shippingAmountVal.toFixed(2)}\n`;
-        description += `VAT (5%)                AED ${taxAmountVal.toFixed(2)}`;
+        description += `\nDelivery Charge         AED ${shippingAmountVal.toFixed(2)}`;
+        if (taxAmountVal > 0) {
+          description += `\nVAT (5%)                AED ${taxAmountVal.toFixed(2)}`;
+        }
 
         // Build structured cart payload
         const cartItems = lineItems.map((item) => ({
