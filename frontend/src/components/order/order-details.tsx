@@ -292,7 +292,7 @@ const OrderDetails: React.FC<{ className?: string }> = ({
   const totalAmount = Number((order as any)?.total ?? 0) || 0;
   const shippingAmount = Number((order as any)?.shipping_total ?? 0) || 0;
   const taxAmount = Number((order as any)?.tax_total ?? (order as any)?.taxes_total ?? 0) || 0;
-  const subtotalAmount = totalAmount - shippingAmount; // Exact price paid
+  const subtotalAmount = totalAmount - shippingAmount - taxAmount; // Exact price paid
   const discountAmount = 0; // Force discount to 0 to hide it
 
   const continuePayment = async () => {
@@ -605,6 +605,10 @@ const OrderDetails: React.FC<{ className?: string }> = ({
             <tr>
               <td>Delivery Charges:</td>
               <td style="text-align: right; font-weight: 500;">${shippingAmount === 0 ? 'Free' : fmt(shippingAmount, currency)}</td>
+            </tr>
+            <tr>
+              <td>VAT (5%):</td>
+              <td style="text-align: right; font-weight: 500;">${fmt(taxAmount, currency)}</td>
             </tr>
             <tr class="grand-total">
               <td>Total Amount:</td>

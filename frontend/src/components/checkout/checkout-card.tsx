@@ -45,14 +45,18 @@ const CheckoutCard: React.FC<CheckoutCardProps> = ({
   const [mounted, setMounted] = useState(false);
   const { items, total, isEmpty, cart } = useCart();
 
-  const shippingTotal = typeof cart?.shipping_total === "number" ? cart.shipping_total : 0;
-  const hasShipping = shippingTotal > 0;
   const shippingAmount = 25; // 25 AED for all orders
-  const itemSubtotal = hasShipping ? total - shippingTotal : total;
-  const finalTotal = hasShipping ? total : total + shippingAmount;
+  const itemSubtotal = items.reduce((sum: number, it: any) => sum + (it.price * (it.quantity ?? 1)), 0);
+  const vatAmount = (itemSubtotal + shippingAmount) * 0.05;
+  const finalTotal = itemSubtotal + shippingAmount + vatAmount;
 
   const { price: priceOriginal } = usePrice({
     amount: itemSubtotal,
+    currencyCode: "AED",
+  });
+
+  const { price: priceVat } = usePrice({
+    amount: vatAmount,
     currencyCode: "AED",
   });
 
@@ -143,7 +147,7 @@ const CheckoutCard: React.FC<CheckoutCardProps> = ({
 
           <div className="flex justify-between items-center">
             <span className="text-black font-normal">VAT (5%)</span>
-            <span className="text-black font-semibold">AED 0.00</span>
+            <span className="text-black font-semibold">{priceVat}</span>
           </div>
 
           <div className="border-t border-gray-150 pt-3 flex justify-between items-center font-bold text-sm md:text-base text-heading">

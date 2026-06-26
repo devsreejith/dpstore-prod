@@ -137,7 +137,8 @@ export class NGeniusClient {
       city: string;
       countryCode: string;
       phoneNumber?: string;
-    }
+    },
+    extraPayload?: any
   ): Promise<CreateOrderResponse> {
     this.logger?.info?.(
       `[N-Genius Client] Creating order redirect session. Ref: ${orderReference}, redirectParam: ${redirectParam}, Amount: ${amountMinor} ${currencyCode}, BillingAddress: ${JSON.stringify(billingAddress)}`
@@ -169,8 +170,10 @@ export class NGeniusClient {
         phoneNumber: billingAddress.phoneNumber && billingAddress.phoneNumber !== "N/A" ? billingAddress.phoneNumber : undefined,
       } : undefined,
       merchantAttributes: redirectUrl ? {
-        redirectUrl: redirectUrl
-      } : undefined
+        redirectUrl: redirectUrl,
+        ...(extraPayload?.merchantAttributes || {})
+      } : undefined,
+      ...extraPayload
     };
 
     const data = await this.requestWithRetry(async () => {

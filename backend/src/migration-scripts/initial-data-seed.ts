@@ -205,6 +205,43 @@ export default async function initial_data_seed({
     if (!msg.toLowerCase().includes("already")) throw e
   }
 
+  logger.info("Seeding 5% VAT rate...")
+  try {
+    const pg = await import("pg")
+    const client = new pg.default.Client({
+      connectionString: process.env.DATABASE_URL,
+    })
+    await client.connect()
+    try {
+      const taxRegions = await client.query("SELECT id, country_code FROM tax_region")
+      for (const region of taxRegions.rows) {
+        const existing = await client.query(
+          "SELECT id FROM tax_rate WHERE tax_region_id = $1 AND is_default = true AND deleted_at IS NULL",
+          [region.id]
+        )
+        if (existing.rows.length === 0) {
+          const id = "txrt_" + Math.random().toString(36).substring(2, 15)
+          logger.info(`Inserting 5% VAT rate for region ${region.country_code} (${region.id}) with id ${id}...`)
+          await client.query(
+            `INSERT INTO tax_rate (id, rate, code, name, is_default, is_combinable, tax_region_id, created_at, updated_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())`,
+            [id, 5.0, "VAT", "VAT 5%", true, false, region.id]
+          )
+        } else {
+          logger.info(`Default tax rate already exists for region ${region.country_code} (${region.id}), updating rate to 5%...`)
+          await client.query(
+            "UPDATE tax_rate SET rate = $1, code = $2, name = $3, updated_at = NOW() WHERE tax_region_id = $4 AND is_default = true AND deleted_at IS NULL",
+            [5.0, "VAT", "VAT 5%", region.id]
+          )
+        }
+      }
+    } finally {
+      await client.end()
+    }
+  } catch (err: any) {
+    logger.error("Failed to seed tax rates: " + err.message)
+  }
+
   logger.info("Seeding stock location data...")
   const { data: existingLocations } = await query.graph({
     entity: "stock_location",

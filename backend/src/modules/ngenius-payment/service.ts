@@ -115,6 +115,10 @@ export class NGeniusPaymentService extends AbstractPaymentProvider<any> {
       let customerCity = context?.shipping_address?.city || context?.billing_address?.city;
       let customerCountryCode = context?.shipping_address?.country_code || context?.billing_address?.country_code;
 
+      let lineItems: any[] = [];
+      let shippingAmountVal = 25.0; // Default flat rate
+      let taxAmountVal = 0.0;
+
       let dbClient: any;
       try {
         dbClient = new pg.Client({
@@ -150,6 +154,26 @@ export class NGeniusPaymentService extends AbstractPaymentProvider<any> {
                 orderReference = row.metadata.order_number;
                 this.logger.info(`[N-Genius Service] Found friendly order number in order metadata: ${orderReference}`);
               }
+            }
+
+            // Fetch order items and quantities
+            const itemsRes = await dbClient.query(`
+              SELECT oli.title, oi.quantity, oli.unit_price
+              FROM order_item oi
+              JOIN order_line_item oli ON oi.item_id = oli.id
+              WHERE oi.order_id = $1 AND oi.deleted_at IS NULL AND oli.deleted_at IS NULL
+            `, [cartIdOrOrderId]);
+            lineItems = itemsRes.rows;
+
+            // Fetch shipping amount
+            const shipRes = await dbClient.query(`
+              SELECT osm.amount
+              FROM order_shipping os
+              JOIN order_shipping_method osm ON os.shipping_method_id = osm.id
+              WHERE os.order_id = $1 AND os.deleted_at IS NULL AND osm.deleted_at IS NULL
+            `, [cartIdOrOrderId]);
+            if (shipRes.rows.length > 0) {
+              shippingAmountVal = Number(shipRes.rows[0].amount ?? 25);
             }
           } else if (cartIdOrOrderId.startsWith("cart_")) {
             this.logger.info(`[N-Genius Service] Resolving payment for cart: ${cartIdOrOrderId}`);
@@ -218,6 +242,24 @@ export class NGeniusPaymentService extends AbstractPaymentProvider<any> {
                 );
               }
             }
+
+            // Fetch cart line items
+            const itemsRes = await dbClient.query(`
+              SELECT title, quantity, unit_price
+              FROM cart_line_item
+              WHERE cart_id = $1 AND deleted_at IS NULL
+            `, [cartIdOrOrderId]);
+            lineItems = itemsRes.rows;
+
+            // Fetch cart shipping methods
+            const shipRes = await dbClient.query(`
+              SELECT amount
+              FROM cart_shipping_method
+              WHERE cart_id = $1 AND deleted_at IS NULL
+            `, [cartIdOrOrderId]);
+            if (shipRes.rows.length > 0) {
+              shippingAmountVal = Number(shipRes.rows[0].amount ?? 25);
+            }
           }
         }
       } catch (dbErr: any) {
@@ -238,8 +280,78 @@ export class NGeniusPaymentService extends AbstractPaymentProvider<any> {
         `[N-Genius Service] Initiating payment for resource reference: ${orderReference}, Amount: ${amountValue} (Minor: ${minorAmount}) ${currency_code}`
       );
 
+      // Format item descriptions for N-Genius order details
+      let description = "";
+      let cartObjPayload: any = undefined;
+      let orderObjPayload: any = undefined;
 
+      if (lineItems.length > 0) {
+        const totalQty = lineItems.reduce((sum, item) => sum + Number(item.quantity || 1), 0);
+        
+        // Calculate subtotal of items
+        const subtotalVal = lineItems.reduce(
+          (sum, item) => sum + (Number(item.unit_price) * Number(item.quantity || 1)),
+          0
+        );
 
+        // VAT 5% of (Subtotal + Shipping)
+        taxAmountVal = (subtotalVal + shippingAmountVal) * 0.05;
+
+        description += `▼ ${totalQty} Item${totalQty !== 1 ? "s" : ""}\n\n`;
+        for (const item of lineItems) {
+          const itemTotal = Number(item.unit_price) * Number(item.quantity || 1);
+          // Capitalize start of each word (Title Case)
+          const title = String(item.title || item.product_title || "")
+            .split(" ")
+            .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+            .join(" ");
+          
+          description += `${title} ×${item.quantity || 1}    AED ${itemTotal.toFixed(2)}\n`;
+        }
+        description += `\nDelivery Charge         AED ${shippingAmountVal.toFixed(2)}\n`;
+        description += `VAT (5%)                AED ${taxAmountVal.toFixed(2)}`;
+
+        // Build structured cart payload
+        const cartItems = lineItems.map((item) => ({
+          name: String(item.title || item.product_title || "")
+            .split(" ")
+            .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+            .join(" "),
+          quantity: Number(item.quantity || 1),
+          unitPrice: Math.round(Number(item.unit_price) * 100), // Minor units
+          totalAmount: Math.round(Number(item.unit_price) * Number(item.quantity || 1) * 100)
+        }));
+
+        if (shippingAmountVal > 0) {
+          cartItems.push({
+            name: "Delivery Charge",
+            quantity: 1,
+            unitPrice: Math.round(shippingAmountVal * 100),
+            totalAmount: Math.round(shippingAmountVal * 100)
+          });
+        }
+
+        if (taxAmountVal > 0) {
+          cartItems.push({
+            name: "VAT (5%)",
+            quantity: 1,
+            unitPrice: Math.round(taxAmountVal * 100),
+            totalAmount: Math.round(taxAmountVal * 100)
+          });
+        }
+
+        cartObjPayload = {
+          items: cartItems
+        };
+
+        orderObjPayload = {
+          items: cartItems.map((c) => ({
+            name: c.name,
+            quantity: c.quantity,
+            unitPrice: c.unitPrice
+          }))
+        };
+      }
 
       const cleanPhone = (phone: string | undefined): string | undefined => {
         if (!phone) return undefined;
@@ -265,7 +377,13 @@ export class NGeniusPaymentService extends AbstractPaymentProvider<any> {
         orderReference,
         customerEmail,
         redirectParam,
-        billingAddressPayload
+        billingAddressPayload,
+        {
+          description: description || undefined,
+          merchantAttributes: description ? { description } : undefined,
+          cart: cartObjPayload,
+          order: orderObjPayload
+        }
       );
 
       const paymentUrl = orderResponse._links?.payment?.href;
