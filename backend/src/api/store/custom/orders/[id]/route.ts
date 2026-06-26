@@ -118,7 +118,6 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
            FROM payment_session ps
            JOIN order_payment_collection opc ON ps.payment_collection_id = opc.payment_collection_id
            WHERE (ps.data->>'reference' = $1 OR ps.data->>'id' = $1 OR ps.data->>'merchantOrderReference' = $1)
-             AND ps.deleted_at IS NULL
              AND opc.deleted_at IS NULL
            LIMIT 1`,
           [orderId]
@@ -215,7 +214,7 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
         await client.connect();
         try {
           const sessionRes = await client.query(
-            "SELECT id, data FROM payment_session WHERE payment_collection_id = $1 AND deleted_at IS NULL LIMIT 1",
+            "SELECT id, data FROM payment_session WHERE payment_collection_id = $1 LIMIT 1",
             [paymentCollection.id]
           );
           if (sessionRes.rows.length > 0) {

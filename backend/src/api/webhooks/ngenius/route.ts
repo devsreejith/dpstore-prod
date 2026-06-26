@@ -101,7 +101,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
 
     // Query database to locate the payment session matching the reference
     const dbRes = await client.query(
-      "SELECT id, payment_collection_id, data FROM payment_session WHERE (data->>'reference' = $1 OR data->>'id' = $1) AND deleted_at IS NULL",
+      "SELECT id, payment_collection_id, data FROM payment_session WHERE (data->>'reference' = $1 OR data->>'id' = $1)",
       [reference]
     );
 
