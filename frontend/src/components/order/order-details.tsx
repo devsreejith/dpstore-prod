@@ -51,6 +51,50 @@ const isPaymentSuccessful = (collection: any) => {
   return false;
 };
 
+/**
+ * Returns true when the user placed the order but never completed the payment
+ * (session is in STARTED/pending state with no failure). Used to show
+ * "Payment Pending" instead of "Payment Failed".
+ */
+const isPaymentNeverAttempted = (collection: any) => {
+  if (!collection) return false;
+  // If already captured/authorized, it's not "never attempted"
+  if (Number(collection.captured_amount ?? 0) > 0) return false;
+  if (Number(collection.authorized_amount ?? 0) > 0) return false;
+
+  const FAILED_STATES = ['FAILED', 'DECLINED', 'REJECTED', 'CANCELLED', 'CANCELED'];
+  const STARTED_STATES = ['STARTED', 'PENDING', 'INITIATED'];
+
+  // Check payment_sessions for the N-Genius state
+  if (Array.isArray(collection.payment_sessions)) {
+    for (const s of collection.payment_sessions) {
+      if (s.provider_id?.includes('ngenius') && s.data) {
+        const state = String(s.data.status || s.data.state || '').toUpperCase();
+        const embeddedState = String(s.data._embedded?.payment?.[0]?.status || s.data._embedded?.payment?.[0]?.state || '').toUpperCase();
+        // If any embedded payment explicitly failed, it was attempted
+        if (FAILED_STATES.includes(embeddedState)) return false;
+        if (FAILED_STATES.includes(state)) return false;
+        // If top-level state is STARTED/PENDING, user never completed payment
+        if (STARTED_STATES.includes(state)) return true;
+      }
+    }
+  }
+
+  // Also check payments array
+  if (Array.isArray(collection.payments)) {
+    for (const p of collection.payments) {
+      if (p.provider_id?.includes('ngenius') && p.data) {
+        const state = String(p.data.status || p.data.state || '').toUpperCase();
+        if (FAILED_STATES.includes(state)) return false;
+        if (STARTED_STATES.includes(state)) return true;
+      }
+    }
+  }
+
+  // No N-Genius session data at all — treat as never attempted (default new order)
+  return true;
+};
+
 import { useRouter } from 'next/router';
 import Button from '@components/ui/button';
 import http from '@framework/utils/http';
@@ -277,6 +321,10 @@ const OrderDetails: React.FC<{ className?: string }> = ({
   const isCustomerCancelled = order?.metadata?.customer_cancelled === 'true' || order?.metadata?.customer_cancelled === true;
   const isGenuinelyCancelled = isCancelled && (!isOnlinePayment || isPaymentPaid || isCustomerCancelled);
   const isPaymentPending = !isPaymentPaid;
+  // True when the user placed the order but never went through the payment page
+  const isPaymentNeverAttemptedResult = isOnlinePayment && isPaymentPending && isPaymentNeverAttempted(paymentCollection);
+  // True when a payment was actually submitted but declined/failed by the gateway
+  const isPaymentActuallyFailed = isOnlinePayment && isPaymentPending && !isPaymentNeverAttemptedResult;
 
   const display = order?.display_id ?? order?.custom_display_id ?? order?.id;
   const title = display ? `Order #000${display}` : `Order #000${String(order?.id ?? '')}`;
@@ -709,7 +757,9 @@ const OrderDetails: React.FC<{ className?: string }> = ({
               ? 'bg-[#FEF2F2] border-[#FEE2E2]'
               : isPaymentPaid || !isOnlinePayment
                 ? 'bg-[#F4F9F6] border-[#E8F1EC]'
-                : 'bg-[#FEF2F2] border-[#FEE2E2]'
+                : isPaymentNeverAttemptedResult
+                  ? 'bg-[#FFFBEB] border-[#FDE68A]'
+                  : 'bg-[#FEF2F2] border-[#FEE2E2]'
           }`}>
             <div className="flex items-center gap-3.5">
               {isGenuinelyCancelled ? (
@@ -720,6 +770,10 @@ const OrderDetails: React.FC<{ className?: string }> = ({
                 <div className="w-10 h-10 rounded-full bg-[#E8F5E9] flex items-center justify-center flex-shrink-0">
                   <IoCheckmarkCircle className="text-2xl text-[#008755]" />
                 </div>
+              ) : isPaymentNeverAttemptedResult ? (
+                <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+                  <IoWalletOutline className="text-2xl text-amber-600" />
+                </div>
               ) : (
                 <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center flex-shrink-0">
                   <IoAlertCircleOutline className="text-2xl text-rose-500" />
@@ -727,7 +781,13 @@ const OrderDetails: React.FC<{ className?: string }> = ({
               )}
               <div className="text-left font-body">
                 <h4 className={`text-sm md:text-base font-bold ${
-                  isGenuinelyCancelled ? 'text-rose-700' : isPaymentPaid || !isOnlinePayment ? 'text-[#008755]' : 'text-rose-700'
+                  isGenuinelyCancelled
+                    ? 'text-rose-700'
+                    : isPaymentPaid || !isOnlinePayment
+                      ? 'text-[#008755]'
+                      : isPaymentNeverAttemptedResult
+                        ? 'text-amber-700'
+                        : 'text-rose-700'
                 }`}>
                   {isGenuinelyCancelled
                     ? 'Order Cancelled'
@@ -735,7 +795,9 @@ const OrderDetails: React.FC<{ className?: string }> = ({
                       ? 'Order Confirmed'
                       : isPaymentPaid
                         ? 'Payment Successful'
-                        : 'Payment Failed'}
+                        : isPaymentNeverAttemptedResult
+                          ? 'Payment Pending'
+                          : 'Payment Failed'}
                 </h4>
                 <p className="text-[11px] md:text-xs text-black mt-0.5">
                   {isGenuinelyCancelled
@@ -744,20 +806,26 @@ const OrderDetails: React.FC<{ className?: string }> = ({
                       ? 'Your order has been placed successfully. Payment will be collected upon delivery.'
                       : isPaymentPaid
                         ? 'Your order has been placed successfully.'
-                        : 'Your payment attempt was unsuccessful. Please retry payment.'}
+                        : isPaymentNeverAttemptedResult
+                          ? 'Your order is awaiting payment. Please proceed to complete your payment.'
+                          : 'Your payment attempt was unsuccessful. Please retry payment.'}
                 </p>
               </div>
             </div>
 
-            {/* Right side: Retry button for failed payments */}
+            {/* Right side: Pay / Retry button */}
             {isPaymentPending && !isGenuinelyCancelled && isOnlinePayment && (
               <button
                 type="button"
                 onClick={continuePayment}
                 disabled={paying || canceling}
-                className="md:self-center self-start h-9 px-5 bg-[#005844] hover:bg-[#008755] text-white font-bold text-xs md:text-sm rounded-lg transition duration-200 flex items-center justify-center font-body shadow-sm"
+                className={`md:self-center self-start h-9 px-5 text-white font-bold text-xs md:text-sm rounded-lg transition duration-200 flex items-center justify-center font-body shadow-sm ${
+                  isPaymentNeverAttemptedResult
+                    ? 'bg-amber-500 hover:bg-amber-600'
+                    : 'bg-[#005844] hover:bg-[#008755]'
+                }`}
               >
-                <span>{paying ? 'Processing...' : 'Retry Payment'}</span>
+                <span>{paying ? 'Processing...' : isPaymentNeverAttemptedResult ? 'Proceed to Payment' : 'Retry Payment'}</span>
               </button>
             )}
           </div>

@@ -96,6 +96,44 @@ const isPaymentSuccessful = (collection: any) => {
   return false;
 };
 
+/**
+ * Returns true when the user placed the order but never completed the payment
+ * (N-Genius session is in STARTED/pending state, no failure recorded).
+ */
+const isPaymentNeverAttempted = (collection: any) => {
+  if (!collection) return false;
+  if (Number(collection.captured_amount ?? 0) > 0) return false;
+  if (Number(collection.authorized_amount ?? 0) > 0) return false;
+
+  const FAILED_STATES = ['FAILED', 'DECLINED', 'REJECTED', 'CANCELLED', 'CANCELED'];
+  const STARTED_STATES = ['STARTED', 'PENDING', 'INITIATED'];
+
+  if (Array.isArray(collection.payment_sessions)) {
+    for (const s of collection.payment_sessions) {
+      if (s.provider_id?.includes('ngenius') && s.data) {
+        const state = String(s.data.status || s.data.state || '').toUpperCase();
+        const embeddedState = String(s.data._embedded?.payment?.[0]?.status || s.data._embedded?.payment?.[0]?.state || '').toUpperCase();
+        if (FAILED_STATES.includes(embeddedState)) return false;
+        if (FAILED_STATES.includes(state)) return false;
+        if (STARTED_STATES.includes(state)) return true;
+      }
+    }
+  }
+
+  if (Array.isArray(collection.payments)) {
+    for (const p of collection.payments) {
+      if (p.provider_id?.includes('ngenius') && p.data) {
+        const state = String(p.data.status || p.data.state || '').toUpperCase();
+        if (FAILED_STATES.includes(state)) return false;
+        if (STARTED_STATES.includes(state)) return true;
+      }
+    }
+  }
+
+  // Default: no N-Genius data yet — treat as never attempted
+  return true;
+};
+
 export default function OrderInformation() {
   const {
     query: { id, cart_id, ref },
@@ -204,6 +242,9 @@ export default function OrderInformation() {
   // For online payments, isPaid (from isPaymentSuccessful) is the single source of truth.
   // No dependency on verificationFailed — only the gateway result matters.
   const isPaymentFailed = isOnlinePayment && !isPaid;
+  // Distinguish: user never went to the payment page vs payment was actually rejected
+  const isPaymentNeverAttemptedResult = isPaymentFailed && isPaymentNeverAttempted(paymentCollection);
+  const isPaymentActuallyFailed = isPaymentFailed && !isPaymentNeverAttemptedResult;
 
   useEffect(() => {
     if (!isReady || !orderIdentifier) return;
@@ -339,8 +380,95 @@ export default function OrderInformation() {
         <div className="w-full">
           <OrderDetails className="p-0" />
         </div>
-      ) : isPaymentFailed ? (
-          /* Payment Failed View */
+      ) : isPaymentNeverAttemptedResult ? (
+          /* Payment Pending View — user never completed payment */
+          <div className="flex flex-col items-center w-full max-w-2xl mx-auto">
+            <div className="w-full bg-white border border-amber-200 rounded-2xl p-8 md:p-12 shadow-sm flex flex-col items-center">
+              {/* Pending Icon */}
+              <div className="relative mb-8 flex items-center justify-center" style={{ width: 96, height: 96 }}>
+                <div className="absolute inset-0 border-2 border-dashed border-amber-300 rounded-full" style={{ width: 96, height: 96 }}></div>
+                <span className="absolute" style={{ top: -4, left: 8, width: 6, height: 6, borderRadius: '50%', background: '#D97706' }}></span>
+                <span className="absolute" style={{ bottom: 4, right: 4, width: 5, height: 5, borderRadius: '50%', background: '#D97706' }}></span>
+                <span className="absolute" style={{ top: 12, right: -6, width: 5, height: 5, borderRadius: '50%', background: '#D97706' }}></span>
+                <span className="absolute" style={{ bottom: 16, left: -4, width: 4, height: 4, borderRadius: '50%', background: '#D97706' }}></span>
+                <div className="w-16 h-16 rounded-full bg-amber-500 flex items-center justify-center shadow-md relative z-10">
+                  <IoWalletOutline className="text-3xl text-white" />
+                </div>
+              </div>
+
+              <h1 className="text-2xl md:text-3xl font-bold text-amber-700 font-body mb-2 text-center">
+                Payment Pending
+              </h1>
+              <p className="text-sm text-gray-600 font-body text-center max-w-md leading-relaxed">
+                Your order has been placed but payment is not yet complete.
+              </p>
+              <p className="text-sm text-gray-600 font-body mb-8 text-center max-w-md">
+                Please proceed to complete your payment to confirm your order.
+              </p>
+
+              {/* Info Box */}
+              <div className="w-full bg-amber-50 border border-amber-200 rounded-xl p-5 mb-8 flex items-start gap-3">
+                <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span className="text-amber-700 font-bold text-lg">i</span>
+                </div>
+                <div className="flex flex-col text-left">
+                  <h4 className="text-sm font-bold text-heading mb-1">What do I need to do?</h4>
+                  <p className="text-xs text-gray-600 leading-relaxed">
+                    No payment has been deducted from your account. Click &quot;Proceed to Payment&quot; below to complete your purchase.
+                  </p>
+                </div>
+              </div>
+
+              {payError && (
+                <div className="w-full bg-rose-50 border border-rose-100 rounded-xl p-3.5 mb-5 flex items-center gap-2.5 text-xs md:text-sm text-rose-700 font-semibold font-body text-left">
+                  <span>⚠️ {payError}</span>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row gap-4 w-full mb-4">
+                <button
+                  type="button"
+                  onClick={continuePayment}
+                  disabled={paying || canceling}
+                  className="flex-1 h-12 bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm rounded-xl transition duration-200 flex items-center justify-center gap-2 font-body"
+                >
+                  <IoWalletOutline className="text-lg" />
+                  {paying ? 'Processing...' : 'Proceed to Payment'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowDetails(true)}
+                  className="flex-1 h-12 border-2 border-amber-500 hover:bg-amber-50 text-amber-700 font-bold text-sm rounded-xl transition duration-200 flex items-center justify-center gap-2 font-body"
+                >
+                  <IoDocumentTextOutline className="text-lg" />
+                  View Order Details
+                </button>
+              </div>
+
+              {cancelError && (
+                <div className="w-full bg-rose-50 border border-rose-100 rounded-xl p-3.5 mb-3 flex items-center gap-2.5 text-xs text-rose-700 font-semibold font-body text-left">
+                  <span>⚠️ {cancelError}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Safe & Secure Footer */}
+            <div className="flex flex-col items-center mt-6">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="h-px w-16 bg-gray-200"></div>
+                <div className="w-8 h-8 rounded-full bg-[#E8F5E9] flex items-center justify-center">
+                  <IoShieldCheckmarkOutline className="text-lg text-[#008755]" />
+                </div>
+                <div className="h-px w-16 bg-gray-200"></div>
+              </div>
+              <p className="text-xs text-black font-body text-center">
+                Safe and secure payments. 100% authentic products.
+              </p>
+            </div>
+          </div>
+      ) : isPaymentActuallyFailed ? (
+          /* Payment Failed View — payment was attempted and rejected */
           <div className="flex flex-col items-center w-full max-w-2xl mx-auto">
             <div className="w-full bg-white border border-gray-150 rounded-2xl p-8 md:p-12 shadow-sm flex flex-col items-center">
               {/* Failed Icon */}
