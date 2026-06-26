@@ -289,10 +289,10 @@ export const CartProvider: React.FC = (props) => {
       if (!cart?.id || (cart?.items?.length ?? 0) === 0) {
         try {
           const res = await http.get('/store/custom/cart');
-          if (res?.data?.cart_id) {
-            setCartId(res.data.cart_id);
+          if (res?.data?.cart_id && res.data.cart_id !== cart?.id) {
             const retrieved = await retrieveCart(res.data.cart_id);
-            if (retrieved?.id) {
+            if (retrieved?.id && !retrieved.completed_at) {
+              setCartId(res.data.cart_id);
               setCart(retrieved);
             }
           }
