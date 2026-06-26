@@ -284,6 +284,7 @@ export class NGeniusPaymentService extends AbstractPaymentProvider<any> {
       let description = "";
       let cartObjPayload: any = undefined;
       let orderObjPayload: any = undefined;
+      let orderSummaryObj: any = undefined;
 
       if (lineItems.length > 0) {
         const totalQty = lineItems.reduce((sum, item) => sum + Number(item.quantity || 1), 0);
@@ -351,6 +352,51 @@ export class NGeniusPaymentService extends AbstractPaymentProvider<any> {
             unitPrice: c.unitPrice
           }))
         };
+
+        const orderSummaryItems = lineItems.map((item) => ({
+          category: "Products",
+          description: String(item.title || item.product_title || "")
+            .split(" ")
+            .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+            .join(" "),
+          quantity: Number(item.quantity || 1),
+          totalPrice: {
+            currencyCode: currency_code.toUpperCase(),
+            value: Math.round(Number(item.unit_price) * Number(item.quantity || 1) * 100)
+          }
+        }));
+
+        if (shippingAmountVal > 0) {
+          orderSummaryItems.push({
+            category: "Shipping",
+            description: "Delivery Charge",
+            quantity: 1,
+            totalPrice: {
+              currencyCode: currency_code.toUpperCase(),
+              value: Math.round(shippingAmountVal * 100)
+            }
+          });
+        }
+
+        if (taxAmountVal > 0) {
+          orderSummaryItems.push({
+            category: "Taxes",
+            description: "VAT (5%)",
+            quantity: 1,
+            totalPrice: {
+              currencyCode: currency_code.toUpperCase(),
+              value: Math.round(taxAmountVal * 100)
+            }
+          });
+        }
+
+        orderSummaryObj = {
+          total: {
+            currencyCode: currency_code.toUpperCase(),
+            value: minorAmount
+          },
+          items: orderSummaryItems
+        };
       }
 
       const cleanPhone = (phone: string | undefined): string | undefined => {
@@ -385,7 +431,9 @@ export class NGeniusPaymentService extends AbstractPaymentProvider<any> {
             ...(description ? { description } : {})
           },
           cart: cartObjPayload,
-          order: orderObjPayload
+          order: orderObjPayload,
+          categorizedOrderSummary: true,
+          orderSummary: orderSummaryObj
         }
       );
 
