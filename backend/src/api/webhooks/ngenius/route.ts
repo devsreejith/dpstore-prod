@@ -120,7 +120,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
     const paymentModuleService = req.scope.resolve("payment");
 
     // Check transaction status/action from payload to decide what to do
-    const action = String(payload.action || payload.event || "").toUpperCase();
+    const action = String(payload.eventName || payload.action || payload.event || "").toUpperCase();
     const isSuccess = action.includes("CAPTURED") || action.includes("SUCCESS") || action.includes("PURCHASED") || action.includes("SALE") || action.includes("AUTHORIZED") || action.includes("AUTH");
 
     if (isTest) {
