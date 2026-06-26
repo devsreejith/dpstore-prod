@@ -200,107 +200,182 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
       ? (order.payment_collections[0] as any)
       : null;
 
-    if (paymentCollection && String(paymentCollection.status).toLowerCase() !== "captured") {
-      logger.info(`[Custom GET Order] Pending payment detected on collection ${paymentCollection.id}. Checking DB for N-Genius session...`);
-      const client = new pg.Client({
+    // Only sync if not already captured in DB (captured_amount > 0 means already done)
+    const alreadyCaptured = Number(paymentCollection?.captured_amount ?? 0) > 0;
+
+    if (paymentCollection && !alreadyCaptured) {
+      logger.info(`[Custom GET Order] Payment not yet captured for collection ${paymentCollection.id}. Checking N-Genius status...`);
+      const syncClient = new pg.Client({
         connectionString: process.env.DATABASE_URL,
       });
-      await client.connect();
+      await syncClient.connect();
       try {
-        const sessionRes = await client.query(
-          "SELECT id, data, provider_id FROM payment_session WHERE payment_collection_id = $1 LIMIT 1",
+        // Find the N-Genius payment session for this collection
+        const sessionRes = await syncClient.query(
+          "SELECT id, data, provider_id FROM payment_session WHERE payment_collection_id = $1 AND provider_id LIKE '%ngenius%' LIMIT 1",
           [paymentCollection.id]
         );
+
         if (sessionRes.rows.length > 0) {
           const session = sessionRes.rows[0];
-          const providerId = session.provider_id || "";
+          const sessionData = session.data || {};
+          const reference = sessionData.reference || sessionData.id;
 
-          if (providerId.includes("ngenius")) {
-            logger.info(`[Custom GET Order] N-Genius payment session found. Syncing status...`);
-            const sessionData = session.data || {};
-            const reference = sessionData.reference || sessionData.id;
-            if (reference) {
-              const ngeniusClient = new NGeniusClient({
-                apiKey: process.env.NGENIUS_API_KEY || "",
-                merchantId: process.env.NGENIUS_MERCHANT_ID || "",
-                outletId: process.env.NGENIUS_OUTLET_ID || "",
-                tokenUrl: process.env.NGENIUS_TOKEN_URL || "",
-                transactionUrl: process.env.NGENIUS_TRANSACTION_URL || "",
-                successUrl: process.env.NGENIUS_SUCCESS_URL || "",
-                failureUrl: process.env.NGENIUS_FAILURE_URL || "",
-                cancelUrl: process.env.NGENIUS_CANCEL_URL || "",
-              }, logger);
+          logger.info(`[Custom GET Order] N-Genius session found: ${session.id}, reference: ${reference}`);
 
-              const statusResponse = await ngeniusClient.getOrderStatus(reference);
-              const overallState = String(statusResponse.status || statusResponse.state || "").toUpperCase();
-              const isSuccess = ["CAPTURED", "PURCHASED", "SUCCESS"].includes(overallState);
-              const isAuthorized = ["AUTHORIZED", "AUTH"].includes(overallState);
+          if (reference) {
+            const ngeniusClient = new NGeniusClient({
+              apiKey: process.env.NGENIUS_API_KEY || "",
+              merchantId: process.env.NGENIUS_MERCHANT_ID || "",
+              outletId: process.env.NGENIUS_OUTLET_ID || "",
+              tokenUrl: process.env.NGENIUS_TOKEN_URL || "",
+              transactionUrl: process.env.NGENIUS_TRANSACTION_URL || "",
+              successUrl: process.env.NGENIUS_SUCCESS_URL || "",
+              failureUrl: process.env.NGENIUS_FAILURE_URL || "",
+              cancelUrl: process.env.NGENIUS_CANCEL_URL || "",
+            }, logger);
 
-              if (isSuccess || isAuthorized) {
-                logger.info(`[Custom GET Order] Payment is ${overallState} on gateway. Syncing with Medusa...`);
-                const paymentRes = await client.query(
-                  "SELECT id, amount, captured_at FROM payment WHERE payment_session_id = $1 AND deleted_at IS NULL LIMIT 1",
-                  [session.id]
-                );
+            const statusResponse = await ngeniusClient.getOrderStatus(reference);
+            logger.info(`[Custom GET Order] N-Genius raw status: ${JSON.stringify(statusResponse)}`);
 
-                const paymentModuleService = req.scope.resolve("payment");
-                let paymentId = paymentRes.rows[0]?.id;
-                let capturedAt = paymentRes.rows[0]?.captured_at;
+            // Check embedded payment status first (most reliable), then top-level state
+            let resolvedState = String(statusResponse.status || statusResponse.state || "").toUpperCase();
+            const embeddedPayments = (statusResponse as any)._embedded?.payment;
+            if (Array.isArray(embeddedPayments) && embeddedPayments.length > 0) {
+              const latestPayment = embeddedPayments[embeddedPayments.length - 1];
+              const embState = latestPayment.status || latestPayment.state;
+              if (embState) {
+                resolvedState = String(embState).toUpperCase();
+              }
+            }
+            logger.info(`[Custom GET Order] Resolved N-Genius state: ${resolvedState}`);
 
-                if (!paymentId) {
+            const isSuccess = ["CAPTURED", "PURCHASED", "SUCCESS"].includes(resolvedState);
+            const isAuthorized = ["AUTHORIZED", "AUTH"].includes(resolvedState);
+
+            if (isSuccess || isAuthorized) {
+              logger.info(`[Custom GET Order] Payment confirmed as ${resolvedState}. Applying direct DB sync...`);
+
+              // Build the merged data to store (preserves reference for future lookups)
+              const mergedData = { ...sessionData, ...statusResponse, reference };
+
+              // Find the existing payment row (created by completeCart or authorize flow)
+              const paymentRes = await syncClient.query(
+                "SELECT id, amount, captured_at FROM payment WHERE payment_session_id = $1 AND deleted_at IS NULL LIMIT 1",
+                [session.id]
+              );
+
+              let paymentId = paymentRes.rows[0]?.id;
+              const capturedAt = paymentRes.rows[0]?.captured_at;
+              const paymentAmount = paymentRes.rows[0]?.amount ?? paymentCollection.amount;
+
+              if (!paymentId) {
+                // No payment record yet — try Medusa's authorize flow
+                logger.info(`[Custom GET Order] No payment row yet. Trying authorizePaymentSession...`);
+                try {
+                  const paymentModuleService = req.scope.resolve("payment");
                   const paymentObj = await paymentModuleService.authorizePaymentSession(session.id, {});
                   paymentId = paymentObj?.id;
-                }
-
-                if (paymentId) {
-                  if (isSuccess) {
-                    if (!capturedAt) {
-                      await client.query(
-                        "UPDATE payment SET data = $1 WHERE id = $2",
-                        [JSON.stringify(statusResponse), paymentId]
-                      );
-                      await paymentModuleService.capturePayment({
-                        payment_id: paymentId,
-                        amount: paymentCollection.amount,
-                      });
-                    }
-                    (order as any).payment_status = "captured";
-                    paymentCollection.status = "captured";
-                    paymentCollection.captured_amount = paymentCollection.amount;
-                  } else {
-                    await client.query(
-                      "UPDATE payment_session SET data = $1, status = $2 WHERE id = $3",
-                      [JSON.stringify(statusResponse), "authorized", session.id]
+                  logger.info(`[Custom GET Order] authorizePaymentSession succeeded. Payment ID: ${paymentId}`);
+                } catch (authErr: any) {
+                  logger.warn(`[Custom GET Order] authorizePaymentSession failed (${authErr.message}). Inserting payment row directly...`);
+                  // Fallback: create payment row directly
+                  try {
+                    const currRes = await syncClient.query(
+                      "SELECT currency_code FROM payment_collection WHERE id = $1 LIMIT 1",
+                      [paymentCollection.id]
                     );
-                    (order as any).payment_status = "authorized";
-                    paymentCollection.status = "authorized";
-                    paymentCollection.authorized_amount = paymentCollection.amount;
+                    const currencyCode = currRes.rows[0]?.currency_code || "aed";
+                    const insertRes = await syncClient.query(
+                      `INSERT INTO payment (id, payment_session_id, provider_id, amount, currency_code, data, created_at, updated_at)
+                       VALUES (
+                         'pay_' || replace(gen_random_uuid()::text, '-', ''),
+                         $1, $2, $3, $4, $5, NOW(), NOW()
+                       ) ON CONFLICT DO NOTHING RETURNING id`,
+                      [session.id, session.provider_id, paymentAmount, currencyCode, JSON.stringify(mergedData)]
+                    );
+                    paymentId = insertRes.rows[0]?.id;
+                    logger.info(`[Custom GET Order] Fallback direct payment insert. ID: ${paymentId}`);
+                  } catch (insertErr: any) {
+                    logger.error(`[Custom GET Order] Fallback insert also failed: ${insertErr.message}`);
                   }
                 }
-                
-                // Add capture details to payments array
-                if (!Array.isArray(paymentCollection.payments)) {
-                  paymentCollection.payments = [];
+              }
+
+              if (paymentId) {
+                if (isSuccess && !capturedAt) {
+                  // Mark payment as captured directly in DB
+                  logger.info(`[Custom GET Order] Marking payment ${paymentId} as captured in DB...`);
+                  await syncClient.query(
+                    "UPDATE payment SET data = $1, captured_at = NOW(), updated_at = NOW() WHERE id = $2",
+                    [JSON.stringify(mergedData), paymentId]
+                  );
+                  // Update payment_collection captured_amount
+                  await syncClient.query(
+                    "UPDATE payment_collection SET captured_amount = amount, updated_at = NOW() WHERE id = $1",
+                    [paymentCollection.id]
+                  );
+                  // Update order payment_status to 'captured'
+                  const orderLookup = await syncClient.query(
+                    "SELECT order_id FROM order_payment_collection WHERE payment_collection_id = $1 AND deleted_at IS NULL LIMIT 1",
+                    [paymentCollection.id]
+                  );
+                  if (orderLookup.rows.length > 0) {
+                    await syncClient.query(
+                      "UPDATE \"order\" SET payment_status = 'captured', updated_at = NOW() WHERE id = $1",
+                      [orderLookup.rows[0].order_id]
+                    );
+                    logger.info(`[Custom GET Order] Updated order ${orderLookup.rows[0].order_id} payment_status to 'captured'`);
+                  }
+
+                  // Reflect in-memory for immediate response
+                  (order as any).payment_status = "captured";
+                  paymentCollection.status = "captured";
+                  paymentCollection.captured_amount = paymentCollection.amount;
+
+                } else if (isAuthorized && !capturedAt) {
+                  // Mark payment_session as authorized
+                  logger.info(`[Custom GET Order] Marking payment_session ${session.id} as authorized in DB...`);
+                  await syncClient.query(
+                    "UPDATE payment_session SET data = $1, status = $2, updated_at = NOW() WHERE id = $3",
+                    [JSON.stringify(mergedData), "authorized", session.id]
+                  );
+                  await syncClient.query(
+                    "UPDATE payment_collection SET authorized_amount = amount, updated_at = NOW() WHERE id = $1",
+                    [paymentCollection.id]
+                  );
+
+                  // Reflect in-memory
+                  (order as any).payment_status = "authorized";
+                  paymentCollection.status = "authorized";
+                  paymentCollection.authorized_amount = paymentCollection.amount;
                 }
-                if (paymentCollection.payments.length === 0) {
-                  paymentCollection.payments.push({
-                    provider_id: "pp_ngenius_ngenius",
-                    data: statusResponse,
-                  } as any);
-                } else {
-                  paymentCollection.payments[0] = {
-                    ...(paymentCollection.payments[0] || {}),
-                    data: statusResponse
-                  } as any;
-                }
+              }
+
+              // Inject N-Genius status data into payments array for frontend isPaymentSuccessful check
+              if (!Array.isArray(paymentCollection.payments)) {
+                paymentCollection.payments = [];
+              }
+              if (paymentCollection.payments.length === 0) {
+                paymentCollection.payments.push({
+                  provider_id: "pp_ngenius_ngenius",
+                  data: statusResponse,
+                } as any);
+              } else {
+                paymentCollection.payments[0] = {
+                  ...(paymentCollection.payments[0] || {}),
+                  data: statusResponse,
+                } as any;
               }
             }
           }
+        } else {
+          logger.info(`[Custom GET Order] No N-Genius payment session found for collection ${paymentCollection.id}`);
         }
       } catch (syncErr: any) {
         logger.error(`[Custom GET Order] Sync payment failed: ${syncErr.message}`, syncErr);
       } finally {
-        await client.end();
+        await syncClient.end();
       }
     }
 
