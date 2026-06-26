@@ -1,6 +1,7 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
 import pg from "pg";
+import { NGeniusClient } from "../../../../../modules/ngenius-payment/ngenius-client";
 
 export async function GET(req: MedusaRequest, res: MedusaResponse) {
   const logger = req.scope.resolve("logger") || console;
@@ -193,6 +194,106 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
       logger.warn(`[Custom GET Order] Forbidden. Customer ID mismatch on non-secure ID.`);
       res.status(403).json({ message: "You are not authorized to view this order." });
       return;
+    }
+
+    // Real-time payment status sync with N-Genius
+    const paymentCollection = Array.isArray(order.payment_collections) && order.payment_collections.length
+      ? order.payment_collections[0]
+      : null;
+
+    if (paymentCollection && paymentCollection.status !== "captured") {
+      const sessions = Array.isArray(paymentCollection.payment_sessions) ? paymentCollection.payment_sessions : [];
+      const ngeniusSession = sessions.find((s: any) => s.provider_id?.includes("ngenius"));
+      const payments = Array.isArray(paymentCollection.payments) ? paymentCollection.payments : [];
+      const ngeniusPayment = payments.find((p: any) => p.provider_id?.includes("ngenius"));
+
+      if (ngeniusSession || ngeniusPayment) {
+        logger.info(`[Custom GET Order] Pending N-Genius payment detected. Syncing status...`);
+        const client = new pg.Client({
+          connectionString: process.env.DATABASE_URL,
+        });
+        await client.connect();
+        try {
+          const sessionRes = await client.query(
+            "SELECT id, data FROM payment_session WHERE payment_collection_id = $1 AND deleted_at IS NULL LIMIT 1",
+            [paymentCollection.id]
+          );
+          if (sessionRes.rows.length > 0) {
+            const session = sessionRes.rows[0];
+            const sessionData = session.data || {};
+            const reference = sessionData.reference || sessionData.id;
+            if (reference) {
+              const ngeniusClient = new NGeniusClient({
+                apiKey: process.env.NGENIUS_API_KEY || "",
+                merchantId: process.env.NGENIUS_MERCHANT_ID || "",
+                outletId: process.env.NGENIUS_OUTLET_ID || "",
+                tokenUrl: process.env.NGENIUS_TOKEN_URL || "",
+                transactionUrl: process.env.NGENIUS_TRANSACTION_URL || "",
+                successUrl: process.env.NGENIUS_SUCCESS_URL || "",
+                failureUrl: process.env.NGENIUS_FAILURE_URL || "",
+                cancelUrl: process.env.NGENIUS_CANCEL_URL || "",
+              }, logger);
+
+              const statusResponse = await ngeniusClient.getOrderStatus(reference);
+              const overallState = String(statusResponse.status || statusResponse.state || "").toUpperCase();
+              const isSuccess = ["CAPTURED", "PURCHASED", "SUCCESS"].includes(overallState);
+
+              if (isSuccess) {
+                logger.info(`[Custom GET Order] Payment is paid on gateway. Capturing in Medusa...`);
+                const paymentRes = await client.query(
+                  "SELECT id, amount, captured_at FROM payment WHERE payment_session_id = $1 AND deleted_at IS NULL LIMIT 1",
+                  [session.id]
+                );
+
+                const paymentModuleService = req.scope.resolve("payment");
+                if (paymentRes.rows.length > 0) {
+                  const payment = paymentRes.rows[0];
+                  if (!payment.captured_at) {
+                    await client.query(
+                      "UPDATE payment SET data = $1 WHERE id = $2",
+                      [JSON.stringify(sessionData), payment.id]
+                    );
+                    await paymentModuleService.capturePayment({
+                      payment_id: payment.id,
+                      amount: payment.amount,
+                    });
+                  }
+                } else {
+                  const paymentObj = await paymentModuleService.authorizePaymentSession(session.id, {});
+                  if (paymentObj && paymentObj.id) {
+                    await paymentModuleService.capturePayment({
+                      payment_id: paymentObj.id,
+                      amount: paymentObj.amount,
+                    });
+                  }
+                }
+                
+                // Update in-memory order object
+                (order as any).payment_status = "captured";
+                paymentCollection.status = "captured";
+                paymentCollection.captured_amount = paymentCollection.amount;
+                
+                // Add capture details to payments array
+                if (!Array.isArray(paymentCollection.payments)) {
+                  paymentCollection.payments = [];
+                }
+                if (paymentCollection.payments.length === 0) {
+                  paymentCollection.payments.push({
+                    provider_id: "pp_ngenius_ngenius",
+                    data: statusResponse,
+                  });
+                } else {
+                  paymentCollection.payments[0].data = statusResponse;
+                }
+              }
+            }
+          }
+        } catch (syncErr: any) {
+          logger.error(`[Custom GET Order] Sync payment failed: ${syncErr.message}`, syncErr);
+        } finally {
+          await client.end();
+        }
+      }
     }
 
     // 1. Calculate shipping total and map amount -> price for each shipping method
