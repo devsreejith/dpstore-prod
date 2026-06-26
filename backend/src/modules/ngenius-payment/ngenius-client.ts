@@ -169,11 +169,11 @@ export class NGeniusClient {
         countryCode: (billingAddress.countryCode || "AE").toUpperCase(),
         phoneNumber: billingAddress.phoneNumber && billingAddress.phoneNumber !== "N/A" ? billingAddress.phoneNumber : undefined,
       } : undefined,
-      merchantAttributes: redirectUrl ? {
-        redirectUrl: redirectUrl,
-        ...(extraPayload?.merchantAttributes || {})
-      } : undefined,
-      ...extraPayload
+      ...(extraPayload || {}),
+      merchantAttributes: {
+        ...(extraPayload?.merchantAttributes || {}),
+        ...(redirectUrl ? { redirectUrl } : {})
+      }
     };
 
     const logMsg = `[N-Genius Client] Request payload sent to N-Genius order API:\n${JSON.stringify(payload, null, 2)}`;

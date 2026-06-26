@@ -198,10 +198,10 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
 
     // Real-time payment status sync with N-Genius
     const paymentCollection = Array.isArray(order.payment_collections) && order.payment_collections.length
-      ? order.payment_collections[0]
+      ? (order.payment_collections[0] as any)
       : null;
 
-    if (paymentCollection && paymentCollection.status !== "captured") {
+    if (paymentCollection && String(paymentCollection.status).toLowerCase() !== "captured") {
       const sessions = Array.isArray(paymentCollection.payment_sessions) ? paymentCollection.payment_sessions : [];
       const ngeniusSession = sessions.find((s: any) => s.provider_id?.includes("ngenius"));
       const payments = Array.isArray(paymentCollection.payments) ? paymentCollection.payments : [];
@@ -237,41 +237,49 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
               const statusResponse = await ngeniusClient.getOrderStatus(reference);
               const overallState = String(statusResponse.status || statusResponse.state || "").toUpperCase();
               const isSuccess = ["CAPTURED", "PURCHASED", "SUCCESS"].includes(overallState);
+              const isAuthorized = ["AUTHORIZED", "AUTH"].includes(overallState);
 
-              if (isSuccess) {
-                logger.info(`[Custom GET Order] Payment is paid on gateway. Capturing in Medusa...`);
+              if (isSuccess || isAuthorized) {
+                logger.info(`[Custom GET Order] Payment is ${overallState} on gateway. Syncing with Medusa...`);
                 const paymentRes = await client.query(
                   "SELECT id, amount, captured_at FROM payment WHERE payment_session_id = $1 AND deleted_at IS NULL LIMIT 1",
                   [session.id]
                 );
 
                 const paymentModuleService = req.scope.resolve("payment");
-                if (paymentRes.rows.length > 0) {
-                  const payment = paymentRes.rows[0];
-                  if (!payment.captured_at) {
-                    await client.query(
-                      "UPDATE payment SET data = $1 WHERE id = $2",
-                      [JSON.stringify(sessionData), payment.id]
-                    );
-                    await paymentModuleService.capturePayment({
-                      payment_id: payment.id,
-                      amount: payment.amount,
-                    });
-                  }
-                } else {
+                let paymentId = paymentRes.rows[0]?.id;
+                let capturedAt = paymentRes.rows[0]?.captured_at;
+
+                if (!paymentId) {
                   const paymentObj = await paymentModuleService.authorizePaymentSession(session.id, {});
-                  if (paymentObj && paymentObj.id) {
-                    await paymentModuleService.capturePayment({
-                      payment_id: paymentObj.id,
-                      amount: paymentObj.amount,
-                    });
+                  paymentId = paymentObj?.id;
+                }
+
+                if (paymentId) {
+                  if (isSuccess) {
+                    if (!capturedAt) {
+                      await client.query(
+                        "UPDATE payment SET data = $1 WHERE id = $2",
+                        [JSON.stringify(statusResponse), paymentId]
+                      );
+                      await paymentModuleService.capturePayment({
+                        payment_id: paymentId,
+                        amount: paymentCollection.amount,
+                      });
+                    }
+                    (order as any).payment_status = "captured";
+                    paymentCollection.status = "captured";
+                    paymentCollection.captured_amount = paymentCollection.amount;
+                  } else {
+                    await client.query(
+                      "UPDATE payment_session SET data = $1, status = $2 WHERE id = $3",
+                      [JSON.stringify(statusResponse), "authorized", session.id]
+                    );
+                    (order as any).payment_status = "authorized";
+                    paymentCollection.status = "authorized";
+                    paymentCollection.authorized_amount = paymentCollection.amount;
                   }
                 }
-                
-                // Update in-memory order object
-                (order as any).payment_status = "captured";
-                paymentCollection.status = "captured";
-                paymentCollection.captured_amount = paymentCollection.amount;
                 
                 // Add capture details to payments array
                 if (!Array.isArray(paymentCollection.payments)) {
@@ -281,9 +289,12 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
                   paymentCollection.payments.push({
                     provider_id: "pp_ngenius_ngenius",
                     data: statusResponse,
-                  });
+                  } as any);
                 } else {
-                  paymentCollection.payments[0].data = statusResponse;
+                  paymentCollection.payments[0] = {
+                    ...(paymentCollection.payments[0] || {}),
+                    data: statusResponse
+                  } as any;
                 }
               }
             }
