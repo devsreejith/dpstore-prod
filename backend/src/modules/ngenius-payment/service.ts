@@ -381,7 +381,7 @@ export class NGeniusPaymentService extends AbstractPaymentProvider<any> {
         {
           description: description || undefined,
           merchantAttributes: {
-            skipConfirmationPage: true,
+            skipConfirmationPage: false,
             ...(description ? { description } : {})
           },
           cart: cartObjPayload,
