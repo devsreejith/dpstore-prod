@@ -520,12 +520,12 @@ export const bannerDataContemporary = [
     slug: "gs-mug",
     image: {
       mobile: {
-        url: "/assets/images/banner/masonry/banner-13.png",
+        url: "/assets/images/banner-13.webp",
         width: 690,
         height: 360,
       },
       desktop: {
-        url: "/assets/images/banner/masonry/banner-13.png",
+        url: "/assets/images/banner-13.webp",
         width: 885,
         height: 430,
       },

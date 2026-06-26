@@ -176,6 +176,10 @@ export class NGeniusClient {
       ...extraPayload
     };
 
+    const logMsg = `[N-Genius Client] Request payload sent to N-Genius order API:\n${JSON.stringify(payload, null, 2)}`;
+    console.log(logMsg);
+    this.logger?.info?.(logMsg);
+
     const data = await this.requestWithRetry(async () => {
       const response = await fetch(url, {
         method: "POST",
