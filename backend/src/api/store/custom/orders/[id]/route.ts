@@ -201,24 +201,22 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
       : null;
 
     if (paymentCollection && String(paymentCollection.status).toLowerCase() !== "captured") {
-      const sessions = Array.isArray(paymentCollection.payment_sessions) ? paymentCollection.payment_sessions : [];
-      const ngeniusSession = sessions.find((s: any) => s.provider_id?.includes("ngenius"));
-      const payments = Array.isArray(paymentCollection.payments) ? paymentCollection.payments : [];
-      const ngeniusPayment = payments.find((p: any) => p.provider_id?.includes("ngenius"));
+      logger.info(`[Custom GET Order] Pending payment detected on collection ${paymentCollection.id}. Checking DB for N-Genius session...`);
+      const client = new pg.Client({
+        connectionString: process.env.DATABASE_URL,
+      });
+      await client.connect();
+      try {
+        const sessionRes = await client.query(
+          "SELECT id, data, provider_id FROM payment_session WHERE payment_collection_id = $1 LIMIT 1",
+          [paymentCollection.id]
+        );
+        if (sessionRes.rows.length > 0) {
+          const session = sessionRes.rows[0];
+          const providerId = session.provider_id || "";
 
-      if (ngeniusSession || ngeniusPayment) {
-        logger.info(`[Custom GET Order] Pending N-Genius payment detected. Syncing status...`);
-        const client = new pg.Client({
-          connectionString: process.env.DATABASE_URL,
-        });
-        await client.connect();
-        try {
-          const sessionRes = await client.query(
-            "SELECT id, data FROM payment_session WHERE payment_collection_id = $1 LIMIT 1",
-            [paymentCollection.id]
-          );
-          if (sessionRes.rows.length > 0) {
-            const session = sessionRes.rows[0];
+          if (providerId.includes("ngenius")) {
+            logger.info(`[Custom GET Order] N-Genius payment session found. Syncing status...`);
             const sessionData = session.data || {};
             const reference = sessionData.reference || sessionData.id;
             if (reference) {
@@ -298,11 +296,11 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
               }
             }
           }
-        } catch (syncErr: any) {
-          logger.error(`[Custom GET Order] Sync payment failed: ${syncErr.message}`, syncErr);
-        } finally {
-          await client.end();
         }
+      } catch (syncErr: any) {
+        logger.error(`[Custom GET Order] Sync payment failed: ${syncErr.message}`, syncErr);
+      } finally {
+        await client.end();
       }
     }
 

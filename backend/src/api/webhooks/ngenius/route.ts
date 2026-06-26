@@ -2,6 +2,7 @@ import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
 import * as fs from "fs";
 import * as path from "path";
 import pg from "pg";
+import { NGeniusClient } from "../../../modules/ngenius-payment/ngenius-client";
 
 export async function POST(req: MedusaRequest, res: MedusaResponse) {
   const logger = req.scope.resolve("logger") || console;
@@ -11,14 +12,15 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
   const expectedHeaderKey = String(process.env.NGENIUS_WEBHOOK_HEADER_KEY || "").trim();
   const expectedHeaderValue = String(process.env.NGENIUS_WEBHOOK_HEADER_VALUE || "").trim();
 
+  let headerAuthPassed = true;
   if (expectedHeaderKey && expectedHeaderValue) {
     const incomingValue = String(headers[expectedHeaderKey.toLowerCase()] || "").trim();
     if (incomingValue !== expectedHeaderValue) {
-      logger.error(`[N-Genius Webhook] Unauthorized webhook request. Header verification failed. Expected key: "${expectedHeaderKey}"`);
-      res.status(401).send("Unauthorized");
-      return;
+      headerAuthPassed = false;
+      logger.warn(`[N-Genius Webhook] Custom header verification failed. Expecting authoritative N-Genius API lookup verification fallback.`);
+    } else {
+      logger.info(`[N-Genius Webhook] Custom header verification passed.`);
     }
-    logger.info(`[N-Genius Webhook] Request authorized successfully using custom header: "${expectedHeaderKey}"`);
   }
 
   logger.info(`[N-Genius Webhook] Received webhook payload: ${JSON.stringify(payload)}`);
@@ -119,8 +121,51 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
 
     const paymentModuleService = req.scope.resolve("payment");
 
-    // Check transaction status/action from payload to decide what to do
-    const action = String(payload.eventName || payload.action || payload.event || "").toUpperCase();
+    // Perform authoritative status lookup if it is not a test reference
+    let overallState = "";
+    if (!isTest) {
+      logger.info(`[N-Genius Webhook] Performing authoritative status lookup for reference: ${reference}`);
+      try {
+        const ngeniusClient = new NGeniusClient({
+          apiKey: process.env.NGENIUS_API_KEY || "",
+          merchantId: process.env.NGENIUS_MERCHANT_ID || "",
+          outletId: process.env.NGENIUS_OUTLET_ID || "",
+          tokenUrl: process.env.NGENIUS_TOKEN_URL || "",
+          transactionUrl: process.env.NGENIUS_TRANSACTION_URL || "",
+          successUrl: process.env.NGENIUS_SUCCESS_URL || "",
+          failureUrl: process.env.NGENIUS_FAILURE_URL || "",
+          cancelUrl: process.env.NGENIUS_CANCEL_URL || "",
+        }, logger);
+
+        const statusResponse = await ngeniusClient.getOrderStatus(reference);
+        overallState = String(statusResponse.status || statusResponse.state || "").toUpperCase();
+        
+        // Inspect payment status in embedded payments if present
+        const payments = statusResponse._embedded?.payment;
+        if (Array.isArray(payments) && payments.length > 0) {
+          const latestPayment = payments[payments.length - 1];
+          const state = latestPayment.status || latestPayment.state;
+          if (state) {
+            overallState = String(state).toUpperCase();
+          }
+        }
+        logger.info(`[N-Genius Webhook] Authoritative state resolved: ${overallState}`);
+      } catch (err: any) {
+        logger.error(`[N-Genius Webhook] Authoritative lookup failed: ${err.message}`);
+        if (!headerAuthPassed) {
+          logger.error(`[N-Genius Webhook] Header verification and authoritative lookup both failed. Rejecting webhook request.`);
+          res.status(401).send("Unauthorized");
+          return;
+        }
+      }
+    }
+
+    // Determine transaction status/action
+    let action = String(payload.eventName || payload.action || payload.event || "").toUpperCase();
+    if (overallState) {
+      action = overallState;
+    }
+
     const isSuccess = action.includes("CAPTURED") || action.includes("SUCCESS") || action.includes("PURCHASED") || action.includes("SALE") || action.includes("AUTHORIZED") || action.includes("AUTH");
 
     if (isTest) {
