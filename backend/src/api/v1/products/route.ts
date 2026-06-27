@@ -68,8 +68,8 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
 
   const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
 
+  const isSearch = !!q
   const filters: Record<string, unknown> = {}
-  if (q) filters.q = q
   if (featured !== undefined) filters.metadata = { ...(filters.metadata as any), featured }
   if (handle) {
     const handles = handle.split(",").map((h) => h.trim()).filter(Boolean)
@@ -132,7 +132,7 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
       "options.values.*",
     ],
     filters,
-    pagination: { skip, take },
+    pagination: isSearch ? { skip: 0, take: 1000 } : { skip, take },
     context: region_id ? { region_id } : undefined,
   })
 
@@ -213,7 +213,126 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
     }
   }
 
-  const total = Number(metadata?.count ?? filtered.length)
+  if (isSearch && q) {
+    const searchTerms = q.toLowerCase().split(/\s+/).filter(Boolean);
+    const scoredProducts = filtered.map((p) => {
+      let score = 0;
+      const titleLower = String(p.title ?? "").toLowerCase();
+      const descLower = String(p.description ?? "").toLowerCase();
+      
+      // Extract categories
+      const categoryNames = (p.categories ?? []).map((c: any) => String(c?.name ?? "").toLowerCase());
+      
+      // Extract collection
+      const collectionTitle = String(p.collection?.title ?? "").toLowerCase();
+      
+      // Extract tags
+      const tagNames = (p.tags ?? []).map((t: any) => String(t?.value ?? t?.name ?? "").toLowerCase());
+      
+      // Extract SKUs
+      const skus = (p.variants ?? []).map((v: any) => String(v?.sku ?? "").toLowerCase());
+      
+      // Extract brand (from metadata)
+      const brand = String(p.metadata?.brand || p.metadata?.Brand || "").toLowerCase();
+
+      for (const term of searchTerms) {
+        let termMatched = false;
+        
+        // 1. SKU Match (highest priority)
+        for (const sku of skus) {
+          if (sku === term) {
+            score += 150;
+            termMatched = true;
+          } else if (sku.startsWith(term)) {
+            score += 80;
+            termMatched = true;
+          } else if (sku.includes(term)) {
+            score += 40;
+            termMatched = true;
+          }
+        }
+
+        // 2. Product Name/Title Match
+        if (titleLower === term) {
+          score += 100;
+          termMatched = true;
+        } else if (titleLower.startsWith(term)) {
+          score += 50;
+          termMatched = true;
+        } else if (titleLower.includes(term)) {
+          score += 20;
+          termMatched = true;
+        }
+
+        // 3. Category Match
+        for (const cat of categoryNames) {
+          if (cat === term) {
+            score += 60;
+            termMatched = true;
+          } else if (cat.includes(term)) {
+            score += 20;
+            termMatched = true;
+          }
+        }
+
+        // 4. Brand Match
+        if (brand) {
+          if (brand === term) {
+            score += 50;
+            termMatched = true;
+          } else if (brand.includes(term)) {
+            score += 15;
+            termMatched = true;
+          }
+        }
+
+        // 5. Collection Match
+        if (collectionTitle) {
+          if (collectionTitle === term) {
+            score += 50;
+            termMatched = true;
+          } else if (collectionTitle.includes(term)) {
+            score += 15;
+            termMatched = true;
+          }
+        }
+
+        // 6. Tag Match
+        for (const tVal of tagNames) {
+          if (tVal === term) {
+            score += 40;
+            termMatched = true;
+          } else if (tVal.includes(term)) {
+            score += 10;
+            termMatched = true;
+          }
+        }
+
+        // 7. Description Match
+        if (descLower.includes(term)) {
+          score += 5;
+          termMatched = true;
+        }
+      }
+
+      return { product: p, score };
+    });
+
+    // Filter to only products that matched at least one term
+    const matched = scoredProducts.filter(item => item.score > 0);
+    
+    // Sort by relevance score descending by default
+    if (!sort) {
+      matched.sort((a, b) => b.score - a.score);
+    }
+    
+    filtered = matched.map(item => item.product);
+  }
+
+  const total = isSearch ? filtered.length : Number(metadata?.count ?? filtered.length);
+  if (isSearch) {
+    filtered = filtered.slice(skip, skip + limit);
+  }
 
   res.json({
     products: filtered,

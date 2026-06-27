@@ -36,7 +36,12 @@ export const useLoginMutation = () => {
   return useMutation({
     mutationFn: (input: LoginInputType) => login(input),
     onSuccess: () => {
-      queryClient.clear();
+      queryClient.invalidateQueries({ queryKey: ['store.customer'] });
+      queryClient.invalidateQueries({ queryKey: ['store.orders'] });
+      queryClient.invalidateQueries({ queryKey: ['store.order'] });
+      queryClient.removeQueries({ queryKey: ['store.customer'] });
+      queryClient.removeQueries({ queryKey: ['store.orders'] });
+      queryClient.removeQueries({ queryKey: ['store.order'] });
       authorize();
       closeModal();
     },

@@ -34,6 +34,7 @@ export const ProductGrid: FC<ProductGridProps> = ({ className = "", gridClassNam
   } = useProductsQuery({ limit: 10, ...options });
   const { t } = useTranslation("common");
   if (error) return <p>{error.message}</p>;
+  const hasProducts = data?.pages?.some(page => page?.data && page.data.length > 0);
 
   return (
     <>
@@ -42,6 +43,14 @@ export const ProductGrid: FC<ProductGridProps> = ({ className = "", gridClassNam
       >
         {isLoading && !data?.pages?.length ? (
           <ProductFeedLoader limit={20} uniqueKey="search-product" />
+        ) : !hasProducts ? (
+          <div className="col-span-full py-16 flex flex-col items-center justify-center text-center gap-3 bg-white rounded-lg border border-gray-100 p-8 shadow-sm">
+            <svg className="w-12 h-12 text-gray-300 animate-pulse" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.637 10.637z" />
+            </svg>
+            <h3 className="text-base font-bold text-heading font-body">No products found</h3>
+            <p className="text-xs text-gray-400 max-w-xs font-body">We couldn't find any matches for your query. Try checking your spelling or adjusting your filters.</p>
+          </div>
         ) : (
           data?.pages?.map((page) => {
             return page?.data?.map((product: Product) => (

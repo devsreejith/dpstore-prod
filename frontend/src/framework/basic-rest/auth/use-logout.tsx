@@ -48,7 +48,12 @@ export const useLogoutMutation = () => {
   return useMutation({
     mutationFn: logout,
     onSuccess: (_data) => {
-      queryClient.clear();
+      queryClient.invalidateQueries({ queryKey: ['store.customer'] });
+      queryClient.invalidateQueries({ queryKey: ['store.orders'] });
+      queryClient.invalidateQueries({ queryKey: ['store.order'] });
+      queryClient.removeQueries({ queryKey: ['store.customer'] });
+      queryClient.removeQueries({ queryKey: ['store.orders'] });
+      queryClient.removeQueries({ queryKey: ['store.order'] });
       Router.push("/").then(() => {
         unauthorize();
       }).catch(() => {
@@ -57,7 +62,12 @@ export const useLogoutMutation = () => {
     },
     onError: (data) => {
       console.error(data, "logout error response");
-      queryClient.clear();
+      queryClient.invalidateQueries({ queryKey: ['store.customer'] });
+      queryClient.invalidateQueries({ queryKey: ['store.orders'] });
+      queryClient.invalidateQueries({ queryKey: ['store.order'] });
+      queryClient.removeQueries({ queryKey: ['store.customer'] });
+      queryClient.removeQueries({ queryKey: ['store.orders'] });
+      queryClient.removeQueries({ queryKey: ['store.order'] });
       Router.push("/").then(() => {
         unauthorize();
       }).catch(() => {

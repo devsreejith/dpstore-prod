@@ -93,7 +93,7 @@ export default function Search() {
                           />
                         ))}
                       </div>
-                    ) : (
+                    ) : data && data.length > 0 ? (
                       data?.map((item: any, index: number) => (
                         <div
                           key={item.key}
@@ -103,6 +103,14 @@ export default function Search() {
                           <SearchProduct item={item} key={index} />
                         </div>
                       ))
+                    ) : (
+                      <div className="p-8 text-center text-gray-500 font-body flex flex-col items-center justify-center gap-2">
+                        <svg className="w-10 h-10 text-gray-300 animate-pulse" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.637 10.637z" />
+                        </svg>
+                        <p className="text-sm font-semibold text-heading font-body">No products found</p>
+                        <p className="text-xs text-gray-400 font-body">Try adjusting your search terms.</p>
+                      </div>
                     )}
                   </div>
                 </Scrollbar>
