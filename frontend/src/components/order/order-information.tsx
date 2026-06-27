@@ -1,6 +1,9 @@
 import OrderDetails from '@components/order/order-details';
 import Loader from '@components/ui/loader';
 import { useOrderQuery } from '@framework/order/get-order';
+import Input from '@components/ui/input';
+import Button from '@components/ui/button';
+import { useSignUpMutation } from '@framework/auth/use-signup';
 import { useRouter } from 'next/router';
 import usePrice, { formatPrice } from '@framework/product/use-price';
 import { useTranslation } from 'next-i18next';
@@ -136,7 +139,7 @@ const isPaymentNeverAttempted = (collection: any) => {
 
 export default function OrderInformation() {
   const {
-    query: { id, cart_id, ref },
+    query: { id, cart_id, ref, email },
     isReady
   } = useRouter();
   const [showDetails, setShowDetails] = useState(false);
@@ -176,8 +179,13 @@ export default function OrderInformation() {
   };
 
   const { t } = useTranslation('common');
+  
+  const [password, setPassword] = useState('');
+  const [signUpError, setSignUpError] = useState<string | null>(null);
+  const signUpMutation = useSignUpMutation();
+
   const orderIdentifier = (id || cart_id || ref)?.toString()!;
-  const { data, isLoading, refetch } = useOrderQuery(orderIdentifier);
+  const { data, isLoading, refetch } = useOrderQuery(orderIdentifier, email ? String(email) : undefined);
   const totalAmount = Number(data?.total ?? 0) || 0;
   const shippingAmount = Number(data?.shipping_total ?? 0) || 0;
   const subtotalAmount = totalAmount - shippingAmount;
@@ -630,6 +638,63 @@ export default function OrderInformation() {
               {/* Divider for COD */}
               {!isOnlinePayment && !isCancelled && (
                 <div className="w-full max-w-xl h-px bg-gray-100 mb-8"></div>
+              )}
+
+              {/* Option to create an account for guest checkouts */}
+              {!data?.customer_id && (
+                <div className="w-full max-w-md bg-gray-50 border border-gray-200 rounded-xl p-5 my-6 font-body">
+                  <h3 className="text-sm font-bold text-heading font-body mb-2 text-left uppercase tracking-wider text-[#005844]">
+                    Save time on your next order
+                  </h3>
+                  <p className="text-xs text-gray-500 mb-4 text-left leading-relaxed">
+                    Create an account using <span className="font-semibold text-gray-700">{data?.email}</span> to save your delivery addresses and track all your orders.
+                  </p>
+                  
+                  {signUpError && <p className="text-xs text-rose-500 mb-3 font-semibold text-left">{signUpError}</p>}
+                  {signUpMutation.isSuccess ? (
+                    <p className="text-xs text-emerald-600 mb-2 font-semibold text-left">
+                      ✓ Account created successfully! You are now logged in.
+                    </p>
+                  ) : (
+                    <div className="flex flex-col gap-3">
+                      <Input
+                        labelKey="Choose Password *"
+                        type="password"
+                        name="password"
+                        placeholder="Enter password (min 6 characters)"
+                        value={password}
+                        onChange={(e: any) => setPassword(e.target.value)}
+                        variant="solid"
+                      />
+                      <Button
+                        type="button"
+                        onClick={async () => {
+                          setSignUpError(null);
+                          const pass = String(password || "").trim();
+                          if (pass.length < 6) {
+                            setSignUpError("Password must be at least 6 characters.");
+                            return;
+                          }
+                          try {
+                            const name = `${data?.shipping_address?.first_name || ""} ${data?.shipping_address?.last_name || ""}`.trim() || "Guest User";
+                            await signUpMutation.mutateAsync({
+                              email: data?.email,
+                              password: pass,
+                              name: name
+                            });
+                          } catch (e: any) {
+                            setSignUpError(e?.message || "Failed to create account. Please try again.");
+                          }
+                        }}
+                        loading={signUpMutation.isPending}
+                        disabled={signUpMutation.isPending}
+                        className="h-10 text-xs font-semibold uppercase tracking-wider bg-[#005844] hover:bg-[#008755] text-white"
+                      >
+                        Create Account
+                      </Button>
+                    </div>
+                  )}
+                </div>
               )}
 
               {/* Action Buttons - side by side */}

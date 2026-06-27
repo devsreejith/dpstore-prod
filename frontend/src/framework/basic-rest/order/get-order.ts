@@ -9,20 +9,22 @@ const orderFields = "id,display_id,created_at,email,total,subtotal,tax_total,shi
   "payment_collections.id,payment_collections.status,payment_collections.captured_amount,payment_collections.amount,payment_collections.authorized_amount,payment_collections.payment_sessions.id,payment_collections.payment_sessions.provider_id,payment_collections.payment_sessions.status,payment_collections.payment_sessions.data," +
   "payment_collections.payments.id,payment_collections.payments.provider_id,payment_collections.payments.data";
 
-export const fetchOrder = async (_id: string) => {
+export const fetchOrder = async (_id: string, email?: string) => {
   try {
     const { data } = await http.get(`/store/custom/orders/${_id}`, {
-      params: { fields: orderFields }
+      params: { fields: orderFields, email }
     });
     return (data?.order ?? data) as any;
   } catch (e: any) {
     try {
       const { data } = await http.get(`/store/orders/${_id}`, {
-        params: { fields: orderFields }
+        params: { fields: orderFields, email }
       });
       return (data?.order ?? data) as any;
     } catch {
-      const { data } = await http.get(`/store/orders/${_id}`);
+      const { data } = await http.get(`/store/orders/${_id}`, {
+        params: { email }
+      });
       return (data?.order ?? data) as any;
     }
   }
@@ -60,14 +62,14 @@ export const fetchOrderByCartId = async (cartId: string) => {
   }
 };
 
-export const useOrderQuery = (id: string) => {
+export const useOrderQuery = (id: string, email?: string) => {
   return useQuery<any, Error>({
-    queryKey: ["store.order", id],
+    queryKey: ["store.order", id, email],
     queryFn: () => {
       if (id && id.startsWith("cart_")) {
         return fetchOrderByCartId(id);
       }
-      return fetchOrder(id);
+      return fetchOrder(id, email);
     },
     enabled: !!id,
   });

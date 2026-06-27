@@ -178,7 +178,7 @@ function requireSuperAdmin(req: any, res: any, next: any) {
   next()
 }
 
-function requireCustomerAuth(req: any, res: any, next: any) {
+async function requireCustomerAuth(req: any, res: any, next: any) {
   const method = String(req?.method || "").toUpperCase()
   if (method === "OPTIONS") return next()
 
@@ -197,6 +197,43 @@ function requireCustomerAuth(req: any, res: any, next: any) {
   }
 
   const actorId = req.auth_context?.actor_id
+
+  // If this is a checkout action (excluding order cancellation), check if it's a guest cart
+  if (!isCancelOrder) {
+    let cartId: string | null = null
+    if (isCheckoutCartUpdate || isShippingMethod || isCompleteCart) {
+      const cartMatch = pathName.match(/^\/?store\/carts\/([^/]+)/)
+      if (cartMatch) cartId = cartMatch[1]
+    } else if (isPaymentCollection) {
+      cartId = req.body?.cart_id || null
+    }
+
+    if (cartId) {
+      try {
+        const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
+        const { data: carts } = await query.graph({
+          entity: "cart",
+          fields: ["id", "customer_id"],
+          filters: { id: cartId },
+        })
+        const cart = carts?.[0]
+        if (cart) {
+          // If it's a guest cart (customer_id is null/undefined), allow access
+          if (!cart.customer_id) {
+            return next()
+          }
+          // If the cart is associated with a customer, require authentication matching that customer
+          if (actorId && actorId === cart.customer_id) {
+            return next()
+          }
+          return res.status(403).json({ message: "You are not authorized to access this cart." })
+        }
+      } catch (err: any) {
+        console.error("[Guest Checkout Middleware Check Error]", err.message)
+      }
+    }
+  }
+
   if (actorId && String(actorId).startsWith("cus_")) {
     return next()
   }

@@ -23,6 +23,8 @@ interface CheckoutInputType {
   zipCode: string;
   save: boolean;
   note: string;
+  address_1?: string;
+  address_2?: string;
 }
 
 type AddressInput = {
@@ -69,6 +71,8 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
     register,
     handleSubmit,
     setValue,
+    trigger,
+    getValues,
     formState: { errors },
   } = useForm<CheckoutInputType>();
 
@@ -190,7 +194,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
     setSubmitting(true);
     (async () => {
       try {
-        const email = String(input.email || customerQuery.data?.email || '').trim();
+        const email = String(input.email || selectedAddress?.email || customerQuery.data?.email || '').trim();
         const phone = String(input.phone || selectedAddress?.phone || customerQuery.data?.phone || '987654321').trim();
         if (!email) {
           throw new Error('Email address is required for checkout.');
@@ -200,7 +204,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
           first_name: String(input.firstName || selectedAddress?.first_name || 'N/A').trim(),
           last_name: String(input.lastName || selectedAddress?.last_name || 'N/A').trim(),
           address_1: selectedAddress?.address_1 || 'N/A',
-          address_2: deliveryInstructions || undefined,
+          address_2: selectedAddress?.address_2 || deliveryInstructions || undefined,
           city: String(input.city || selectedAddress?.city || 'N/A').trim(),
           province: String(input.state || selectedAddress?.province || 'N/A').trim(),
           postal_code: String(input.zipCode || selectedAddress?.postal_code || '00000').trim(),
@@ -290,18 +294,151 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
         <div className="space-y-4">
           <div className="flex items-center justify-between pb-2">
             <h2 className="text-sm md:text-base font-bold text-[#008755] uppercase tracking-wider font-body">
-              {showAddAddress ? "ADD NEW ADDRESS" : "DELIVERY ADDRESS"}
+              {!isAuthorized ? "GUEST CHECKOUT DETAILS" : showAddAddress ? "ADD NEW ADDRESS" : "DELIVERY ADDRESS"}
             </h2>
-            <button
-              type="button"
-              onClick={() => setShowAddAddress(!showAddAddress)}
-              className="text-xs md:text-sm font-bold text-[#008755] hover:underline transition font-body"
-            >
-              {showAddAddress ? "← Back to address list" : "+ Add new address"}
-            </button>
+            {isAuthorized && (
+              <button
+                type="button"
+                onClick={() => setShowAddAddress(!showAddAddress)}
+                className="text-xs md:text-sm font-bold text-[#008755] hover:underline transition font-body"
+              >
+                {showAddAddress ? "← Back to address list" : "+ Add new address"}
+              </button>
+            )}
           </div>
 
-          {showAddAddress ? (
+          {!isAuthorized ? (
+            /* Guest Checkout Form */
+            <div className="border border-gray-200 rounded-md p-5 bg-white shadow-sm space-y-4">
+              <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider font-body">Contact Info</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Input
+                  labelKey="Email Address *"
+                  type="email"
+                  {...register('email', {
+                    required: 'Email is required',
+                    pattern: {
+                      value: /^\S+@\S+$/i,
+                      message: 'Please enter a valid email address',
+                    },
+                  })}
+                  errorKey={errors.email?.message}
+                  variant="solid"
+                />
+                <Input
+                  labelKey="Phone Number *"
+                  inputMode="numeric"
+                  {...register('phone', {
+                    required: 'Phone number is required',
+                    pattern: { value: PHONE_ONLY_REGEX, message: 'Please enter a valid phone number (6 to 15 digits)' },
+                  })}
+                  errorKey={errors.phone?.message}
+                  variant="solid"
+                />
+              </div>
+
+              <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider font-body pt-2">Shipping Address</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Input
+                  labelKey="First Name *"
+                  {...register('firstName', { required: 'First name is required' })}
+                  errorKey={errors.firstName?.message}
+                  variant="solid"
+                />
+                <Input
+                  labelKey="Last Name *"
+                  {...register('lastName', { required: 'Last name is required' })}
+                  errorKey={errors.lastName?.message}
+                  variant="solid"
+                />
+                <Input
+                  labelKey="Address Line 1 *"
+                  {...register('address_1', { required: 'Address is required' })}
+                  errorKey={errors.address_1?.message}
+                  variant="solid"
+                />
+                <Input
+                  labelKey="Address Line 2 (Optional)"
+                  {...register('address_2')}
+                  errorKey={errors.address_2?.message}
+                  variant="solid"
+                />
+                <Input
+                  labelKey="City *"
+                  {...register('city', { required: 'City is required' })}
+                  errorKey={errors.city?.message}
+                  variant="solid"
+                />
+                <div className="flex flex-col space-y-2">
+                  <label className="text-heading font-semibold text-sm leading-none cursor-pointer">Emirate *</label>
+                  <select
+                    {...register('state', { required: 'Emirate is required' })}
+                    className="form-select py-2 px-4 w-full transition duration-150 ease-in-out border text-input text-13px lg:text-sm font-body rounded-md placeholder-body min-h-12 bg-white border-gray-300 focus:outline-none focus:border-heading h-11 md:h-12"
+                  >
+                    <option value="">Select Emirate</option>
+                    <option value="Abu Dhabi">Abu Dhabi</option>
+                    <option value="Dubai">Dubai</option>
+                    <option value="Sharjah">Sharjah</option>
+                    <option value="Ajman">Ajman</option>
+                    <option value="Umm Al Quwain">Umm Al Quwain</option>
+                    <option value="Ras Al Khaimah">Ras Al Khaimah</option>
+                    <option value="Fujairah">Fujairah</option>
+                  </select>
+                  {errors.state && (
+                    <p className="my-2 text-13px text-brandRed">{errors.state.message}</p>
+                  )}
+                </div>
+                <Input
+                  labelKey="Postal Code *"
+                  inputMode="numeric"
+                  {...register('zipCode', {
+                    required: 'Postal code is required',
+                    pattern: { value: POSTAL_ONLY_REGEX, message: 'Please enter a valid postal code' },
+                  })}
+                  errorKey={errors.zipCode?.message}
+                  variant="solid"
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={async () => {
+                  const isValid = await trigger([
+                    'email',
+                    'phone',
+                    'firstName',
+                    'lastName',
+                    'address_1',
+                    'address_2',
+                    'city',
+                    'state',
+                    'zipCode',
+                  ]);
+                  if (isValid) {
+                    const values = getValues();
+                    const addr = {
+                      first_name: values.firstName,
+                      last_name: values.lastName,
+                      phone: values.phone,
+                      address_1: values.address_1,
+                      address_2: values.address_2,
+                      city: values.city,
+                      province: values.state,
+                      postal_code: values.zipCode,
+                      country_code: 'ae',
+                      email: values.email,
+                    };
+                    setSelectedAddress(addr);
+                    setActiveStep(3);
+                  }
+                }}
+                className="w-full h-12 bg-[#005844] hover:bg-[#008755] text-white font-bold text-sm rounded-lg transition duration-200 flex items-center justify-center gap-2 font-body mt-3 tracking-wider uppercase"
+              >
+                <span>Continue to Payment</span>
+                <span className="text-lg font-normal mb-0.5">→</span>
+              </button>
+            </div>
+          ) : showAddAddress ? (
             /* Form container */
             <div className="border border-gray-200 rounded-md p-5 bg-white shadow-sm">
               <form

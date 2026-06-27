@@ -1,14 +1,16 @@
 import Layout from "@components/layout/layout";
 import OrderInformation from "@components/order/order-information";
-import AccountLayout from "@components/my-account/account-layout";
+import Container from "@components/ui/container";
 import { serverSideTranslations } from "next-i18next/serverSideTranslations";
 import { GetStaticProps } from "next";
 
 export default function Order() {
 	return (
-		<AccountLayout requireAuth={false} wrapChildrenInCard={false}>
-			<OrderInformation />
-		</AccountLayout>
+		<div className="bg-[#f1f3f6] min-h-screen py-6 lg:py-10">
+			<Container>
+				<OrderInformation />
+			</Container>
+		</div>
 	);
 }
 

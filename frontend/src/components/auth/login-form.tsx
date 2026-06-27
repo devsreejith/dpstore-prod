@@ -62,11 +62,6 @@ const LoginForm: React.FC = () => {
           {t('common:login-helper')}
         </p>
       </div>
-      {isCheckoutRedirect && (
-        <div className="mb-6 p-4 bg-amber-50 border border-amber-200 text-amber-800 rounded-md text-sm text-center font-semibold animate-pulse shadow-sm">
-          Please login or create an account to continue with checkout.
-        </div>
-      )}
       {apiError && (
         <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-800 rounded-md text-sm text-center font-semibold shadow-sm animate-fade-in">
           {apiError}
@@ -118,6 +113,26 @@ const LoginForm: React.FC = () => {
               {t('common:text-login')}
             </Button>
           </div>
+
+          {isCheckoutRedirect && (
+            <div className="relative">
+              <div className="flex items-center my-4">
+                <hr className="w-full border-gray-300" />
+                <span className="px-3 text-xs text-gray-400 uppercase font-semibold">or</span>
+                <hr className="w-full border-gray-300" />
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  closeModal();
+                  router.push('/checkout');
+                }}
+                className="w-full h-11 md:h-12 bg-white hover:bg-gray-50 text-[#005844] border-2 border-[#005844] hover:border-[#008755] hover:text-[#008755] rounded-md font-bold text-sm transition duration-150 uppercase"
+              >
+                Checkout as Guest
+              </button>
+            </div>
+          )}
         </div>
       </form>
       <div className="mt-5 mb-1 text-sm text-center sm:text-base text-[#58585B]">

@@ -20,11 +20,15 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
 
   logger.info(`[Custom GET Order] isSecureId: ${isSecureId}, actorId: "${actorId || 'none'}"`);
 
+  const queryEmail = String(req.query.email ?? "").trim().toLowerCase();
+
   if (!isSecureId) {
     if (!actorId || !actorId.startsWith("cus_")) {
-      logger.warn(`[Custom GET Order] Unauthorized. Non-secure ID requested without customer session.`);
-      res.status(401).json({ message: "Unauthorized. Please log in." });
-      return;
+      if (!queryEmail) {
+        logger.warn(`[Custom GET Order] Unauthorized. Non-secure ID requested without customer session or query email.`);
+        res.status(401).json({ message: "Unauthorized. Please log in or provide your email address to track the order." });
+        return;
+      }
     }
   }
 
@@ -189,10 +193,24 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
       return;
     }
  
-    if (!isSecureId && order.customer_id && order.customer_id !== actorId) {
-      logger.warn(`[Custom GET Order] Forbidden. Customer ID mismatch on non-secure ID.`);
-      res.status(403).json({ message: "You are not authorized to view this order." });
-      return;
+    if (!isSecureId) {
+      const orderEmail = String(order.email ?? "").trim().toLowerCase();
+      // Case A: User has a customer session
+      if (actorId && actorId.startsWith("cus_")) {
+        // If the order is associated with a customer account, it MUST match the logged-in customer's actorId
+        if (order.customer_id && order.customer_id !== actorId) {
+          logger.warn(`[Custom GET Order] Forbidden. Customer ID mismatch on non-secure ID. Cart owned by: ${order.customer_id}, request from: ${actorId}`);
+          res.status(403).json({ message: "You are not authorized to view this order." });
+          return;
+        }
+      } else {
+        // Case B: Guest tracking via Email
+        if (!queryEmail || orderEmail !== queryEmail) {
+          logger.warn(`[Custom GET Order] Forbidden. Guest email mismatch. Expected: "${orderEmail}", Got: "${queryEmail}"`);
+          res.status(403).json({ message: "Order not found or email does not match." });
+          return;
+        }
+      }
     }
 
     // Real-time payment status sync with N-Genius

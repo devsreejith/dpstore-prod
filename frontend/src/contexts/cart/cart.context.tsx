@@ -271,10 +271,72 @@ export const CartProvider: React.FC = (props) => {
     }
 
     (async () => {
-      // Case A: User has a local guest cart with items -> associate it with the logged-in customer
-      if (cart?.id && !cart?.customer_id && (cart?.items?.length ?? 0) > 0) {
+      // Get the local guest cart ID and items
+      const localCartId = cart?.id || getCartId();
+      const localCartItems = Array.isArray(cart?.items) ? cart.items : [];
+
+      // Fetch customer's active cart from backend custom endpoint
+      let customerCartId: string | null = null;
+      let customerCart: any = null;
+      try {
+        const res = await http.get('/store/custom/cart');
+        customerCartId = res?.data?.cart_id || null;
+      } catch (e) {
+        console.error("Failed to retrieve customer's active cart:", e);
+      }
+
+      if (customerCartId) {
         try {
-          const res = await http.post(`/store/carts/${cart.id}/customer`, {});
+          customerCart = await retrieveCart(customerCartId);
+        } catch (e) {
+          console.error("Failed to retrieve customer cart details:", e);
+        }
+      }
+
+      // Case 1: Both guest cart (with items) and customer cart exist
+      if (localCartId && localCartId !== customerCartId && localCartItems.length > 0 && customerCart) {
+        try {
+          console.log("[Cart Merge] Merging guest cart into customer cart...");
+          const customerItems = Array.isArray(customerCart.items) ? customerCart.items : [];
+          
+          for (const guestItem of localCartItems) {
+            const guestVariantId = guestItem.variant_id || guestItem.variant?.id;
+            if (!guestVariantId) continue;
+
+            const existingItem = customerItems.find((ci: any) => (ci.variant_id || ci.variant?.id) === guestVariantId);
+            if (existingItem) {
+              // Item already exists in customer's cart -> update quantity to prevent duplicate
+              const newQty = Math.max(existingItem.quantity, guestItem.quantity);
+              await http.post(`/store/carts/${customerCartId}/line-items/${existingItem.id}`, { quantity: newQty });
+            } else {
+              // Item does not exist -> add to customer's cart
+              await http.post(`/store/carts/${customerCartId}/line-items`, {
+                variant_id: guestVariantId,
+                quantity: guestItem.quantity,
+              });
+            }
+          }
+
+          // Delete the guest cart line items so it is cleared
+          for (const guestItem of localCartItems) {
+            await http.delete(`/store/carts/${localCartId}/line-items/${guestItem.id}`);
+          }
+
+          // Set the customer's merged cart as the active cart
+          const mergedCart = await retrieveCart(customerCartId as string);
+          setCartId(customerCartId as string);
+          setCart(mergedCart);
+          return;
+        } catch (e) {
+          console.error("Failed to merge carts:", e);
+        }
+      }
+
+      // Case 2: Guest cart exists (with items), but customer has no active cart -> associate guest cart with customer
+      if (localCartId && localCartItems.length > 0 && !customerCartId) {
+        try {
+          console.log("[Cart Merge] Associating guest cart with customer...");
+          const res = await http.post(`/store/carts/${localCartId}/customer`, {});
           const next = res?.data?.cart;
           if (next?.id) {
             setCart(next);
@@ -285,16 +347,14 @@ export const CartProvider: React.FC = (props) => {
         }
       }
 
-      // Case B: User has no local cart or cart is empty -> load customer's saved active cart from DB
-      if (!cart?.id || (cart?.items?.length ?? 0) === 0) {
+      // Case 3: Guest cart is empty, but customer has an active cart -> load customer's cart
+      if ((!localCartId || localCartItems.length === 0) && customerCartId) {
         try {
-          const res = await http.get('/store/custom/cart');
-          if (res?.data?.cart_id && res.data.cart_id !== cart?.id) {
-            const retrieved = await retrieveCart(res.data.cart_id);
-            if (retrieved?.id && !retrieved.completed_at) {
-              setCartId(res.data.cart_id);
-              setCart(retrieved);
-            }
+          console.log("[Cart Merge] Loading customer's active cart...");
+          const retrieved = await retrieveCart(customerCartId);
+          if (retrieved?.id && !retrieved.completed_at) {
+            setCartId(customerCartId);
+            setCart(retrieved);
           }
         } catch (e) {
           console.error("Failed to retrieve customer's active cart:", e);
