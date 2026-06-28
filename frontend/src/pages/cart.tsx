@@ -16,6 +16,7 @@ import { generateCartItemName } from "@utils/generate-cart-item-name";
 import { FiTruck, FiHeadphones } from "react-icons/fi";
 
 const CartPageItem = ({ item, addItemToCart, removeItemFromCart, clearItemFromCart, inventoryMap }: any) => {
+  const { t } = useTranslation('common');
   const stock = inventoryMap[item.variant_id];
   const isOutOfStock = stock !== undefined && stock <= 0;
   const isInsufficientStock = stock !== undefined && stock > 0 && stock < item.quantity;
@@ -43,7 +44,7 @@ const CartPageItem = ({ item, addItemToCart, removeItemFromCart, clearItemFromCa
           <Link href={`${ROUTES.PRODUCT}/${item?.slug}?from=cart`} className="font-bold text-[#005844] text-sm md:text-base hover:text-[#008755] transition uppercase">
             {generateCartItemName(item.name, item.attributes)}
           </Link>
-          <span className="text-xs text-gray-400 mt-1">Unit Price</span>
+          <span className="text-xs text-gray-400 mt-1">{t('text-unit-price')}</span>
           <span className="font-bold text-[#005844] text-sm">{price}</span>
           
           <div className="mt-3 flex items-center">
@@ -67,8 +68,8 @@ const CartPageItem = ({ item, addItemToCart, removeItemFromCart, clearItemFromCa
             </div>
           </div>
           
-          {isOutOfStock && <span className="text-xs text-red-500 font-semibold mt-2">Out of stock</span>}
-          {isInsufficientStock && <span className="text-xs text-red-500 font-semibold mt-2">Only {stock} left</span>}
+          {isOutOfStock && <span className="text-xs text-red-500 font-semibold mt-2">{t('text-out-of-stock')}</span>}
+          {isInsufficientStock && <span className="text-xs text-red-500 font-semibold mt-2">{t('text-only-left', { count: stock })}</span>}
         </div>
 
         <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center w-full sm:w-auto mt-2 sm:mt-0">
@@ -77,7 +78,7 @@ const CartPageItem = ({ item, addItemToCart, removeItemFromCart, clearItemFromCa
             className="flex items-center gap-1.5 border border-rose-200 text-rose-500 hover:bg-rose-50 px-3 py-1.5 rounded-md text-xs font-semibold transition"
           >
             <IoTrashOutline className="text-sm" />
-            Remove
+            {t('text-remove')}
           </button>
         </div>
       </div>
@@ -98,12 +99,12 @@ export default function CartPage() {
   return (
     <AccountLayout requireAuth={false} wrapChildrenInCard={false}>
       <div className="w-full mx-auto pb-10">
-        <div className="mb-8 text-left">
+        <div className="mb-8 ltr:text-left rtl:text-right">
           <h1 className="text-xl md:text-2xl font-bold text-[#005844] mb-2 font-body">
-            Shopping Cart
+            {t('text-shopping-cart')}
           </h1>
           <p className="text-gray-400 text-sm md:text-base font-body">
-            Review your items and proceed to checkout.
+            {t('text-review-items')}
           </p>
         </div>
 
@@ -113,7 +114,7 @@ export default function CartPage() {
             <div className="w-full lg:w-2/3">
               <div className="bg-white rounded-xl border border-gray-150 shadow-[0_2px_8px_rgba(0,0,0,0.04)] p-5 md:p-6">
                 <h2 className="text-base font-bold text-[#005844] mb-6 border-b border-gray-100 pb-4">
-                  Cart Items ({items.length})
+                  {t('text-cart-items')} ({items.length})
                 </h2>
                 <div className="divide-y divide-gray-100">
                   {items?.map((item) => (
@@ -134,11 +135,11 @@ export default function CartPage() {
             <div className="w-full lg:w-1/3 flex flex-col lg:sticky lg:top-4">
               <div className="bg-white rounded-xl border border-gray-150 shadow-[0_2px_8px_rgba(0,0,0,0.04)] p-5 md:p-6">
                 <h2 className="text-base font-bold text-[#005844] mb-8">
-                  Order Summary
+                  {t('text-order-summary')}
                 </h2>
                 
                 <div className="flex justify-between items-center mb-6">
-                  <span className="text-gray-500 text-sm">Subtotal ({items.length} item{items.length !== 1 && 's'})</span>
+                  <span className="text-gray-500 text-sm">{t('text-subtotal')} ({items.length} item{items.length !== 1 && 's'})</span>
                   <span className="font-bold text-[#005844] text-base">{cartTotal}</span>
                 </div>
                 
@@ -160,8 +161,8 @@ export default function CartPage() {
                       (isEmpty || !isCartValid) ? "cursor-not-allowed bg-gray-400" : "bg-[#005844] hover:bg-[#008755]"
                     )}
                   >
-                    <span>Proceed To Checkout</span>
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <span>{t('text-proceed-to-checkout')}</span>
+                    <svg className="w-5 h-5 transform rtl:rotate-180" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
                     </svg>
                   </Link>
@@ -174,7 +175,7 @@ export default function CartPage() {
             <EmptyCart />
             <h3 className="pt-6 text-xl font-bold text-[#005844]">{t("text-empty-cart")}</h3>
             <Link href="/" className="mt-4 bg-[#005844] text-white px-6 py-2.5 rounded-md font-bold hover:bg-[#008755] transition">
-              Continue Shopping
+              {t('text-continue-shopping')}
             </Link>
           </div>
         )}
@@ -187,8 +188,8 @@ export default function CartPage() {
               <IoShieldCheckmarkOutline className="text-xl text-[#008755]" />
             </div>
             <div className="flex flex-col">
-              <h4 className="text-sm font-bold text-[#005844]">Secure Payments</h4>
-              <p className="text-xs text-gray-400 mt-1">100% secure and encrypted</p>
+              <h4 className="text-sm font-bold text-[#005844]">{t('text-secure-payments')}</h4>
+              <p className="text-xs text-gray-400 mt-1">{t('text-secure-encrypted')}</p>
             </div>
           </div>
 
@@ -198,8 +199,8 @@ export default function CartPage() {
               <FiTruck className="text-xl text-[#008755]" />
             </div>
             <div className="flex flex-col">
-              <h4 className="text-sm font-bold text-[#005844]">Fast Delivery</h4>
-              <p className="text-xs text-gray-400 mt-1">Quick and reliable delivery</p>
+              <h4 className="text-sm font-bold text-[#005844]">{t('text-fast-delivery')}</h4>
+              <p className="text-xs text-gray-400 mt-1">{t('text-fast-delivery-desc')}</p>
             </div>
           </div>
 
@@ -209,8 +210,8 @@ export default function CartPage() {
               <FiHeadphones className="text-xl text-[#008755]" />
             </div>
             <div className="flex flex-col">
-              <h4 className="text-sm font-bold text-[#005844]">Need Help?</h4>
-              <p className="text-xs text-gray-400 mt-1">We&apos;re here to help you</p>
+              <h4 className="text-sm font-bold text-[#005844]">{t('text-need-help')}</h4>
+              <p className="text-xs text-gray-400 mt-1">{t('text-need-help-desc')}</p>
             </div>
           </div>
         </div>

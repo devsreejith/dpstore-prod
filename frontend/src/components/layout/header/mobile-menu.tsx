@@ -8,11 +8,13 @@ import { IoClose } from 'react-icons/io5';
 import { useTranslation } from 'next-i18next';
 import { useCategoriesQuery } from '@framework/category/get-all-categories';
 import { ROUTES } from '@utils/routes';
+import { useRouter } from 'next/router';
 
 export default function MobileMenu() {
   const [activeMenus, setActiveMenus] = useState<any>([]);
   const { closeSidebar } = useUI();
   const { t } = useTranslation('menu');
+  const { locale } = useRouter();
   const { data: categoriesData } = useCategoriesQuery({ limit: 100 });
   const handleArrowClick = (menuName: string) => {
     let newActiveMenus = [...activeMenus];
@@ -102,21 +104,46 @@ export default function MobileMenu() {
   };
 
   const mobileMenu = useMemo(() => {
+    const getCategoryLabel = (cat: any) => {
+      if (!cat) return "";
+      
+      // 1. Check if metadata contains localized name for current locale
+      const meta = cat?.metadata ?? {};
+      const currentLocale = locale || "en";
+      
+      if (currentLocale === "ar") {
+        const arName = meta.name_ar || meta.nameAr || meta.ar || meta.ar_name || meta.arName;
+        if (arName) return String(arName);
+      } else {
+        const enName = meta.name_en || meta.nameEn || meta.en || meta.en_name || meta.enName;
+        if (enName) return String(enName);
+      }
+
+      // 2. Fallback to locales JSON dictionary lookup
+      const key = cat?.slug ? `menu-${cat.slug}` : "";
+      if (!key) return cat?.name || "";
+      const translated = t(key);
+      if (!translated || translated === key || translated.startsWith("menu-")) {
+        return cat?.name || "";
+      }
+      return translated;
+    };
+
     const categories = categoriesData?.categories?.data ?? [];
     const toMenuItem = (cat: any): any => ({
       id: cat?.id,
       path: `${ROUTES.CATEGORY}/${cat?.slug}`,
-      label: cat?.name,
+      label: getCategoryLabel(cat),
       ...(Array.isArray(cat?.children) && cat.children.length
         ? { subMenu: cat.children.map(toMenuItem) }
         : {}),
     });
 
     return [
-      { id: 'home', path: ROUTES.HOME, label: 'Home' },
+      { id: 'home', path: ROUTES.HOME, label: 'menu-home' },
       ...categories.map(toMenuItem),
     ];
-  }, [categoriesData]);
+  }, [categoriesData, locale, t]);
 
   return (
     <>

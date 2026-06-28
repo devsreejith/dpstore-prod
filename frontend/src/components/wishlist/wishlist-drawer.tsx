@@ -8,8 +8,10 @@ import { IoClose } from 'react-icons/io5';
 import WishlistItem from './wishlist-item';
 import Link from '@components/ui/link';
 import { ROUTES } from '@utils/routes';
+import { useTranslation } from 'next-i18next';
 
 export default function WishlistDrawer() {
+  const { t } = useTranslation('common');
   const { closeWishlist, isAuthorized } = useUI();
   const { wishlist } = useWishlist();
 
@@ -27,7 +29,7 @@ export default function WishlistDrawer() {
     <div className="flex flex-col justify-between w-full h-full">
       <div className="w-full flex justify-between items-center relative ltr:pl-5 ltr:md:pl-7 rtl:pr-5 rtl:md:pr-7 py-0.5 border-b border-gray-100">
         <h2 className="m-0 text-xl font-bold md:text-2xl text-heading">
-          Wishlist
+          {t('text-wishlist-favorites')}
         </h2>
         <button
           className="flex items-center justify-center px-4 py-6 text-2xl text-gray-500 transition-opacity md:px-6 lg:py-8 focus:outline-none hover:opacity-60"
@@ -52,7 +54,7 @@ export default function WishlistDrawer() {
                     onClick={() => closeWishlist()}
                     className="inline-block text-xs md:text-sm font-semibold text-[#008755] hover:underline"
                   >
-                    View More ({wishlist.length - WISHLIST_LIMIT} remaining)
+                    {t('text-view-more-remaining', { count: wishlist.length - WISHLIST_LIMIT })}
                   </Link>
                 ) : (
                   <button
@@ -60,7 +62,7 @@ export default function WishlistDrawer() {
                     onClick={() => setIsExpanded(true)}
                     className="text-xs md:text-sm font-semibold text-[#008755] hover:underline focus:outline-none"
                   >
-                    View More ({wishlist.length - WISHLIST_LIMIT} remaining)
+                    {t('text-view-more-remaining', { count: wishlist.length - WISHLIST_LIMIT })}
                   </button>
                 )}
               </div>
@@ -77,7 +79,7 @@ export default function WishlistDrawer() {
           className="flex flex-col items-center justify-center px-5 pt-8 pb-5 md:px-7"
         >
           <h3 className="pt-8 text-lg font-bold text-heading">
-            Your Wishlist is Empty
+            {t('text-wishlist-empty')}
           </h3>
         </motion.div>
       )}

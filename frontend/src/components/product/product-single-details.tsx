@@ -22,6 +22,8 @@ import { useSsrCompatible } from "@utils/use-ssr-compatible";
 import { useUI } from "@contexts/ui.context";
 import { useWishlist } from "@utils/use-wishlist";
 import ProductWishIcon from "@components/icons/product-wish-icon";
+import { useTranslation } from "next-i18next";
+import { getLocalizedName } from "@utils/get-localized-name";
 
 const productGalleryCarouselResponsive = {
   "768": {
@@ -33,11 +35,13 @@ const productGalleryCarouselResponsive = {
 };
 
 const ProductSingleDetails: React.FC = () => {
+  const { t } = useTranslation('common');
   const router = useRouter();
   const { slug, from } = router.query;
   const isFromDrawerOrWishlist = from === "cart" || from === "wishlist";
   const { width } = useSsrCompatible(useWindowSize(), { width: 0, height: 0 });
   const { data, isLoading, error } = useProductQuery(slug as string);
+  const productName = getLocalizedName(data, router.locale);
   const { addItemToCart, isInCart } = useCart();
   const { openCart } = useUI();
   const [attributes, setAttributes] = useState<{ [key: string]: string }>({});
@@ -48,7 +52,7 @@ const ProductSingleDetails: React.FC = () => {
 
   const [selectedImage, setSelectedImage] = useState(0);
 
-  const cartItemCandidate = data ? generateCartItem(data, attributes) : null;
+  const cartItemCandidate = data ? generateCartItem({ ...data, name: productName }, attributes) : null;
   const isAlreadyInCart = cartItemCandidate ? isInCart(cartItemCandidate.id) : false;
 
   const isOutOfStock = data && typeof data.quantity === "number" ? data.quantity <= 0 : false;
@@ -75,9 +79,9 @@ const ProductSingleDetails: React.FC = () => {
     ? [data?.image]
     : [{ original: "/assets/placeholder/products/product-gallery.svg", thumbnail: "/assets/placeholder/products/product-gallery.svg" }];
 
-  if (isLoading) return <Loader size="large" text="Loading..." />;
+  if (isLoading) return <Loader size="large" text={t('text-loading')} />;
   if (error) return <p>{error.message}</p>;
-  if (!data) return <p>Product not found</p>;
+  if (!data) return <p>{t('text-product-not-found')}</p>;
   const variations = getVariations(data?.variations);
 
   const variationKeys = Object.keys(variations);
@@ -99,7 +103,7 @@ const ProductSingleDetails: React.FC = () => {
 
     const item = generateCartItem(data!, attributes);
     addItemToCart(item, quantity);
-    toast("Added to the bag", {
+    toast(t('text-added-to-bag'), {
       progressClassName: "fancy-progress-bar",
       position: width > 768 ? "bottom-right" : "top-right",
       autoClose: 2000,
@@ -155,37 +159,37 @@ const ProductSingleDetails: React.FC = () => {
             {images.map((item: any, index: number) => (
               <SwiperSlide key={`product-gallery-key-${index}`}>
                 <div className="col-span-1 rounded-lg bg-gray-100 overflow-hidden w-full h-full">
-                  <ProductImageZoom
-                    src={item?.original || item?.thumbnail || "/assets/placeholder/products/product-gallery.svg"}
-                    alt={`${data?.name}--${index}`}
-                    className="w-full aspect-square"
-                    zoomScale={2.5}
-                  />
-                </div>
-              </SwiperSlide>
-            ))}
-          </Carousel>
-          {/* Floating Wishlist Button */}
-          <button
-            type="button"
-            onClick={() => toggleWishlist(data)}
-            className={cn(
-              "absolute bottom-3.5 ltr:right-3.5 rtl:left-3.5 z-10 w-[45px] h-[35px] rounded-md bg-white shadow-md border border-gray-150 flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95 focus:outline-none"
-            )}
-            aria-label="Toggle Wishlist"
-          >
-            <ProductWishIcon
-              active={productWishlisted}
-              className="w-full h-full"
-            />
-          </button>
-        </div>
-      ) : (
-        <div className="col-span-5 flex flex-col gap-4">
-          <div className="relative w-full bg-gray-100 rounded-lg overflow-hidden aspect-square sm:aspect-[4/3]">
-            <ProductImageZoom
-              src={images[selectedImage]?.original || images[selectedImage]?.thumbnail || "/assets/placeholder/products/product-gallery.svg"}
-              alt={`${data?.name} - main`}
+                    <ProductImageZoom
+                      src={item?.original || item?.thumbnail || "/assets/placeholder/products/product-gallery.svg"}
+                      alt={`${productName}--${index}`}
+                      className="w-full aspect-square"
+                      zoomScale={2.5}
+                    />
+                  </div>
+                </SwiperSlide>
+              ))}
+            </Carousel>
+            {/* Floating Wishlist Button */}
+            <button
+              type="button"
+              onClick={() => toggleWishlist(data)}
+              className={cn(
+                "absolute bottom-3.5 ltr:right-3.5 rtl:left-3.5 z-10 w-[45px] h-[35px] rounded-md bg-white shadow-md border border-gray-150 flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95 focus:outline-none"
+              )}
+              aria-label="Toggle Wishlist"
+            >
+              <ProductWishIcon
+                active={productWishlisted}
+                className="w-full h-full"
+              />
+            </button>
+          </div>
+        ) : (
+          <div className="col-span-5 flex flex-col gap-4">
+            <div className="relative w-full bg-gray-100 rounded-lg overflow-hidden aspect-square sm:aspect-[4/3]">
+              <ProductImageZoom
+                src={images[selectedImage]?.original || images[selectedImage]?.thumbnail || "/assets/placeholder/products/product-gallery.svg"}
+                alt={`${productName} - main`}
               className="w-full h-full"
               zoomScale={2.5}
             />
@@ -217,7 +221,7 @@ const ProductSingleDetails: React.FC = () => {
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={item?.thumbnail || item?.original || "/assets/placeholder/products/product-gallery.svg"}
-                    alt={`${data?.name} thumbnail ${index}`}
+                    alt={`${productName} thumbnail ${index}`}
                     className="w-full h-full object-cover bg-gray-100"
                   />
                 </button>
@@ -230,7 +234,7 @@ const ProductSingleDetails: React.FC = () => {
       <div className="col-span-4 pt-8 lg:pt-0">
         <div className="pb-7 mb-7 border-b border-gray-300">
           <h2 className="text-[#005844] uppercase text-xl md:text-2xl lg:text-3xl 2xl:text-4xl font-bold mb-3.5 font-body tracking-wider">
-            {data?.name}
+            {productName}
           </h2>
           <div className="flex items-center mt-5">
             <div className="text-[#005844] font-bold text-2xl md:text-3xl lg:text-4xl 2xl:text-5xl ltr:pr-2 rtl:pl-2 ltr:md:pr-0 rtl:md:pl-0 ltr:lg:pr-2 rtl:lg:pl-2 ltr:2xl:pr-0 rtl:2xl:pl-0 font-body">
@@ -281,7 +285,7 @@ const ProductSingleDetails: React.FC = () => {
                 )}
                 disabled={isOutOfStock}
               >
-                <span className="py-2">Proceed to Checkout</span>
+                <span className="py-2">{t('text-proceed-to-checkout')}</span>
               </Button>
             ) : isAlreadyInCart ? (
               <Button
@@ -289,7 +293,7 @@ const ProductSingleDetails: React.FC = () => {
                 variant="slim"
                 className="flex-1 bg-[#005844] text-white hover:bg-black font-body font-bold rounded-md"
               >
-                <span className="py-2">Proceed to Checkout</span>
+                <span className="py-2">{t('text-proceed-to-checkout')}</span>
               </Button>
             ) : (
               <Button
@@ -302,7 +306,7 @@ const ProductSingleDetails: React.FC = () => {
                 loading={addToCartLoader}
                 disabled={isOutOfStock}
               >
-                <span className="py-2">Proceed to Checkout</span>
+                <span className="py-2">{t('text-proceed-to-checkout')}</span>
               </Button>
             )}
 
@@ -315,7 +319,7 @@ const ProductSingleDetails: React.FC = () => {
               )}
               disabled={isOutOfStock}
             >
-              <span className="py-2">Buy Now</span>
+              <span className="py-2">{t('text-buy-now')}</span>
             </Button>
           </div>
         </div>
@@ -323,19 +327,19 @@ const ProductSingleDetails: React.FC = () => {
           <ul className="text-sm space-y-5 pb-1 font-body text-black">
             <li>
               <span className="font-bold text-[#005844] inline-block ltr:pr-2 rtl:pl-2">
-                Barcode:
+                {t('text-barcode')}
               </span>
               {data?.item_code || data?.sku || "-"}
             </li>
             <li>
               <span className="font-bold text-[#005844] inline-block ltr:pr-2 rtl:pl-2">
-                Range:
+                {t('text-range')}
               </span>
               {data?.range || "-"}
             </li>
             <li>
               <span className="font-bold text-[#005844] inline-block ltr:pr-2 rtl:pl-2">
-                Category:
+                {t('text-category')}:
               </span>
               <Link
                 href="/"
@@ -347,7 +351,7 @@ const ProductSingleDetails: React.FC = () => {
             {data?.tags && Array.isArray(data.tags) && (
               <li className="productTags">
                 <span className="font-semibold text-heading inline-block ltr:pr-2 rtl:pl-2">
-                  Tags:
+                  {t('text-tags')}
                 </span>
                 {data.tags.map((tag) => (
                   <Link

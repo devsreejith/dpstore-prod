@@ -1,8 +1,14 @@
 import usePrice from "@framework/product/use-price";
 import { useCart } from "@contexts/cart/cart.context";
 import { useEffect, useState } from "react";
+import { useTranslation } from "next-i18next";
+import { useRouter } from "next/router";
+import { getLocalizedName } from "@utils/get-localized-name";
 
 const CheckoutItemRow = ({ item }: { item: any }) => {
+  const { t } = useTranslation('common');
+  const { locale } = useRouter();
+  const itemName = getLocalizedName(item, locale);
   const { price } = usePrice({
     amount: item.price * (item.quantity ?? 1),
     currencyCode: "AED",
@@ -12,16 +18,16 @@ const CheckoutItemRow = ({ item }: { item: any }) => {
       <div className="w-12 h-12 rounded border border-gray-200 overflow-hidden bg-gray-50 flex-shrink-0 flex items-center justify-center p-0.5">
         <img
           src={item.image}
-          alt={item.name}
+          alt={itemName}
           className="object-contain max-h-full max-w-full"
         />
       </div>
-      <div className="min-w-0 flex-1 text-left">
+      <div className="min-w-0 flex-1 ltr:text-left rtl:text-right">
         <h3 className="text-xs md:text-sm font-semibold text-black truncate">
-          {item.name}
+          {itemName}
         </h3>
         <p className="text-[11px] md:text-xs text-black mt-0.5 font-normal">
-          Qty: {item.quantity ?? 1}
+          {t('text-qty')} {item.quantity ?? 1}
         </p>
       </div>
       <div className="text-xs md:text-sm font-bold text-black flex-shrink-0">
@@ -42,6 +48,7 @@ const CheckoutCard: React.FC<CheckoutCardProps> = ({
   setActiveStep,
   selectedAddress,
 }) => {
+  const { t } = useTranslation('common');
   const [mounted, setMounted] = useState(false);
   const { items, total, isEmpty, cart } = useCart();
 
@@ -80,7 +87,7 @@ const CheckoutCard: React.FC<CheckoutCardProps> = ({
         <div className="border border-gray-200 rounded-md bg-white p-5 mb-5 shadow-sm flex justify-between items-start">
           <div className="min-w-0 flex-1">
             <h2 className="text-xs md:text-sm font-bold text-[#008755] uppercase tracking-wider font-body mb-2.5">
-              DELIVERY ADDRESS
+              {t('text-delivery-address')}
             </h2>
             {selectedAddress ? (
               <div className="text-xs md:text-sm text-black font-body space-y-1 leading-relaxed">
@@ -97,7 +104,7 @@ const CheckoutCard: React.FC<CheckoutCardProps> = ({
                 )}
               </div>
             ) : (
-              <span className="text-gray-400 font-normal text-xs">No address selected</span>
+              <span className="text-gray-400 font-normal text-xs">{t('text-no-address-selected')}</span>
             )}
           </div>
           <button
@@ -105,7 +112,7 @@ const CheckoutCard: React.FC<CheckoutCardProps> = ({
             onClick={() => setActiveStep(2)}
             className="text-[10px] md:text-xs font-bold text-[#008755] uppercase hover:underline ml-4 flex-shrink-0"
           >
-            Change
+            {t('text-change')}
           </button>
         </div>
       )}
@@ -113,7 +120,7 @@ const CheckoutCard: React.FC<CheckoutCardProps> = ({
       <div className="border border-gray-200 rounded-xl bg-white overflow-hidden shadow-sm flex flex-col mb-4">
         <div className="px-5 pt-5 pb-3 border-b border-gray-100 flex justify-between items-center">
           <h2 className="text-sm md:text-base font-bold text-[#008755] uppercase tracking-wider font-body">
-            Order Summary
+            {t('text-order-summary')}
           </h2>
           <span className="text-xs text-[#008755] font-semibold bg-[#E8F5E9] px-2.5 py-0.5 rounded-full">
             {items.length} Item{items.length > 1 ? "s" : ""}
@@ -130,28 +137,28 @@ const CheckoutCard: React.FC<CheckoutCardProps> = ({
       <div className="border border-gray-200 rounded-xl bg-white overflow-hidden shadow-sm flex flex-col">
         <div className="px-5 pt-5 pb-2">
           <h2 className="text-sm md:text-base font-bold text-heading uppercase tracking-wider font-body">
-            PRICE DETAILS
+            {t('text-price-details')}
           </h2>
         </div>
 
         <div className="p-5 pt-2 space-y-3 text-xs md:text-sm text-heading font-medium font-body">
           <div className="flex justify-between items-center">
-            <span className="text-black font-normal">Subtotal ({items.length} item{items.length > 1 ? "s" : ""})</span>
+            <span className="text-black font-normal">{t('text-subtotal')} ({items.length} item{items.length > 1 ? 's' : ''})</span>
             <span className="text-black font-semibold">{priceOriginal}</span>
           </div>
 
           <div className="flex justify-between items-center">
-            <span className="text-black font-normal">Delivery Charges</span>
+            <span className="text-black font-normal">{t('text-delivery-charges')}</span>
             <span className="text-black font-semibold">AED 25.00</span>
           </div>
 
           <div className="flex justify-between items-center">
-            <span className="text-black font-normal">VAT (5%)</span>
+            <span className="text-black font-normal">{t('text-vat')}</span>
             <span className="text-black font-semibold">{priceVat}</span>
           </div>
 
           <div className="border-t border-gray-150 pt-3 flex justify-between items-center font-bold text-sm md:text-base text-heading">
-            <span>Total Amount</span>
+            <span>{t('text-total-amount')}</span>
             <span className="text-[#008755]">{priceTotal}</span>
           </div>
         </div>
@@ -168,8 +175,8 @@ const CheckoutCard: React.FC<CheckoutCardProps> = ({
           </svg>
         </div>
         <div>
-          <h4 className="text-sm font-bold text-heading">Estimated Delivery</h4>
-          <p className="text-[11px] text-black mt-0.5">2 – 3 working days<br/>from the date of shipment</p>
+          <h4 className="text-sm font-bold text-heading">{t('text-estimated-delivery')}</h4>
+          <p className="text-[11px] text-black mt-0.5">{t('text-estimated-delivery-days')}</p>
         </div>
       </div>
 
@@ -183,8 +190,8 @@ const CheckoutCard: React.FC<CheckoutCardProps> = ({
             </svg>
           </div>
           <div>
-            <h4 className="text-sm font-bold text-heading">Safe & Secure</h4>
-            <p className="text-[11px] text-black mt-0.5">Your payment information is 100% secure and encrypted.</p>
+            <h4 className="text-sm font-bold text-heading">{t('text-safe-secure')}</h4>
+            <p className="text-[11px] text-black mt-0.5">{t('text-safe-secure-desc')}</p>
           </div>
         </div>
       </div>

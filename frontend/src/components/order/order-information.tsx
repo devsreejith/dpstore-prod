@@ -322,8 +322,8 @@ export default function OrderInformation() {
     return (
       <Loader
         size="large"
-        text="Verifying payment status..."
-        description="Please wait while we confirm your payment transaction. Do not refresh or close this page."
+        text={t('text-verifying-payment')}
+        description={t('text-verifying-payment-desc')}
       />
     );
   }
@@ -405,13 +405,13 @@ export default function OrderInformation() {
               </div>
 
               <h1 className="text-2xl md:text-3xl font-bold text-amber-700 font-body mb-2 text-center">
-                Payment Pending
+                {t('text-payment-pending')}
               </h1>
               <p className="text-sm text-gray-600 font-body text-center max-w-md leading-relaxed">
-                Your order has been placed but payment is not yet complete.
+                {t('text-payment-pending-desc')}
               </p>
               <p className="text-sm text-gray-600 font-body mb-8 text-center max-w-md">
-                Please proceed to complete your payment to confirm your order.
+                {t('text-payment-pending-desc2')}
               </p>
 
               {/* Info Box */}
@@ -420,9 +420,9 @@ export default function OrderInformation() {
                   <span className="text-amber-700 font-bold text-lg">i</span>
                 </div>
                 <div className="flex flex-col text-left">
-                  <h4 className="text-sm font-bold text-heading mb-1">What do I need to do?</h4>
+                  <h4 className="text-sm font-bold text-heading mb-1">{t('text-what-to-do')}</h4>
                   <p className="text-xs text-gray-600 leading-relaxed">
-                    No payment has been deducted from your account. Click &quot;Proceed to Payment&quot; below to complete your purchase.
+                    {t('text-no-payment-deducted')}
                   </p>
                 </div>
               </div>
@@ -442,7 +442,7 @@ export default function OrderInformation() {
                   className="flex-1 h-12 bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm rounded-xl transition duration-200 flex items-center justify-center gap-2 font-body"
                 >
                   <IoWalletOutline className="text-lg" />
-                  {paying ? 'Processing...' : 'Proceed to Payment'}
+                  {paying ? t('text-processing') : t('text-proceed-to-payment')}
                 </button>
                 <button
                   type="button"
@@ -450,7 +450,7 @@ export default function OrderInformation() {
                   className="flex-1 h-12 border-2 border-amber-500 hover:bg-amber-50 text-amber-700 font-bold text-sm rounded-xl transition duration-200 flex items-center justify-center gap-2 font-body"
                 >
                   <IoDocumentTextOutline className="text-lg" />
-                  View Order Details
+                  {t('text-view-order-details')}
                 </button>
               </div>
 
@@ -471,7 +471,7 @@ export default function OrderInformation() {
                 <div className="h-px w-16 bg-gray-200"></div>
               </div>
               <p className="text-xs text-black font-body text-center">
-                Safe and secure payments. 100% authentic products.
+                {t('text-safe-secure-payments')}
               </p>
             </div>
           </div>
@@ -494,13 +494,13 @@ export default function OrderInformation() {
               </div>
 
               <h1 className="text-2xl md:text-3xl font-bold text-[#A52A2A] font-body mb-2 text-center">
-                Payment Failed
+                {t('text-payment-failed')}
               </h1>
               <p className="text-sm text-gray-600 font-body text-center max-w-md leading-relaxed">
-                We couldn&apos;t process your payment.
+                {t('text-payment-failed-desc')}
               </p>
               <p className="text-sm text-gray-600 font-body mb-8 text-center max-w-md">
-                Please try again or choose another payment method.
+                {t('text-payment-failed-desc2')}
               </p>
 
               {/* What happened? Info Box */}
@@ -509,9 +509,9 @@ export default function OrderInformation() {
                   <span className="text-[#A52A2A] font-bold text-lg">!</span>
                 </div>
                 <div className="flex flex-col text-left">
-                  <h4 className="text-sm font-bold text-heading mb-1">What happened?</h4>
+                  <h4 className="text-sm font-bold text-heading mb-1">{t('text-what-happened')}</h4>
                   <p className="text-xs text-gray-600 leading-relaxed">
-                    Your payment was not completed. No amount has been deducted from your account.
+                    {t('text-payment-not-completed')}
                   </p>
                 </div>
               </div>
@@ -533,7 +533,7 @@ export default function OrderInformation() {
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
                   </svg>
-                  {paying ? 'Processing...' : 'Try Again'}
+                  {paying ? t('text-processing') : t('text-try-again')}
                 </button>
                 <button
                   type="button"
@@ -541,7 +541,7 @@ export default function OrderInformation() {
                   className="flex-1 h-12 bg-[#A52A2A] hover:bg-[#8B0000] text-white font-bold text-sm rounded-xl transition duration-200 flex items-center justify-center gap-2 font-body"
                 >
                   <IoWalletOutline className="text-lg" />
-                  Change Payment Method
+                  {t('text-change-payment-method')}
                 </button>
               </div>
 
@@ -562,7 +562,7 @@ export default function OrderInformation() {
                 <div className="h-px w-16 bg-gray-200"></div>
               </div>
               <p className="text-xs text-black font-body text-center">
-                Safe and secure payments. 100% authentic products.
+                {t('text-safe-secure-payments')}
               </p>
             </div>
           </div>
@@ -597,27 +597,27 @@ export default function OrderInformation() {
 
               <h1 className="text-2xl md:text-3xl font-bold text-[#005844] font-body mb-3 text-center">
                 {isCancelled
-                  ? "Order Cancelled"
-                  : (!isOnlinePayment ? "Order Placed Successfully!" : "Payment Successful!")}
+                  ? t('text-order-cancelled')
+                  : (!isOnlinePayment ? t('text-order-placed-success') : t('text-payment-successful'))}
               </h1>
               
               {isCancelled ? (
                 <div className="text-sm text-gray-600 font-body mb-8 text-center max-w-md leading-relaxed">
-                  This order has been cancelled.
+                  {t('text-order-cancelled-desc')}
                 </div>
               ) : !isOnlinePayment ? (
                 <div className="text-sm md:text-base text-gray-700 font-body mb-8 text-center max-w-lg leading-relaxed flex flex-col gap-1.5">
                   <p>
-                    Your order has been placed successfully on <span className="font-bold text-[#008755]">Cash on Delivery</span>.
+                    {t('text-order-cod-desc')}
                   </p>
                   <p className="text-gray-500 text-sm">
-                    You will pay in cash when your order is delivered.
+                    {t('text-order-cod-pay-desc')}
                   </p>
                 </div>
               ) : (
                 <div className="text-sm md:text-base text-gray-700 font-body mb-8 text-center max-w-lg leading-relaxed flex flex-col gap-1.5">
-                  <p>Your payment has been completed successfully.</p>
-                  <p className="text-gray-500 text-sm">Thank you for your order.</p>
+                  <p>{t('text-payment-completed')}</p>
+                  <p className="text-gray-500 text-sm">{t('text-thank-you-order')}</p>
                 </div>
               )}
 
@@ -628,7 +628,7 @@ export default function OrderInformation() {
                     <IoMailOutline className="text-xl text-gray-500" />
                   </div>
                   <div className="text-sm text-black font-body">
-                    <span>{isCancelled ? "A cancellation confirmation has been sent to" : "A confirmation email has been sent to"}</span>
+                    <span>{isCancelled ? t('text-cancellation-sent') : t('text-confirmation-sent')}</span>
                     <br />
                     <span className="font-bold text-heading">{data?.email}</span>
                   </div>
@@ -644,24 +644,26 @@ export default function OrderInformation() {
               {!data?.customer_id && (
                 <div className="w-full max-w-md bg-gray-50 border border-gray-200 rounded-xl p-5 my-6 font-body">
                   <h3 className="text-sm font-bold text-heading font-body mb-2 text-left uppercase tracking-wider text-[#005844]">
-                    Save time on your next order
+                    {t("text-save-time-next-order")}
                   </h3>
                   <p className="text-xs text-gray-500 mb-4 text-left leading-relaxed">
-                    Create an account using <span className="font-semibold text-gray-700">{data?.email}</span> to save your delivery addresses and track all your orders.
+                    {t("text-create-account-desc").split("{{email}}")[0]}
+                    <span className="font-semibold text-gray-700">{data?.email}</span>
+                    {t("text-create-account-desc").split("{{email}}")[1]}
                   </p>
                   
                   {signUpError && <p className="text-xs text-rose-500 mb-3 font-semibold text-left">{signUpError}</p>}
                   {signUpMutation.isSuccess ? (
                     <p className="text-xs text-emerald-600 mb-2 font-semibold text-left">
-                      ✓ Account created successfully! You are now logged in.
+                      {t("text-create-account-success")}
                     </p>
                   ) : (
                     <div className="flex flex-col gap-3">
                       <Input
-                        labelKey="Choose Password *"
+                        labelKey="text-choose-password"
                         type="password"
                         name="password"
-                        placeholder="Enter password (min 6 characters)"
+                        placeholder={t("text-password-placeholder")}
                         value={password}
                         onChange={(e: any) => setPassword(e.target.value)}
                         variant="solid"
@@ -672,25 +674,25 @@ export default function OrderInformation() {
                           setSignUpError(null);
                           const pass = String(password || "").trim();
                           if (pass.length < 6) {
-                            setSignUpError("Password must be at least 6 characters.");
+                            setSignUpError(t("text-password-min-chars"));
                             return;
                           }
                           try {
-                            const name = `${data?.shipping_address?.first_name || ""} ${data?.shipping_address?.last_name || ""}`.trim() || "Guest User";
+                            const name = `${data?.shipping_address?.first_name || ""} ${data?.shipping_address?.last_name || ""}`.trim() || t("text-guest-user");
                             await signUpMutation.mutateAsync({
                               email: data?.email,
                               password: pass,
                               name: name
                             });
                           } catch (e: any) {
-                            setSignUpError(e?.message || "Failed to create account. Please try again.");
+                            setSignUpError(e?.message || t("text-failed-create-account"));
                           }
                         }}
                         loading={signUpMutation.isPending}
                         disabled={signUpMutation.isPending}
                         className="h-10 text-xs font-semibold uppercase tracking-wider bg-[#005844] hover:bg-[#008755] text-white"
                       >
-                        Create Account
+                        {t("text-create-account")}
                       </Button>
                     </div>
                   )}
@@ -705,7 +707,7 @@ export default function OrderInformation() {
                   className="flex-1 h-12 border border-[#005844] hover:bg-[#F4F9F6] text-[#005844] font-bold text-sm rounded-lg transition duration-200 flex items-center justify-center gap-2 font-body"
                 >
                   <IoDocumentTextOutline className="text-lg" />
-                  View Order Details
+                  {t("text-view-order-details")}
                 </button>
                 <Link
                   href="/"
@@ -714,7 +716,7 @@ export default function OrderInformation() {
                   <svg className="w-4 h-4 mb-0.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                   </svg>
-                  Continue Shopping
+                  {t('text-continue-shopping')}
                 </Link>
               </div>
             </div>
@@ -730,7 +732,7 @@ export default function OrderInformation() {
                   <div className="h-px w-16 bg-gray-200"></div>
                 </div>
                 <p className="text-xs text-black font-body text-center">
-                  Safe and secure payments. 100% authentic products.
+                  {t('text-safe-secure-payments')}
                 </p>
               </div>
             )}

@@ -251,6 +251,7 @@ const formatAddress = (a: any) => {
 const OrderDetails: React.FC<{ className?: string }> = ({
   className = 'pt-6',
 }) => {
+  const { t } = useTranslation('common');
   const {
     query: { id, cart_id },
   } = useRouter();
@@ -276,11 +277,11 @@ const OrderDetails: React.FC<{ className?: string }> = ({
     return (
       <Loader
         size="large"
-        text="Loading order details..."
+        text={t('text-loading-order')}
       />
     );
   }
-  if (!order) return <div className="py-10 text-center text-sm text-red-600 font-medium">Order not found.</div>;
+  if (!order) return <div className="py-10 text-center text-sm text-red-600 font-medium">{t('text-order-not-found')}</div>;
 
   const items = Array.isArray(order?.items) ? order.items : [];
   const currency = String(order?.currency_code ?? 'aed').toUpperCase();
@@ -419,10 +420,11 @@ const OrderDetails: React.FC<{ className?: string }> = ({
     }
   };
 
+  const orderStatus = String((order as any)?.status ?? '').toLowerCase();
   const fulfillmentStatus = String((order as any)?.fulfillment_status ?? '').toLowerCase();
-  const isShipped = ['shipped', 'out_for_delivery', 'delivered'].includes(fulfillmentStatus);
-  const isOutForDelivery = ['out_for_delivery', 'delivered'].includes(fulfillmentStatus);
-  const isDelivered = fulfillmentStatus === 'delivered';
+  const isDelivered = fulfillmentStatus === 'delivered' || orderStatus === 'completed' || orderStatus === 'delivered';
+  const isShipped = ['shipped', 'partially_shipped', 'out_for_delivery', 'delivered'].includes(fulfillmentStatus) || isDelivered;
+  const isOutForDelivery = ['out_for_delivery', 'delivered'].includes(fulfillmentStatus) || isDelivered;
 
   const sellerName = String((order as any)?.metadata?.seller_name || 'HouseHoldProduct');
   const paymentMethodName = paymentProvider === 'pp_system_default' || !paymentProvider ? 'Cash On Delivery' : 'Online';
@@ -687,7 +689,7 @@ const OrderDetails: React.FC<{ className?: string }> = ({
     if (isGenuinelyCancelled) return -1;
     if (isDelivered) return 4;
     if (isShipped) return 3;
-    if (fulfillmentStatus === 'processing' || fulfillmentStatus === 'packed') return 2;
+    if (['fulfilled', 'partially_fulfilled', 'processing', 'packed'].includes(fulfillmentStatus)) return 2;
     // If order is confirmed (not cancelled, payment ok)
     if (isPaymentPaid || !isOnlinePayment) return 1;
     return 0;
@@ -708,19 +710,19 @@ const OrderDetails: React.FC<{ className?: string }> = ({
     <div className={`${className} bg-transparent min-h-screen pb-12 font-body`}>
       {/* Back to Orders */}
       <Link href={ROUTES.ORDERS} className="inline-flex items-center text-sm font-semibold text-gray-600 hover:text-black transition gap-2 mb-5 font-body">
-        <IoArrowBackOutline className="text-base" /> Back to Orders
+        <IoArrowBackOutline className="text-base transform rtl:rotate-180" /> {t('text-back-to-orders')}
       </Link>
 
       {/* Page Title + Header Row */}
-      <h1 className="text-xl md:text-2xl font-bold text-heading font-body mb-1 text-left">
-        Order Details
+      <h1 className="text-xl md:text-2xl font-bold text-heading font-body mb-1 ltr:text-left rtl:text-right">
+        {t('text-order-details')}
       </h1>
 
       {/* Order Number + Placed On + Action Buttons */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-5">
         <div>
-          <h2 className="text-sm md:text-base font-medium text-heading">Order ID : <span className="text-[#008755] font-bold">#{formattedOrderNumber}</span></h2>
-          <p className="text-xs text-black mt-0.5">Placed on {fmtOrderDateTime(order?.created_at)}</p>
+          <h2 className="text-sm md:text-base font-medium text-heading">{t('text-order-id')} : <span className="text-[#008755] font-bold">#{formattedOrderNumber}</span></h2>
+          <p className="text-xs text-black mt-0.5">{t('text-placed-on')} {fmtOrderDateTime(order?.created_at)}</p>
         </div>
         <div className="flex gap-3 flex-wrap">
           {/* Download Invoice */}
@@ -731,7 +733,7 @@ const OrderDetails: React.FC<{ className?: string }> = ({
               className="h-10 px-5 border border-gray-300 hover:bg-gray-50 text-heading font-bold text-xs md:text-sm rounded-lg transition duration-200 flex items-center justify-center gap-2 font-body bg-white"
             >
               <IoDownloadOutline className="text-base" />
-              <span>Download Invoice</span>
+              <span>{t('text-download-invoice')}</span>
             </button>
           )}
           {/* Track Order - only show after shipping started */}
@@ -741,7 +743,7 @@ const OrderDetails: React.FC<{ className?: string }> = ({
               className="h-10 px-5 bg-[#005844] hover:bg-[#008755] text-white font-bold text-xs md:text-sm rounded-lg transition duration-200 flex items-center justify-center gap-2 font-body shadow-sm"
             >
               <TruckIcon className="text-base" style={{ width: '1em', height: '1em' }} />
-              <span>Track Order</span>
+              <span>{t('text-track-order')}</span>
             </button>
           )}
         </div>
@@ -779,7 +781,7 @@ const OrderDetails: React.FC<{ className?: string }> = ({
                   <IoAlertCircleOutline className="text-2xl text-rose-500" />
                 </div>
               )}
-              <div className="text-left font-body">
+              <div className="ltr:text-left rtl:text-right font-body">
                 <h4 className={`text-sm md:text-base font-bold ${
                   isGenuinelyCancelled
                     ? 'text-rose-700'
@@ -790,25 +792,25 @@ const OrderDetails: React.FC<{ className?: string }> = ({
                         : 'text-rose-700'
                 }`}>
                   {isGenuinelyCancelled
-                    ? 'Order Cancelled'
+                    ? t('text-order-cancelled')
                     : !isOnlinePayment
-                      ? 'Order Confirmed'
+                      ? t('text-order-confirmed')
                       : isPaymentPaid
-                        ? 'Payment Successful'
+                        ? t('text-payment-successful')
                         : isPaymentNeverAttemptedResult
-                          ? 'Payment Pending'
-                          : 'Payment Failed'}
+                          ? t('text-payment-pending')
+                          : t('text-payment-failed')}
                 </h4>
                 <p className="text-[11px] md:text-xs text-black mt-0.5">
                   {isGenuinelyCancelled
-                    ? 'This order has been cancelled.'
+                    ? t('text-order-cancelled-desc')
                     : !isOnlinePayment
-                      ? 'Your order has been placed successfully. Payment will be collected upon delivery.'
+                      ? t('text-order-confirmed-desc')
                       : isPaymentPaid
-                        ? 'Your order has been placed successfully.'
+                        ? t('text-order-paid-desc')
                         : isPaymentNeverAttemptedResult
-                          ? 'Your order is awaiting payment. Please proceed to complete your payment.'
-                          : 'Your payment attempt was unsuccessful. Please retry payment.'}
+                          ? t('text-payment-awaiting-desc')
+                          : t('text-payment-failed-retry')}
                 </p>
               </div>
             </div>
@@ -825,7 +827,7 @@ const OrderDetails: React.FC<{ className?: string }> = ({
                     : 'bg-[#005844] hover:bg-[#008755]'
                 }`}
               >
-                <span>{paying ? 'Processing...' : isPaymentNeverAttemptedResult ? 'Proceed to Payment' : 'Retry Payment'}</span>
+                <span>{paying ? t('text-processing') : isPaymentNeverAttemptedResult ? t('text-proceed-to-payment') : t('text-retry-payment')}</span>
               </button>
             )}
           </div>
@@ -841,7 +843,7 @@ const OrderDetails: React.FC<{ className?: string }> = ({
                       {/* Connector line (left side) - z-0 so it goes behind circles */}
                       {idx > 0 && (
                         <div
-                          className="absolute top-3 right-1/2 h-0.5"
+                          className="absolute top-3 h-0.5 ltr:right-1/2 rtl:left-1/2"
                           style={{
                             width: '100%',
                             backgroundColor: orderStep >= idx ? '#008755' : '#E5E7EB',
@@ -878,7 +880,7 @@ const OrderDetails: React.FC<{ className?: string }> = ({
                           ? fmtTimelineTime(order?.created_at, idx * 2)
                           : isCompleted
                             ? fmtTimelineTime(order?.created_at, idx * 30)
-                            : 'Pending'}
+                            : t('text-pending')}
                       </span>
                     </div>
                   );
@@ -890,9 +892,9 @@ const OrderDetails: React.FC<{ className?: string }> = ({
 
 
           {/* Delivery Details Card */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:divide-x md:divide-gray-200 border border-gray-150 rounded-xl p-5 bg-white text-left font-body shadow-sm">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 ltr:md:divide-x rtl:md:divide-x-reverse md:divide-gray-200 border border-gray-150 rounded-xl p-5 bg-white ltr:text-left rtl:text-right font-body shadow-sm">
             <div className="flex flex-col">
-              <h4 className="font-bold text-sm text-heading uppercase tracking-wide mb-3">Delivery Address</h4>
+              <h4 className="font-bold text-sm text-heading uppercase tracking-wide mb-3">{t('text-delivery-address')}</h4>
               <div className="flex items-start gap-2">
                 <IoLocationOutline className="text-base text-gray-400 mt-0.5 flex-shrink-0" />
                 <div className="text-xs md:text-sm text-black font-medium leading-relaxed space-y-0.5">
@@ -912,14 +914,14 @@ const OrderDetails: React.FC<{ className?: string }> = ({
               </div>
             </div>
 
-            <div className="flex flex-col md:pl-6 pt-5 md:pt-0">
-              <h4 className="font-bold text-sm text-heading uppercase tracking-wide mb-3">Delivery Method</h4>
+            <div className="flex flex-col ltr:md:pl-6 rtl:md:pr-6 pt-5 md:pt-0">
+              <h4 className="font-bold text-sm text-heading uppercase tracking-wide mb-3">{t('text-delivery-method')}</h4>
               <div className="flex items-start gap-2">
                 <TruckIcon className="text-lg text-gray-400 flex-shrink-0 mt-0.5" />
                 <div>
                   <span className="text-xs md:text-sm font-bold text-heading">{shippingMethod}</span>
                   <p className="text-[11px] md:text-xs text-black font-medium mt-1">
-                    Estimated Delivery: {estimatedDelivery}
+                    {t('text-estimated-delivery-prefix')} {estimatedDelivery}
                   </p>
                 </div>
               </div>
@@ -927,17 +929,17 @@ const OrderDetails: React.FC<{ className?: string }> = ({
           </div>
 
           {/* Order Items Table Card */}
-          <div className="border border-gray-150 rounded-xl bg-white p-5 font-body text-left shadow-sm">
+          <div className="border border-gray-150 rounded-xl bg-white p-5 font-body ltr:text-left rtl:text-right shadow-sm">
             <h3 className="font-bold text-sm text-heading border-b border-gray-100 pb-3 mb-4 uppercase tracking-wider">
-              Order Items ({items.length})
+              {t('text-order-items')} ({items.length})
             </h3>
             
             <div className="hidden md:grid grid-cols-12 gap-4 pb-2.5 border-b border-gray-100 text-[10px] font-bold text-black uppercase tracking-wider">
-              <div className="col-span-5">Product</div>
-              <div className="col-span-2 text-center">SKU</div>
-              <div className="col-span-2 text-center">Unit Price</div>
-              <div className="col-span-1 text-center">Qty</div>
-              <div className="col-span-2 text-right">Total</div>
+              <div className="col-span-5">{t('text-product')}</div>
+              <div className="col-span-2 text-center">{t('text-sku')}</div>
+              <div className="col-span-2 text-center">{t('text-unit-price')}</div>
+              <div className="col-span-1 text-center">{t('text-qty')}</div>
+              <div className="col-span-2 ltr:text-right rtl:text-left">{t('text-total')}</div>
             </div>
 
             <div className="divide-y divide-gray-100">
@@ -955,35 +957,35 @@ const OrderDetails: React.FC<{ className?: string }> = ({
                         {itemThumb ? (
                           <img src={itemThumb} alt="" className="object-contain max-h-full max-w-full" />
                         ) : (
-                          <div className="w-full h-full bg-gray-100 flex items-center justify-center text-[9px] text-gray-400 font-body">No Image</div>
+                          <div className="w-full h-full bg-gray-100 flex items-center justify-center text-[9px] text-gray-400 font-body">{t('text-no-image')}</div>
                         )}
                       </div>
-                      <div className="min-w-0 text-left">
+                      <div className="min-w-0 ltr:text-left rtl:text-right">
                         <h4 className="text-xs md:text-sm font-bold text-heading truncate uppercase">{it.title || it.product_title}</h4>
                       </div>
                     </div>
 
                     {/* SKU (2 Cols) */}
-                    <div className="md:col-span-2 text-left md:text-center">
-                      <span className="text-xs text-gray-400 md:hidden block uppercase tracking-wider font-semibold mb-0.5">SKU</span>
+                    <div className="md:col-span-2 ltr:text-left rtl:text-right md:text-center">
+                      <span className="text-xs text-gray-400 md:hidden block uppercase tracking-wider font-semibold mb-0.5">{t('text-sku')}</span>
                       <span className="text-xs text-black font-medium">{it.variant?.sku || 'N/A'}</span>
                     </div>
                     
                     {/* Unit Price (2 Cols) */}
-                    <div className="md:col-span-2 text-left md:text-center">
-                      <span className="text-xs text-gray-400 md:hidden block uppercase tracking-wider font-semibold mb-0.5">Unit Price</span>
+                    <div className="md:col-span-2 ltr:text-left rtl:text-right md:text-center">
+                      <span className="text-xs text-gray-400 md:hidden block uppercase tracking-wider font-semibold mb-0.5">{t('text-unit-price')}</span>
                       <span className="text-sm font-semibold text-heading">{fmt(itemUnitVal, currency)}</span>
                     </div>
 
                     {/* Qty (1 Col) */}
-                    <div className="md:col-span-1 text-left md:text-center">
-                      <span className="text-xs text-gray-400 md:hidden block uppercase tracking-wider font-semibold mb-0.5">Qty</span>
+                    <div className="md:col-span-1 ltr:text-left rtl:text-right md:text-center">
+                      <span className="text-xs text-gray-400 md:hidden block uppercase tracking-wider font-semibold mb-0.5">{t('text-qty')}</span>
                       <span className="text-sm font-semibold text-heading">{itemQty}</span>
                     </div>
 
                     {/* Total (2 Cols) */}
-                    <div className="md:col-span-2 text-left md:text-right">
-                      <span className="text-xs text-gray-400 md:hidden block uppercase tracking-wider font-semibold mb-0.5">Total</span>
+                    <div className="md:col-span-2 ltr:text-left rtl:text-right md:ltr:text-right md:rtl:text-left">
+                      <span className="text-xs text-gray-400 md:hidden block uppercase tracking-wider font-semibold mb-0.5">{t('text-total')}</span>
                       <span className="text-sm font-bold text-[#008755]">{fmt(itemTotalVal, currency)}</span>
                     </div>
                   </div>
@@ -1010,8 +1012,8 @@ const OrderDetails: React.FC<{ className?: string }> = ({
               href="/"
               className="h-10 px-5 border border-gray-300 hover:bg-gray-50 text-heading font-bold text-xs md:text-sm rounded-lg transition duration-200 flex items-center justify-center gap-1.5 font-body bg-white"
             >
-              <IoArrowBackOutline className="text-base" />
-              <span>Continue Shopping</span>
+              <IoArrowBackOutline className="text-base transform rtl:rotate-180" />
+              <span>{t('text-continue-shopping')}</span>
             </Link>
 
             {isPaymentPending && !isGenuinelyCancelled && (
@@ -1022,7 +1024,7 @@ const OrderDetails: React.FC<{ className?: string }> = ({
                 className="h-10 px-5 border border-red-300 hover:bg-red-50 text-red-500 font-bold text-xs md:text-sm rounded-lg transition duration-200 flex items-center justify-center gap-1.5 font-body bg-white"
               >
                 <IoTrashOutline className="text-base" />
-                <span>{canceling ? 'Cancelling...' : 'Cancel Order'}</span>
+                <span>{canceling ? t('text-cancelling') : t('text-cancel-order')}</span>
               </button>
             )}
           </div>
@@ -1032,33 +1034,33 @@ const OrderDetails: React.FC<{ className?: string }> = ({
         <div className="lg:col-span-4 space-y-4 w-full">
 
           {/* PRICE DETAILS Card */}
-          <div className="border border-gray-150 rounded-xl bg-white p-5 text-left font-body shadow-sm">
+          <div className="border border-gray-150 rounded-xl bg-white p-5 ltr:text-left rtl:text-right font-body shadow-sm">
             <h3 className="font-bold text-sm text-heading border-b border-gray-100 pb-2.5 mb-3.5 uppercase tracking-wider font-body">
-              Price Details
+              {t('text-price-details')}
             </h3>
 
             <div className="space-y-3 text-xs md:text-sm text-heading font-medium">
               <div className="flex justify-between items-center">
-                <span className="text-black font-normal">Subtotal ({items.length} item{items.length > 1 ? "s" : ""})</span>
+                <span className="text-black font-normal">{t('text-subtotal')} ({items.length} item{items.length > 1 ? 's' : ''})</span>
                 <span className="font-semibold text-heading">{fmt(subtotalAmount, currency)}</span>
               </div>
 
               <div className="flex justify-between items-center">
-                <span className="text-black font-normal">Delivery Charges</span>
+                <span className="text-black font-normal">{t('text-delivery-charges')}</span>
                 <span className={`font-semibold ${
                   shippingAmount === 0 ? 'text-[#008755] font-bold uppercase' : 'text-heading'
                 }`}>
-                  {shippingAmount === 0 ? 'FREE' : fmt(shippingAmount, currency)}
+                  {shippingAmount === 0 ? t('text-free') : fmt(shippingAmount, currency)}
                 </span>
               </div>
 
               <div className="flex justify-between items-center">
-                <span className="text-black font-normal">VAT (5%)</span>
+                <span className="text-black font-normal">{t('text-vat')}</span>
                 <span className="font-semibold text-heading">{fmt(taxAmount, currency)}</span>
               </div>
 
               <div className="border-t border-gray-150 pt-3 flex justify-between items-center font-bold text-sm md:text-base text-heading">
-                <span>Total Amount</span>
+                <span>{t('text-total-amount')}</span>
                 <span className="text-[#008755]">{fmt(totalAmount, currency)}</span>
               </div>
             </div>
@@ -1090,32 +1092,32 @@ const OrderDetails: React.FC<{ className?: string }> = ({
                 isGenuinelyCancelled ? 'text-rose-700' : 'text-[#008755]'
               }`}>
                 {isGenuinelyCancelled
-                  ? 'Order Cancelled'
+                  ? t('text-order-cancelled')
                   : displayPaymentMethod}
               </h4>
               <p className="text-[11px] text-black mt-0.5">
                 {isGenuinelyCancelled
-                  ? 'This order has been cancelled.'
+                  ? t('text-order-cancelled-desc')
                   : paymentProvider === 'pp_system_default' || !paymentProvider
-                    ? 'Payment will be collected upon delivery.'
+                    ? t('text-payment-cod-desc')
                     : isPaymentPaid
-                      ? 'Payment completed successfully.'
-                      : 'Payment pending. Please retry.'}
+                      ? t('text-payment-completed-short')
+                      : t('text-payment-pending-retry')}
               </p>
             </div>
           </div>
 
           {/* Need Help Card */}
-          <div className="border border-gray-150 rounded-xl bg-white p-5 text-left font-body shadow-sm">
-            <h3 className="font-bold text-sm text-heading mb-1">Need Help?</h3>
-            <p className="text-[11px] text-black mb-4">If you have any questions about your order, we're here to help.</p>
+          <div className="border border-gray-150 rounded-xl bg-white p-5 ltr:text-left rtl:text-right font-body shadow-sm font-body">
+            <h3 className="font-bold text-sm text-heading mb-1">{t('text-need-help')}</h3>
+            <p className="text-[11px] text-black mb-4">{t('text-need-help-order')}</p>
 
             <a
               href="tel:+97146069999"
               className="w-full h-10 border border-[#E8F1EC] hover:bg-[#F4F9F6] text-[#008755] font-bold text-xs md:text-sm rounded-lg transition duration-200 flex items-center justify-center gap-2 font-body mb-4"
             >
               <IoHeadsetOutline className="text-base" />
-              <span>Contact Support</span>
+              <span>{t('text-contact-support')}</span>
             </a>
 
             <div className="space-y-2.5 text-xs text-black">
@@ -1141,8 +1143,8 @@ const OrderDetails: React.FC<{ className?: string }> = ({
                 <IoShieldCheckmarkOutline className="text-lg text-[#008755]" />
               </div>
               <div>
-                <h4 className="text-sm font-bold text-heading">Safe & Secure</h4>
-                <p className="text-[11px] text-black mt-0.5">Your payment information is 100% secure and encrypted.</p>
+                <h4 className="text-sm font-bold text-heading">{t('text-safe-secure')}</h4>
+                <p className="text-[11px] text-black mt-0.5">{t('text-safe-secure-desc')}</p>
               </div>
             </div>
           </div>

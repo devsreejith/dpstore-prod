@@ -59,7 +59,29 @@ export const BreadcrumbItems = (props: any) => {
 
 const Breadcrumb: React.FC<{ separator?: string }> = ({ separator = "/" }) => {
   const breadcrumbs = useBreadcrumb();
-  const { t } = useTranslation("common");
+  const { t } = useTranslation(["common", "menu"]);
+
+  const getBreadcrumbLabel = (breadcrumbPart: string) => {
+    const cleanPart = breadcrumbPart.toLowerCase().trim();
+    
+    // 1. Try static breadcrumb keys in common.json
+    const commonKey = `breadcrumb-${cleanPart}`;
+    const translatedCommon = t(commonKey);
+    if (translatedCommon && translatedCommon !== commonKey && !translatedCommon.startsWith("breadcrumb-")) {
+      return translatedCommon;
+    }
+    
+    // 2. Try menu keys in menu.json (for categories)
+    const menuKey = `menu:${cleanPart.startsWith("menu-") ? cleanPart : `menu-${cleanPart}`}`;
+    const translatedMenu = t(menuKey);
+    if (translatedMenu && translatedMenu !== menuKey && !translatedMenu.startsWith("menu-")) {
+      return translatedMenu;
+    }
+    
+    // 3. Fallback to default formatting
+    return convertBreadcrumbTitle(breadcrumbPart);
+  };
+
   return (
     <BreadcrumbItems separator={separator}>
       <ActiveLink href={"/"} activeClassName="font-semibold text-heading">
@@ -73,7 +95,7 @@ const Breadcrumb: React.FC<{ separator?: string }> = ({ separator = "/" }) => {
           className="capitalize"
           key={breadcrumb.href}
         >
-          {convertBreadcrumbTitle(breadcrumb.breadcrumb)}
+          {getBreadcrumbLabel(breadcrumb.breadcrumb)}
         </ActiveLink>
       ))}
     </BreadcrumbItems>

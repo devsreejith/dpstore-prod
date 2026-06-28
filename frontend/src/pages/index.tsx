@@ -27,11 +27,72 @@ import {
   contemporaryBanner2,
 } from '@framework/static/banner';
 
+import { useRouter } from 'next/router';
+
 export default function Home() {
+  const { locale } = useRouter();
+  const currentLocale = locale || 'en';
+
+  const localizedBanners = banners.map((b) => {
+    const suffix = currentLocale === 'ar' ? 'ar' : 'en';
+    const imageUrl = `/assets/images/hero/banner${b.id}-${suffix}.webp`;
+    return {
+      ...b,
+      image: {
+        mobile: {
+          url: imageUrl,
+          width: 900,
+          height: 540,
+        },
+        desktop: {
+          url: imageUrl,
+          width: 1920,
+          height: 900,
+        },
+      },
+    };
+  });
+
+  const localizedBannerDataContemporary = bannerDataContemporary.map((b) => {
+    const suffix = currentLocale === 'ar' ? 'ar' : 'en';
+    const name = b.id === 1 ? 'keychain' : 'mug';
+    const imageUrl = `/assets/images/${name}-${suffix}.webp`;
+    return {
+      ...b,
+      image: {
+        mobile: {
+          url: imageUrl,
+          width: 690,
+          height: 360,
+        },
+        desktop: {
+          url: imageUrl,
+          width: 885,
+          height: 430,
+        },
+      },
+    };
+  });
+  const localizedContemporaryBanner1 = {
+    ...contemporaryBanner1,
+    image: {
+      mobile: {
+        url: currentLocale === 'ar' ? '/assets/images/banner/banner11-ar.webp' : '/assets/images/banner/banner11-en.jpg',
+        width: 900,
+        height: 540,
+      },
+      desktop: {
+        url: currentLocale === 'ar' ? '/assets/images/banner/banner11-ar.webp' : '/assets/images/banner/banner11-en.jpg',
+        width: 1800,
+        height: 600,
+      },
+    },
+  };
+
   return (
     <>
       <HeroSlider
-        data={banners}
+        data={localizedBanners}
         variantRounded="default"
         variant="fullWidth"
         prevNextButtons="none"
@@ -43,13 +104,13 @@ export default function Home() {
           variant="list"
         />
         <SaleBannerGrid
-          data={bannerDataContemporary}
+          data={localizedBannerDataContemporary}
           className="mb-12 md:mb-14 xl:mb-16"
         />
         <NewArrivalsProductFeedWithTabs />
         <BannerCard
           key={`banner--key${banner.id}`}
-          banner={contemporaryBanner1}
+          banner={localizedContemporaryBanner1}
           href={`${ROUTES.COLLECTIONS}/${banner.slug}`}
           className="mb-12 md:mb-14 xl:mb-16 pb-0.5 md:pb-0 lg:pb-1 xl:pb-0 md:-mt-2.5"
         />

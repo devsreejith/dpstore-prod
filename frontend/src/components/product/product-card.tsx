@@ -7,6 +7,9 @@ import ProductViewIcon from "@components/icons/product-view-icon";
 import ProductWishIcon from "@components/icons/product-wish-icon";
 import RatingDisplay from "@components/common/rating-display";
 import { useWishlist } from "@utils/use-wishlist";
+import { useTranslation } from "next-i18next";
+import { useRouter } from "next/router";
+import { getLocalizedName } from "@utils/get-localized-name";
 
 interface ProductProps {
   product: Product;
@@ -66,6 +69,9 @@ const ProductCard: FC<ProductProps> = ({
   showRating = false,
   bgTransparent = false,
 }) => {
+  const { t } = useTranslation('common');
+  const { locale } = useRouter();
+  const productName = getLocalizedName(product, locale);
   const { openModal, setModalView, setModalData } = useUI();
   const { toggleWishlist, isInWishlist } = useWishlist();
 
@@ -126,13 +132,13 @@ const ProductCard: FC<ProductProps> = ({
         className
       )}
       onClick={handlePopupView}
-      title={product?.name}
+      title={productName}
     >
       <div className={cn("relative flex-shrink-0", imageContentClassName)}>
         <div className="flex ltr:mr-auto rtl:ml-auto select-none overflow-hidden justify-center bg-[#F1F3F4] rounded-t-md">
           <img
             src={productThumbnail}
-            alt={product?.name}
+            alt={productName}
             className="object-cover w-full h-full transition duration-300 ease-in-out group-hover:scale-105"
             style={{ width: "100%", height: resolvedHeight }}
           />
@@ -173,21 +179,19 @@ const ProductCard: FC<ProductProps> = ({
         <div className="absolute top-3.5 ltr:left-3.5 rtl:right-3.5 ltr:sm:left-5 rtl:sm:right-5 flex flex-col gap-y-1.5">
           {product.quantity <= 0 && (
             <span className="bg-[#E4002B] text-white text-10px md:text-xs leading-5 rounded-md inline-block px-1.5 sm:px-1.5 xl:px-2 py-0.5 sm:py-1 font-semibold">
-              <p>Out of stock</p>
+              <p>{t('text-out-of-stock')}</p>
             </span>
           )}
           {discount && (
             <span className="bg-[#E4002B] text-white text-10px md:text-xs leading-5 rounded-md inline-block px-1.5 sm:px-1.5 xl:px-2 py-0.5 sm:py-1 font-semibold">
               <p>
-                {discount} <span className="hidden sm:inline">OFF</span>
+                {discount} <span className="hidden sm:inline">{t('text-off')}</span>
               </p>
             </span>
           )}
           {((product as any)?.is_featured === true || (product as any)?.isNewArrival === true) && (
             <span className="bg-heading text-white text-10px md:text-xs leading-5 rounded-md inline-block px-1.5 sm:px-1.5 xl:px-2 py-0.5 sm:py-1 font-semibold">
-              <p>
-                New <span className="hidden sm:inline">Arrival</span>
-              </p>
+              <p>{t('text-new-arrival')}</p>
             </span>
           )}
         </div>
@@ -209,11 +213,11 @@ const ProductCard: FC<ProductProps> = ({
         <div className="flex-grow">
           {showCategory && (
             <span className="text-11px text-body uppercase inline-block mb-1.5">
-              {(product?.collection as any)?.title || "Category"}
+              {(product?.collection as any)?.title || t('text-category')}
             </span>
           )}
           <h2 className="text-sm md:text-base font-semibold text-heading truncate mb-1">
-            {product?.name}
+            {productName}
           </h2>
           {!hideProductDescription && (
             <p className="text-xs text-body leading-normal line-clamp-2 mb-2">

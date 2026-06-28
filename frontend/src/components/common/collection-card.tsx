@@ -3,6 +3,8 @@ import Image from "next/image";
 import Text from "@components/ui/text";
 import { useTranslation } from "next-i18next";
 import cn from "classnames";
+import { useRouter } from "next/router";
+import { getLocalizedName, getLocalizedDescription } from "@utils/get-localized-name";
 
 interface Props {
   imgWidth?: number | string;
@@ -24,7 +26,10 @@ const CollectionCard: React.FC<Props> = ({
   contactClassName = "",
   variant = "default",
 }) => {
-  const { slug, image, title, description } = collection;
+  const { slug, image } = collection;
+  const { locale } = useRouter();
+  const collectionTitle = getLocalizedName(collection, locale, "title");
+  const collectionDescription = getLocalizedDescription(collection, locale);
   const { t } = useTranslation("common");
   return (
     <Link
@@ -75,10 +80,10 @@ const CollectionCard: React.FC<Props> = ({
             variant="mediumHeading"
             className="mb-1.5 lg:mb-2.5 2xl:mb-3 3xl:mb-3.5"
           >
-            {t(`${title}`)}
+            {t(`${collectionTitle}`)}
           </Text>
           <p className="text-body text-[13px] md:text-sm leading-6 md:leading-7 xl:px-10 3xl:px-20">
-            {t(`${description}`)}
+            {t(`${collectionDescription}`)}
           </p>
         </div>
       )}

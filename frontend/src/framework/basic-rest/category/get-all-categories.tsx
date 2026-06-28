@@ -98,10 +98,12 @@ export const fetchCategories = async ({ queryKey }: any) => {
       id: c.id,
       name: c.name,
       slug: c.handle,
+      metadata: c.metadata,
       children: c.category_children?.map((child: any) => ({
           id: child.id,
           name: child.name,
-          slug: child.handle
+          slug: child.handle,
+          metadata: child.metadata
       })) ?? []
   }));
 

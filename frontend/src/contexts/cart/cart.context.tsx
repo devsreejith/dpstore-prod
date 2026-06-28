@@ -58,6 +58,7 @@ export const CartProvider: React.FC = (props) => {
   const [cart, setCart] = React.useState<any>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [inventoryMap, setInventoryMap] = React.useState<Record<string, number>>({});
+  const [metadataMap, setMetadataMap] = React.useState<Record<string, any>>({});
 
   const prevIsAuthorizedRef = React.useRef(isAuthorized);
 
@@ -270,6 +271,10 @@ export const CartProvider: React.FC = (props) => {
       return;
     }
 
+    if (cart?.customer_id) {
+      return;
+    }
+
     (async () => {
       // Get the local guest cart ID and items
       const localCartId = cart?.id || getCartId();
@@ -370,26 +375,31 @@ export const CartProvider: React.FC = (props) => {
       const unitPrice = typeof li?.unit_price === "number" ? li.unit_price : Number(li?.unit_price ?? 0) || 0;
       const qty = typeof li?.quantity === "number" ? li.quantity : Number(li?.quantity ?? 0) || 0;
       const image = pickLineItemImage(li) || "/assets/placeholder/cart-item.svg";
+      const slug = li?.product_handle ?? "";
+      const fetchedMetadata = metadataMap[slug] || null;
       return {
         id: li?.id,
         name: li?.title ?? li?.product_title ?? "",
-        slug: li?.product_handle ?? "",
+        slug,
         image,
         price: unitPrice,
         quantity: qty,
         attributes: {},
         itemTotal: unitPrice * qty,
         variant_id: li?.variant_id,
+        metadata: fetchedMetadata ?? li?.variant?.product?.metadata ?? li?.product?.metadata ?? li?.metadata,
       } as any;
     });
-  }, [cart?.items, pickLineItemImage]);
+  }, [cart?.items, pickLineItemImage, metadataMap]);
 
   React.useEffect(() => {
-    if (items.length === 0) {
-      setInventoryMap({});
+    const src = Array.isArray(cart?.items) ? cart.items : [];
+    if (src.length === 0) {
+      setInventoryMap((prev) => (Object.keys(prev).length === 0 ? prev : {}));
+      setMetadataMap((prev) => (Object.keys(prev).length === 0 ? prev : {}));
       return;
     }
-    const slugs = items.map((it: any) => it.slug).filter(Boolean);
+    const slugs = src.map((it: any) => it.product_handle).filter(Boolean);
     let active = true;
 
     async function fetchInventory() {
@@ -402,7 +412,11 @@ export const CartProvider: React.FC = (props) => {
         });
         const products = Array.isArray(res?.data?.products) ? res.data.products : [];
         const newMap: Record<string, number> = {};
+        const newMetadataMap: Record<string, any> = {};
         for (const p of products) {
+          if (p.handle && p.metadata) {
+            newMetadataMap[p.handle] = p.metadata;
+          }
           if (Array.isArray(p.variants)) {
             for (const v of p.variants) {
               if (v.id) {
@@ -413,6 +427,7 @@ export const CartProvider: React.FC = (props) => {
         }
         if (active) {
           setInventoryMap(newMap);
+          setMetadataMap(newMetadataMap);
         }
       } catch (err) {
         console.error("Error fetching cart items inventory:", err);
@@ -423,7 +438,7 @@ export const CartProvider: React.FC = (props) => {
     return () => {
       active = false;
     };
-  }, [items]);
+  }, [cart?.items]);
 
   const isCartValid = React.useMemo(() => {
     return items.every((item: any) => {

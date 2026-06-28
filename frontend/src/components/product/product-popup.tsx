@@ -15,6 +15,7 @@ import { useTranslation } from "next-i18next";
 import { IoChevronBackOutline, IoChevronForwardOutline } from "react-icons/io5";
 import { useWishlist } from "@utils/use-wishlist";
 import ProductWishIcon from "@components/icons/product-wish-icon";
+import { getLocalizedName } from "@utils/get-localized-name";
 
 export default function ProductPopup() {
   const { t } = useTranslation("common");
@@ -75,7 +76,8 @@ export default function ProductPopup() {
     currencyCode: "AED",
   });
   const variations = getVariations(data.variations);
-  const { slug, image, name, description } = data;
+  const { slug, image, description } = data;
+  const productName = getLocalizedName(data, router.locale);
 
   const variationKeys = Object.keys(variations);
   const hasMeaningfulVariations =
@@ -153,7 +155,7 @@ export default function ProductPopup() {
           >
             <ProductImageZoom
               src={data?.gallery?.[activeImageIndex]?.original || data?.gallery?.[activeImageIndex]?.thumbnail || imageSrc}
-              alt={name}
+              alt={productName}
               className="w-full h-full"
               zoomScale={2.5}
             />
@@ -209,7 +211,7 @@ export default function ProductPopup() {
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={item?.thumbnail || item?.original}
-                    alt={`${name}-thumb-${idx}`}
+                    alt={`${productName}-thumb-${idx}`}
                     className="object-cover w-full h-full"
                     draggable="false"
                   />
@@ -228,19 +230,19 @@ export default function ProductPopup() {
               role="button"
             >
               <h2 className="text-heading text-lg md:text-xl lg:text-2xl font-semibold hover:text-black">
-                {name}
+                {productName}
               </h2>
             </div>
             <div className="flex flex-col gap-y-1 text-sm text-gray-600">
               {!!(data?.item_code || data?.sku) && (
                 <span className="flex items-center gap-x-2">
-                  <span className="font-semibold text-heading">Item code:</span>
+                  <span className="font-semibold text-heading">{t('text-item-code')}</span>
                   <span>{data?.item_code || data?.sku}</span>
                 </span>
               )}
               {!!data?.range && (
                 <span className="flex items-center gap-x-2">
-                  <span className="font-semibold text-heading">Range:</span>
+                  <span className="font-semibold text-heading">{t('text-range')}</span>
                   <span>{data?.range}</span>
                 </span>
               )}
@@ -250,7 +252,7 @@ export default function ProductPopup() {
             </p>
 
             <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-sm font-semibold text-heading">Price</span>
+              <span className="text-sm font-semibold text-heading">{t('text-price')}</span>
               <div className="text-heading font-semibold text-base md:text-xl lg:text-2xl">
                 {price}
               </div>
@@ -276,7 +278,7 @@ export default function ProductPopup() {
             })}
 
           <div className="pt-2 md:pt-4">
-            <span className="block text-sm font-semibold text-heading mb-2">Quantity</span>
+            <span className="block text-sm font-semibold text-heading mb-2">{t('text-quantity')}</span>
             <div className="mb-4 w-fit">
               <Counter
                 quantity={quantity}
@@ -299,7 +301,7 @@ export default function ProductPopup() {
                 loading={addToCartLoader}
                 disabled={isOutOfStock}
               >
-                {isOutOfStock ? "Out of stock" : t("text-add-to-cart")}
+                {isOutOfStock ? t('text-out-of-stock') : t("text-add-to-cart")}
               </Button>
             </div>
           </div>

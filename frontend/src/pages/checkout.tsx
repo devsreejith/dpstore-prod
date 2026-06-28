@@ -7,16 +7,18 @@ import { useState } from "react";
 import Link from "@components/ui/link";
 import { IoArrowBackOutline, IoCheckmarkCircle } from "react-icons/io5";
 import Container from "@components/ui/container";
+import { useTranslation } from "next-i18next";
 
 export default function CheckoutPage() {
+  const { t } = useTranslation('common');
   const [selectedAddress, setSelectedAddress] = useState<any>(null);
   const [activeStep, setActiveStep] = useState<1 | 2 | 3>(2);
 
   const steps = [
-    { num: 1, label: "Cart" },
-    { num: 2, label: "Delivery Address" },
-    { num: 3, label: "Payment" },
-    { num: 4, label: "Order Placed" },
+    { num: 1, label: t('text-step-cart') },
+    { num: 2, label: t('text-step-delivery') },
+    { num: 3, label: t('text-step-payment') },
+    { num: 4, label: t('text-step-order-placed') },
   ];
 
   return (
@@ -31,20 +33,20 @@ export default function CheckoutPage() {
                 onClick={() => setActiveStep(2)} 
                 className="inline-flex items-center text-sm font-semibold text-[#005844] hover:text-[#008755] transition gap-2 mb-4 font-body"
               >
-                <IoArrowBackOutline className="text-base" /> Back
+                <IoArrowBackOutline className="text-base transform rtl:rotate-180" /> {t('text-back')}
               </button>
             ) : (
               <Link 
                 href="/cart" 
                 className="inline-flex items-center text-sm font-semibold text-[#005844] hover:text-[#008755] transition gap-2 mb-4 font-body"
               >
-                <IoArrowBackOutline className="text-base" /> Back
+                <IoArrowBackOutline className="text-base transform rtl:rotate-180" /> {t('text-back')}
               </Link>
             )}
 
             {/* Checkout Title */}
-            <h1 className="text-xl md:text-2xl font-bold text-[#005844] font-body mb-6 text-left">
-              Checkout
+            <h1 className="text-xl md:text-2xl font-bold text-[#005844] font-body mb-6 ltr:text-left rtl:text-right">
+              {t('text-checkout-title')}
             </h1>
 
             {/* Progress Stepper */}

@@ -502,12 +502,12 @@ export const bannerDataContemporary = [
     slug: "gs-others",
     image: {
       mobile: {
-        url: "/assets/images/banner-12.webp",
+        url: "/assets/images/keychain-en.webp",
         width: 690,
         height: 360,
       },
       desktop: {
-        url: "/assets/images/banner-12.webp",
+        url: "/assets/images/keychain-en.webp",
         width: 885,
         height: 430,
       },
@@ -520,12 +520,12 @@ export const bannerDataContemporary = [
     slug: "gs-mug",
     image: {
       mobile: {
-        url: "/assets/images/banner-13.webp",
+        url: "/assets/images/mug-en.webp",
         width: 690,
         height: 360,
       },
       desktop: {
-        url: "/assets/images/banner-13.webp",
+        url: "/assets/images/mug-en.webp",
         width: 885,
         height: 430,
       },

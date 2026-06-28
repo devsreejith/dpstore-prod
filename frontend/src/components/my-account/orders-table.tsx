@@ -238,10 +238,11 @@ const OrdersTable: React.FC = () => {
     if (isGenuinelyCancelled) return 'Cancelled';
 
     const fulfillment = String(o?.fulfillment_status ?? '').toLowerCase();
-    if (fulfillment === 'delivered') return 'Delivered';
+    const orderStatus = String(o?.status ?? '').toLowerCase();
+    if (fulfillment === 'delivered' || orderStatus === 'completed' || orderStatus === 'delivered') return 'Delivered';
     if (fulfillment === 'out_for_delivery') return 'Out for Delivery';
-    if (fulfillment === 'shipped') return 'Shipped';
-    if (fulfillment === 'partial_shipped' || fulfillment === 'fulfilled') {
+    if (fulfillment === 'shipped' || fulfillment === 'partially_shipped') return 'Shipped';
+    if (['fulfilled', 'partially_fulfilled', 'processing', 'packed'].includes(fulfillment)) {
       return 'Processing';
     }
 
@@ -288,8 +289,8 @@ const OrdersTable: React.FC = () => {
   const paginatedOrders = filteredOrders.slice(startIndex, endIndex);
 
   const showingText = filteredOrders.length > 0
-    ? `Showing ${startIndex + 1} to ${endIndex} of ${filteredOrders.length} orders`
-    : `Showing 0 to 0 of 0 orders`;
+    ? t('text-showing-orders', { from: startIndex + 1, to: endIndex, total: filteredOrders.length })
+    : t('text-showing-orders', { from: 0, to: 0, total: 0 });
 
   const handlePrevPage = () => {
     if (currentPage > 1) setCurrentPage(currentPage - 1);
@@ -299,24 +300,30 @@ const OrdersTable: React.FC = () => {
     if (currentPage < totalPages) setCurrentPage(currentPage + 1);
   };
 
-  const tabs = ['All Orders', 'Shipped', 'Delivered', 'Cancelled'];
+  const tabs = [
+    { key: 'All Orders', label: t('text-all-orders') },
+    { key: 'Shipped', label: t('text-shipped') },
+    { key: 'Delivered', label: t('text-delivered') },
+    { key: 'Cancelled', label: t('text-cancelled') },
+  ];
+  const activeTabLabel = tabs.find(tab => tab.key === activeTab)?.label ?? activeTab;
 
   return (
     <div className="w-full">
       <div className="mb-6 font-body">
-        <h2 className="text-xl md:text-2xl font-bold text-[#005844] mb-1 font-body">My Orders</h2>
-        <p className="text-sm text-gray-700">Track, view and manage your orders</p>
+        <h2 className="text-xl md:text-2xl font-bold text-[#005844] mb-1 font-body">{t('text-my-orders-title')}</h2>
+        <p className="text-sm text-gray-700">{t('text-my-orders-desc')}</p>
       </div>
 
       <div className="flex border-b border-gray-200 mb-6 overflow-x-auto no-scrollbar scroll-smooth font-body">
         <div className="flex gap-6 md:gap-8 min-w-max pb-0.5">
           {tabs.map((tab) => {
-            const isActive = activeTab === tab;
+            const isActive = activeTab === tab.key;
             return (
               <button
-                key={tab}
+                key={tab.key}
                 onClick={() => {
-                  setActiveTab(tab);
+                  setActiveTab(tab.key);
                   setCurrentPage(1);
                 }}
                 className={`text-xs md:text-sm font-semibold whitespace-nowrap pb-3 border-b-2 transition duration-200 ${
@@ -325,7 +332,7 @@ const OrdersTable: React.FC = () => {
                     : 'border-transparent text-gray-700 hover:text-black'
                 }`}
               >
-                {tab}
+                {tab.label}
               </button>
             );
           })}
@@ -383,7 +390,7 @@ const OrdersTable: React.FC = () => {
                       {itemThumb ? (
                         <img src={itemThumb} alt="" className="object-contain max-h-full max-w-full" />
                       ) : (
-                        <div className="w-full h-full bg-gray-100 flex items-center justify-center text-[9px] text-gray-400 font-body">No Image</div>
+                        <div className="w-full h-full bg-gray-100 flex items-center justify-center text-[9px] text-gray-400 font-body">{t('text-no-image')}</div>
                       )}
                     </div>
 
@@ -460,9 +467,9 @@ const OrdersTable: React.FC = () => {
           </div>
         ) : (
           <div className="border border-gray-200 rounded-md p-8 bg-gray-50/50 text-center py-12 font-body">
-            <div className="text-base text-heading font-semibold">No orders found</div>
+            <div className="text-base text-heading font-semibold">{t('text-no-orders-found')}</div>
             <p className="mt-1 text-sm text-gray-400 max-w-sm mx-auto">
-              No orders found in the &quot;{activeTab}&quot; category.
+              {t('text-no-orders-in-category', { category: activeTabLabel })}
             </p>
           </div>
         )}

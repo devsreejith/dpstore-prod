@@ -12,6 +12,7 @@ import { LinkProps } from "next/link";
 import { useTranslation } from "next-i18next";
 import cn from "classnames";
 import Image from "next/image";
+import { useRouter } from "next/router";
 
 interface Props {
   item: any;
@@ -28,6 +29,35 @@ const IconCard: React.FC<Props> = ({
 }) => {
   const { name, icon, productCount, image } = item ?? {};
   const { t } = useTranslation("common");
+  const { t: tMenu } = useTranslation("menu");
+  const router = useRouter();
+  
+  const getLocalizedName = () => {
+    if (!item) return "";
+    
+    // 1. Check metadata
+    const meta = item?.metadata ?? {};
+    const currentLocale = router.locale || "en";
+    if (currentLocale === "ar") {
+      const arName = meta.name_ar || meta.nameAr || meta.ar || meta.ar_name || meta.arName;
+      if (arName) return String(arName);
+    } else {
+      const enName = meta.name_en || meta.nameEn || meta.en || meta.en_name || meta.enName;
+      if (enName) return String(enName);
+    }
+
+    // 2. Check JSON dictionary
+    const key = item?.slug ? `menu-${item.slug}` : "";
+    if (key) {
+      const translated = tMenu(key);
+      if (translated && translated !== key && !translated.startsWith("menu-")) {
+        return translated;
+      }
+    }
+
+    // 3. Fallback to name field
+    return name || "";
+  };
   const iconUrl: string | undefined =
     image?.thumbnail || image?.original || icon || undefined;
   const key = String(item?.slug ?? name ?? "").toLowerCase();
@@ -118,7 +148,7 @@ const IconCard: React.FC<Props> = ({
             "mb-1": variant === "modern",
           })}
         >
-          {name}
+          {getLocalizedName()}
         </Text>
 
         {(variant === "modern" || variant === "list") && (

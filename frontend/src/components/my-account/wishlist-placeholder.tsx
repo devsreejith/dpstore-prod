@@ -3,6 +3,9 @@ import { ROUTES } from "@utils/routes";
 import { useWishlist } from "@utils/use-wishlist";
 import { formatVariantPrice, formatPrice } from "@framework/product/use-price";
 import { IoTrashOutline } from "react-icons/io5";
+import { useTranslation } from "next-i18next";
+import { useRouter } from "next/router";
+import { getLocalizedName } from "@utils/get-localized-name";
 
 const normalizeMediaSrc = (src: any) => {
   const v = String(src ?? "").trim();
@@ -26,22 +29,24 @@ const normalizeMediaSrc = (src: any) => {
 
 export default function WishlistPlaceholder() {
   const { wishlist, toggleWishlist } = useWishlist();
+  const { t } = useTranslation("common");
+  const router = useRouter();
 
   return (
     <div>
       {/* Header and navigation block */}
       <div className="flex items-center justify-between gap-4 border-b border-gray-100 pb-5 mb-6">
         <div>
-          <h2 className="text-xl md:text-2xl font-bold text-[#005844] font-body">Wishlist / Favorites</h2>
+          <h2 className="text-xl md:text-2xl font-bold text-[#005844] font-body">{t("text-wishlist-title")}</h2>
           <p className="mt-1 text-sm text-gray-700">
-            Manage your saved products and add them directly to your cart.
+            {t("text-wishlist-desc")}
           </p>
         </div>
         <Link
           href={ROUTES.HOME}
           className="text-sm font-semibold bg-[#005844] text-white px-4 py-2 inline-block rounded hover:bg-[#008755] transition whitespace-nowrap font-body"
         >
-          Browse Products
+          {t("text-browse-products")}
         </Link>
       </div>
 
@@ -49,7 +54,7 @@ export default function WishlistPlaceholder() {
         <div className="w-full">
           <div className="border-b border-gray-200 pb-3 mb-4">
             <h3 className="text-sm md:text-base font-bold text-heading">
-              My Wishlist ({wishlist.length})
+              {t("text-wishlist-favorites")} ({wishlist.length})
             </h3>
           </div>
           <div className="divide-y divide-gray-150 border-b border-gray-150">
@@ -78,6 +83,7 @@ export default function WishlistPlaceholder() {
                 ? formatVariantPrice({ amount, baseAmount, currencyCode, locale })
                 : { price: formatPrice({ amount, currencyCode, locale }), basePrice: null, discount: null };
 
+              const productName = getLocalizedName(product, router.locale);
               const isOutOfStock = typeof product.quantity === "number" && product.quantity <= 0;
 
               return (
@@ -88,13 +94,13 @@ export default function WishlistPlaceholder() {
                       <div className="w-20 h-20 md:w-24 md:h-24 rounded border border-gray-200 overflow-hidden bg-white flex items-center justify-center p-1 shadow-sm">
                         <img
                           src={productThumbnail}
-                          alt={product?.name}
+                          alt={productName}
                           className="object-contain max-h-full max-w-full"
                         />
                       </div>
                       {isOutOfStock && (
                         <span className="text-10px md:text-xs font-semibold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-100 mt-2 uppercase tracking-wide">
-                          Unavailable
+                          {t("text-unavailable")}
                         </span>
                       )}
                     </div>
@@ -105,7 +111,7 @@ export default function WishlistPlaceholder() {
                         href={`${ROUTES.PRODUCT}/${product?.slug}?from=wishlist`}
                         className="text-sm md:text-base font-semibold text-heading hover:text-[#008755] transition line-clamp-2 leading-snug font-body"
                       >
-                        {product?.name}
+                        {productName}
                       </Link>
                       <div className="flex flex-wrap items-baseline gap-2 mt-2 font-mono">
                         <span className="text-base md:text-lg font-bold text-heading font-body">{price}</span>
@@ -139,13 +145,12 @@ export default function WishlistPlaceholder() {
         </div>
       ) : (
         <div className="border border-gray-200 rounded-xl p-6 bg-gray-50/50 text-center py-10">
-          <div className="text-base text-heading font-semibold font-body">No favorites yet</div>
+          <div className="text-base text-heading font-semibold font-body">{t("text-no-favorites")}</div>
           <p className="mt-1.5 text-sm text-gray-600 font-medium max-w-md mx-auto">
-            Add products to your wishlist to quickly find them later and add them to your cart.
+            {t("text-no-favorites-desc")}
           </p>
         </div>
       )}
     </div>
   );
 }
-

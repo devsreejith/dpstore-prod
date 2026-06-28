@@ -12,10 +12,15 @@ function makeTitleToDOMId(title: string) {
 }
 
 export default function PrivacyPage() {
-  const { t } = useTranslation('privacy');
+  const { t } = useTranslation(['privacy', 'common']);
   return (
     <>
-      <PageHeader pageHeader="text-page-privacy-policy" image="/assets/images/contact-header.webp" />
+      <PageHeader
+        pageHeader="text-page-privacy-policy"
+        image="/assets/images/product-header.webp"
+        description={t("common:privacy-page-description")}
+        showBreadcrumbs={true}
+      />
       <div className="px-4 mt-12 border-b border-gray-300 lg:mt-14 xl:mt-16 lg:py-1 xl:py-0 md:px-10 lg:px-7 xl:px-16 2xl:px-24 3xl:px-32 pb-9 md:pb-14 lg:pb-16 2xl:pb-20 3xl:pb-24">
         <Container>
           <div className="flex flex-col md:flex-row">

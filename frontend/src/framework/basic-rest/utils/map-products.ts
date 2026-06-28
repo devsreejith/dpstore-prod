@@ -31,5 +31,6 @@ export function mapMedusaProduct(medusaProduct: any): Product {
 		} : undefined,
 		isNewArrival: medusaProduct.metadata?.isNewArrival === true || medusaProduct.metadata?.isNewArrival === "true" || medusaProduct.isNewArrival === true,
 		isTrending: medusaProduct.metadata?.trending === true || medusaProduct.metadata?.trending === "true" || medusaProduct.trending === true,
+		metadata: medusaProduct.metadata,
 	};
 }

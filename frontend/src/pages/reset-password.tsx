@@ -9,8 +9,10 @@ import { useRouter } from "next/router";
 import { useState } from "react";
 import { serverSideTranslations } from "next-i18next/serverSideTranslations";
 import { GetStaticProps } from "next";
+import { useTranslation } from "next-i18next";
 
 export default function ResetPasswordPage() {
+  const { t } = useTranslation('common');
   const router = useRouter();
   const tokenFromQuery =
     typeof router.query?.token === "string" ? router.query.token : "";
@@ -46,19 +48,19 @@ export default function ResetPasswordPage() {
 
   return (
     <>
-      <PageHeader pageHeader="Reset Password" />
+      <PageHeader pageHeader={t('text-reset-password')} />
       <Container>
         <div className="py-16 lg:py-20 max-w-md mx-auto">
           <form onSubmit={onSubmit} className="space-y-4" noValidate>
             <Input
-              labelKey="Token"
+              labelKey={t('text-token')}
               name="token"
               variant="solid"
               value={token}
               onChange={(e) => setToken(e.target.value)}
             />
             <Input
-              labelKey="New Password"
+              labelKey={t('text-new-password')}
               name="password"
               type="password"
               variant="solid"
@@ -66,9 +68,9 @@ export default function ResetPasswordPage() {
               onChange={(e) => setPassword(e.target.value)}
             />
             {error ? <p className="text-sm text-red-600">{error}</p> : null}
-            {done ? <p className="text-sm text-green-600">Password updated</p> : null}
+            {done ? <p className="text-sm text-green-600">{t('text-password-updated')}</p> : null}
             <Button type="submit" loading={loading} disabled={loading} className="w-full">
-              Update Password
+              {t('text-update-password')}
             </Button>
           </form>
         </div>

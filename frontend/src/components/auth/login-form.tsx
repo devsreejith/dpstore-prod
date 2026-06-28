@@ -118,7 +118,7 @@ const LoginForm: React.FC = () => {
             <div className="relative">
               <div className="flex items-center my-4">
                 <hr className="w-full border-gray-300" />
-                <span className="px-3 text-xs text-gray-400 uppercase font-semibold">or</span>
+                <span className="px-3 text-xs text-gray-400 uppercase font-semibold">{t('common:text-or')}</span>
                 <hr className="w-full border-gray-300" />
               </div>
               <button
@@ -129,7 +129,7 @@ const LoginForm: React.FC = () => {
                 }}
                 className="w-full h-11 md:h-12 bg-white hover:bg-gray-50 text-[#005844] border-2 border-[#005844] hover:border-[#008755] hover:text-[#008755] rounded-md font-bold text-sm transition duration-150 uppercase"
               >
-                Checkout as Guest
+                {t('common:text-checkout-as-guest')}
               </button>
             </div>
           )}

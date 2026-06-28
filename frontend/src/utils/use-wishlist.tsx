@@ -1,10 +1,20 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { useUI } from '@contexts/ui.context';
 import http from '@framework/utils/http';
 
 const WISHLIST_EVENT = 'dtc-wishlist-update';
 
-export const useWishlist = () => {
+interface WishlistContextType {
+  wishlist: any[];
+  isInWishlist: (productId: string | number) => boolean;
+  toggleWishlist: (product: any) => void;
+  updateWishlistQuantity: (productId: string | number, quantity: number) => void;
+  clearWishlist: () => void;
+}
+
+const WishlistContext = createContext<WishlistContextType | undefined>(undefined);
+
+export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [wishlist, setWishlist] = useState<any[]>([]);
   const { isAuthorized } = useUI();
   const wasAuthorizedRef = useRef(isAuthorized);
@@ -116,13 +126,25 @@ export const useWishlist = () => {
     saveWishlist([]);
   };
 
-  return {
-    wishlist,
-    isInWishlist,
-    toggleWishlist,
-    updateWishlistQuantity,
-    clearWishlist,
-  };
+  return (
+    <WishlistContext.Provider
+      value={{
+        wishlist,
+        isInWishlist,
+        toggleWishlist,
+        updateWishlistQuantity,
+        clearWishlist,
+      }}
+    >
+      {children}
+    </WishlistContext.Provider>
+  );
 };
 
-
+export const useWishlist = () => {
+  const context = useContext(WishlistContext);
+  if (context === undefined) {
+    throw new Error('useWishlist must be used within a WishlistProvider');
+  }
+  return context;
+};

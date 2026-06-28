@@ -1,8 +1,12 @@
 import { Item } from "@contexts/cart/cart.utils";
 import { generateCartItemName } from "@utils/generate-cart-item-name";
 import usePrice from "@framework/product/use-price";
+import { useRouter } from "next/router";
+import { getLocalizedName } from "@utils/get-localized-name";
 
 export const CheckoutItem: React.FC<{ item: Item }> = ({ item }) => {
+  const { locale } = useRouter();
+  const itemName = getLocalizedName(item, locale);
   const { price } = usePrice({
     amount: item.itemTotal,
     currencyCode: "AED",
@@ -24,7 +28,7 @@ export const CheckoutItem: React.FC<{ item: Item }> = ({ item }) => {
         />
       </div>
       <h6 className="text-sm ltr:pl-3 rtl:pr-3 font-regular text-heading">
-        {generateCartItemName(item.name, item.attributes)}
+        {generateCartItemName(itemName, item.attributes)}
       </h6>
       <div className="flex ltr:ml-auto rtl:mr-auto text-heading text-sm ltr:pl-2 rtl:pr-2 flex-shrink-0">
         {price}

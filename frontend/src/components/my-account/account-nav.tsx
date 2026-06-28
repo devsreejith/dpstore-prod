@@ -34,7 +34,7 @@ export default function AccountNav({ customerName }: { customerName?: string | n
           <IoPersonOutline className="w-5 h-5 text-[#008755]" />
         </div>
         <div className="flex flex-col">
-          <span className="text-xs text-gray-500 font-body leading-tight">Hello,</span>
+          <span className="text-xs text-gray-500 font-body leading-tight">{t('text-hello')}</span>
           <span className="text-sm font-semibold text-[#008755] font-body leading-tight">
             {customerName || "User"}
           </span>
@@ -50,10 +50,10 @@ export default function AccountNav({ customerName }: { customerName?: string | n
           <div className="flex items-center gap-3">
             <IoBagOutline className="w-5 h-5 text-[#008755]" />
             <span className="text-[13px] font-semibold uppercase tracking-wide text-[#008755] font-body">
-              MY ORDERS
+              {t('text-my-orders')}
             </span>
           </div>
-          <IoChevronForwardOutline className="w-4 h-4 text-gray-400" />
+          <IoChevronForwardOutline className="w-4 h-4 text-gray-400 transform rtl:rotate-180" />
         </Link>
       </div>
 
@@ -62,39 +62,39 @@ export default function AccountNav({ customerName }: { customerName?: string | n
         <div className="flex items-center gap-3 px-5 py-3.5">
           <IoSettingsOutline className="w-5 h-5 text-[#008755]" />
           <span className="text-[13px] font-semibold uppercase tracking-wide text-[#008755] font-body">
-            ACCOUNT SETTINGS
+            {t('text-account-settings')}
           </span>
         </div>
         <div className="flex flex-col">
           <Link
             href={ROUTES.ACCOUNT_DETAILS}
-            className={`relative flex items-center py-2.5 pl-14 pr-5 text-sm transition font-body ${
+            className={`relative flex items-center py-2.5 ltr:pl-14 rtl:pr-14 ltr:pr-5 rtl:pl-5 text-sm transition font-body ${
               isActive(ROUTES.ACCOUNT_DETAILS)
-                ? "text-[#008755] font-medium before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[3px] before:bg-[#008755]"
+                ? "text-[#008755] font-medium before:absolute ltr:before:left-0 rtl:before:right-0 before:top-0 before:bottom-0 before:w-[3px] before:bg-[#008755]"
                 : "text-gray-700 hover:bg-gray-50 font-normal"
             }`}
           >
-            Profile Information
+            {t('text-profile-information')}
           </Link>
           <Link
             href={ROUTES.ADDRESSES}
-            className={`relative flex items-center py-2.5 pl-14 pr-5 text-sm transition font-body ${
+            className={`relative flex items-center py-2.5 ltr:pl-14 rtl:pr-14 ltr:pr-5 rtl:pl-5 text-sm transition font-body ${
               isActive(ROUTES.ADDRESSES)
-                ? "text-[#008755] font-medium before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[3px] before:bg-[#008755]"
+                ? "text-[#008755] font-medium before:absolute ltr:before:left-0 rtl:before:right-0 before:top-0 before:bottom-0 before:w-[3px] before:bg-[#008755]"
                 : "text-gray-700 hover:bg-gray-50 font-normal"
             }`}
           >
-            Manage Addresses
+            {t('text-manage-addresses')}
           </Link>
           <Link
             href={ROUTES.CHANGE_PASSWORD}
-            className={`relative flex items-center py-2.5 pl-14 pr-5 text-sm transition font-body mb-2 ${
+            className={`relative flex items-center py-2.5 ltr:pl-14 rtl:pr-14 ltr:pr-5 rtl:pl-5 text-sm transition font-body mb-2 ${
               isActive(ROUTES.CHANGE_PASSWORD)
-                ? "text-[#008755] font-medium before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[3px] before:bg-[#008755]"
+                ? "text-[#008755] font-medium before:absolute ltr:before:left-0 rtl:before:right-0 before:top-0 before:bottom-0 before:w-[3px] before:bg-[#008755]"
                 : "text-gray-700 hover:bg-gray-50 font-normal"
             }`}
           >
-            Change Password
+            {t('text-change-password')}
           </Link>
         </div>
       </div>
@@ -104,19 +104,19 @@ export default function AccountNav({ customerName }: { customerName?: string | n
         <div className="flex items-center gap-3 px-5 py-3.5">
           <IoHeartOutline className="w-5 h-5 text-[#008755]" />
           <span className="text-[13px] font-semibold uppercase tracking-wide text-[#008755] font-body">
-            MY STUFF
+            {t('text-my-stuff')}
           </span>
         </div>
         <div className="flex flex-col">
           <Link
             href={ROUTES.WISHLIST}
-            className={`relative flex items-center py-2.5 pl-14 pr-5 text-sm transition font-body mb-2 ${
+            className={`relative flex items-center py-2.5 ltr:pl-14 rtl:pr-14 ltr:pr-5 rtl:pl-5 text-sm transition font-body mb-2 ${
               isActive(ROUTES.WISHLIST)
-                ? "text-[#008755] font-medium before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[3px] before:bg-[#008755]"
+                ? "text-[#008755] font-medium before:absolute ltr:before:left-0 rtl:before:right-0 before:top-0 before:bottom-0 before:w-[3px] before:bg-[#008755]"
                 : "text-gray-700 hover:bg-gray-50 font-normal"
             }`}
           >
-            Wishlist / Favorites
+            {t('text-wishlist-favorites')}
           </Link>
         </div>
       </div>
@@ -129,7 +129,7 @@ export default function AccountNav({ customerName }: { customerName?: string | n
           onClick={() => logout()}
         >
           <IoLogOutOutline className="w-5 h-5 text-red-400" />
-          <span>Logout</span>
+          <span>{t('text-logout')}</span>
         </button>
       </div>
     </nav>

@@ -3,14 +3,21 @@ import Layout from "@components/layout/layout";
 import Subscription from "@components/common/subscription";
 import Accordion from "@components/common/accordion";
 import PageHeader from "@components/ui/page-header";
+import { useTranslation } from "next-i18next";
 import { faq } from "@settings/faq.settings";
 import { serverSideTranslations } from "next-i18next/serverSideTranslations";
 import { GetStaticProps } from "next";
 
 export default function FAQ() {
+	const { t } = useTranslation("common");
 	return (
 		<>
-			<PageHeader pageHeader="text-page-faq" image="/assets/images/contact-header.webp" />
+			<PageHeader
+				pageHeader="text-page-faq"
+				image="/assets/images/product-header.webp"
+				description={t("faq-page-description")}
+				showBreadcrumbs={true}
+			/>
 			<Container>
 				<div className="py-16 lg:py-20 px-0 max-w-5xl mx-auto space-y-4">
 					<Accordion items={faq} translatorNS="faq" />

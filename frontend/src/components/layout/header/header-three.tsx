@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import HeaderMenu from "@components/layout/header/header-menu";
 import Logo from "@components/ui/logo";
 import Link from "@components/ui/link";
+import LanguageSwitcher from "@components/ui/language-switcher";
 import { useUI } from "@contexts/ui.context";
 import { ROUTES } from "@utils/routes";
 import { useAddActiveScroll } from "@utils/use-add-active-scroll";
@@ -41,8 +42,33 @@ const { site_header } = siteSettings;
 export default function Header() {
   const { openSidebar, setDrawerView, openModal, setModalView, isAuthorized, openWishlist, openCart } =
     useUI();
-  const { t } = useTranslation(["common", "forms"]);
+  const { t } = useTranslation(["common", "forms", "menu"]);
   const { mutate: logout, isPending: isLoggingOut } = useLogoutMutation();
+
+  const getCategoryLabel = (cat: any) => {
+    if (!cat) return "";
+    
+    // 1. Check if metadata contains localized name for current locale
+    const meta = cat?.metadata ?? {};
+    const currentLocale = router.locale || "en";
+    
+    if (currentLocale === "ar") {
+      const arName = meta.name_ar || meta.nameAr || meta.ar || meta.ar_name || meta.arName;
+      if (arName) return String(arName);
+    } else {
+      const enName = meta.name_en || meta.nameEn || meta.en || meta.en_name || meta.enName;
+      if (enName) return String(enName);
+    }
+
+    // 2. Fallback to locales JSON dictionary lookup
+    const key = cat?.slug ? `menu-${cat.slug}` : "";
+    if (!key) return cat?.name || "";
+    const translated = t(`menu:${key}`);
+    if (!translated || translated === `menu:${key}` || translated === key || translated.startsWith("menu-")) {
+      return cat?.name || "";
+    }
+    return translated;
+  };
   const { data: categoriesData } = useCategoriesQuery({ limit: 100 });
   const siteHeaderRef = useRef<HTMLDivElement>(null);
   useAddActiveScroll(siteHeaderRef);
@@ -145,7 +171,7 @@ export default function Header() {
     const toNavMenuItem = (cat: any): any => ({
       id: cat?.id,
       path: `${ROUTES.CATEGORY}/${cat?.slug}`,
-      label: cat?.name,
+      label: getCategoryLabel(cat),
       ...(Array.isArray(cat?.children) && cat.children.length
         ? { subMenu: cat.children.map(toNavMenuItem) }
         : {}),
@@ -179,11 +205,11 @@ export default function Header() {
         const heading = {
           id: l2?.id,
           path: `${ROUTES.CATEGORY}/${l2?.slug}`,
-          label: l2?.name,
+          label: getCategoryLabel(l2),
           columnItemItems: level3.map((l3) => ({
             id: l3?.id,
             path: `${ROUTES.CATEGORY}/${l3?.slug}`,
-            label: l3?.name,
+            label: getCategoryLabel(l3),
           })),
         };
 
@@ -195,7 +221,7 @@ export default function Header() {
         const leafHeadings = leaves.map((l2) => ({
           id: l2?.id,
           path: `${ROUTES.CATEGORY}/${l2?.slug}`,
-          label: l2?.name,
+          label: getCategoryLabel(l2),
         }));
 
         cols[totalCols - 1].columnItems.push(...leafHeadings);
@@ -216,7 +242,7 @@ export default function Header() {
       return {
         id: rootCat?.id,
         path: `${ROUTES.CATEGORY}/${rootCat?.slug}`,
-        label: rootCat?.name,
+        label: getCategoryLabel(rootCat),
         ...(rootIcon
           ? { icon: <span className="text-lg text-heading">{rootIcon}</span> }
           : iconSrc
@@ -239,7 +265,7 @@ export default function Header() {
       dropdown: categories.map(toDropdownMenuItem),
       nav: categories.map(toNavMenuItem),
     };
-  }, [categoriesData]);
+  }, [categoriesData, router.locale, t]);
 
   const headerMenu = useMemo(() => {
     const items = (categoryMenu as any)?.nav?.map((c: any) => ({
@@ -250,10 +276,10 @@ export default function Header() {
     }));
 
     return [
-      { id: "home", path: ROUTES.HOME, label: "Home" },
+      { id: "home", path: ROUTES.HOME, label: t('text-menu-home') },
       ...items,
     ];
-  }, [categoryMenu]);
+  }, [categoryMenu, t]);
 
   return (
     <header
@@ -338,7 +364,7 @@ export default function Header() {
             </form>
           </div>
           <div className="flex flex-shrink-0 transition-all duration-200 ease-in-out transform ltr:ml-auto rtl:mr-auto ltr:mr-3 rtl:ml-3 ltr:lg:mr-5 rtl:lg:ml-5 ltr:xl:mr-8 rtl:xl:ml-8 ltr:2xl:mr-10 rtl:2xl:ml-10 languageSwitcher lg:hidden">
-            {/* <LanguageSwitcher /> */}
+            <LanguageSwitcher />
           </div>
           <div className="flex items-center justify-end flex-shrink-0">
             <div className="flex items-center transition-all wishlistShopping gap-x-7 lg:gap-x-6 xl:gap-x-8 2xl:gap-x-10 ltr:pl-3 rtl:pr-3">
@@ -372,8 +398,8 @@ export default function Header() {
               className="hidden lg:flex ltr:pl-3.5 rtl:pr-3.5 ltr:xl:pl-5 rtl:xl:pr-5 "
             />
           </div>
-
           <div className="flex items-center flex-shrink-0 ltr:ml-auto rtl:mr-auto gap-x-7">
+            <LanguageSwitcher />
             {isAuthorized ? (
               /* Polished Profile Dropdown Menu for Logged In Customer */
               <div className="relative">
@@ -409,7 +435,7 @@ export default function Header() {
                         className="flex items-center gap-3 px-4 py-2.5 text-sm text-heading hover:bg-[#E8F5E9] hover:text-[#005844] font-normal transition"
                       >
                         <IoPersonOutline className="text-lg text-gray-400" />
-                        <span>Profile</span>
+                        <span>{t('text-profile')}</span>
                       </Link>
                       <Link
                         href={ROUTES.ORDERS}
@@ -425,7 +451,7 @@ export default function Header() {
                         className="flex items-center gap-3 px-4 py-2.5 text-sm text-heading hover:bg-[#E8F5E9] hover:text-[#005844] font-normal transition"
                       >
                         <IoSettingsOutline className="text-lg text-gray-400" />
-                        <span>Settings</span>
+                        <span>{t('text-settings')}</span>
                       </Link>
                       <div className="border-t border-gray-100 my-1.5" />
                       <button
@@ -438,7 +464,7 @@ export default function Header() {
                         className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 font-normal transition w-full text-left"
                       >
                         <IoLogOutOutline className="text-lg text-red-500" />
-                        <span>Logout</span>
+                        <span>{t('text-logout')}</span>
                       </button>
                     </div>
                   </>
@@ -460,7 +486,6 @@ export default function Header() {
                 }}
               />
             )}
-            {/* <LanguageSwitcher /> */}
           </div>
         </div>
       </div>

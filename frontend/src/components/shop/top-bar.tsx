@@ -47,7 +47,6 @@ export default function SearchTopBar() {
     options.category = slug;
   }
   delete options.slug;
-
   const activeCategory = (options.category as string) || null;
 
   const { data } = useProductsQuery({ limit: 10, ...options });
@@ -59,7 +58,37 @@ export default function SearchTopBar() {
     ? findCategoryBySlug(allCategories, activeCategory)
     : null;
 
-  const heading = matchedCategory?.name ?? t('text-our-products');
+  const { t: tMenu } = useTranslation("menu");
+  const getLocalizedCategoryName = (item: any) => {
+    if (!item) return "";
+    
+    // 1. Check metadata
+    const meta = item?.metadata ?? {};
+    const currentLocale = locale || "en";
+    if (currentLocale === "ar") {
+      const arName = meta.name_ar || meta.nameAr || meta.ar || meta.ar_name || meta.arName;
+      if (arName) return String(arName);
+    } else {
+      const enName = meta.name_en || meta.nameEn || meta.en || meta.en_name || meta.enName;
+      if (enName) return String(enName);
+    }
+
+    // 2. Check JSON dictionary
+    const key = item?.slug ? `menu-${item.slug}` : "";
+    if (key) {
+      const translated = tMenu(key);
+      if (translated && translated !== key && !translated.startsWith("menu-")) {
+        return translated;
+      }
+    }
+
+    // 3. Fallback to name field
+    return item.name || "";
+  };
+
+  const heading = matchedCategory
+    ? getLocalizedCategoryName(matchedCategory)
+    : t('text-our-products');
 
   return (
     <div className="flex justify-between items-center mb-7">

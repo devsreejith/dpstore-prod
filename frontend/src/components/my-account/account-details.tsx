@@ -61,7 +61,7 @@ const AccountDetails: React.FC = () => {
       className={`w-full flex flex-col`}
     >
       <h2 className="text-xl md:text-2xl font-bold text-[#005844] mb-6 font-body">
-        Account Details
+        {t('common:text-account-details')}
       </h2>
       <form
         onSubmit={handleSubmit(onSubmit)}
@@ -150,7 +150,7 @@ const AccountDetails: React.FC = () => {
               onClick={() => reset()}
               className="h-11 px-8 bg-black hover:bg-gray-900 text-white font-semibold font-body rounded transition duration-150 mt-3 sm:w-auto"
             >
-              Cancel
+              {t('common:text-cancel')}
             </Button>
           </div>
         </div>

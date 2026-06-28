@@ -43,7 +43,7 @@ export default function OrderTrackingPage() {
       // Redirect to success/info page with parameters
       router.push(`/order?id=${orderId}&email=${encodeURIComponent(email)}`);
     } catch (err: any) {
-      const msg = String(err?.response?.data?.message || err?.message || "Order not found or email does not match.");
+      const msg = String(err?.response?.data?.message || err?.message || t("text-order-not-found"));
       setError(msg);
     } finally {
       setSubmitting(false);
@@ -56,10 +56,10 @@ export default function OrderTrackingPage() {
         <div className="bg-white rounded-xl shadow-md p-6 md:p-8 border border-gray-150 flex flex-col font-body">
           <div className="text-center mb-6">
             <h1 className="text-xl md:text-2xl font-bold text-[#005844] mb-2 font-body">
-              Track Your Order
+              {t("text-track-your-order")}
             </h1>
             <p className="text-xs md:text-sm text-gray-400 font-body">
-              Enter your Order ID and the Email address used during purchase.
+              {t("text-track-order-desc")}
             </p>
           </div>
 
@@ -67,22 +67,22 @@ export default function OrderTrackingPage() {
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
             <Input
-              labelKey="Order ID *"
-              placeholder="e.g. ORD-OL26-0001 or UUID"
-              {...register("orderId", { required: "Order ID is required" })}
+              labelKey="text-order-id-label"
+              placeholder={t("text-order-id-placeholder")}
+              {...register("orderId", { required: t("text-order-id-required") })}
               errorKey={errors.orderId?.message}
               variant="solid"
             />
 
             <Input
-              labelKey="Email Address *"
+              labelKey="forms:label-email-required"
               type="email"
-              placeholder="e.g. you@example.com"
+              placeholder={t("forms:placeholder-email")}
               {...register("email", {
-                required: "Email is required",
+                required: t("forms:email-required"),
                 pattern: {
                   value: /^\S+@\S+$/i,
-                  message: "Please enter a valid email address",
+                  message: t("forms:email-error"),
                 },
               })}
               errorKey={errors.email?.message}
@@ -95,7 +95,7 @@ export default function OrderTrackingPage() {
               loading={submitting}
               disabled={submitting}
             >
-              Track Order
+              {t("text-track-order-btn")}
             </Button>
           </form>
         </div>

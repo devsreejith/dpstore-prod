@@ -2,12 +2,16 @@ import Link from '@components/ui/link';
 import Image from 'next/image';
 import usePrice from '@framework/product/use-price';
 import { ROUTES } from '@utils/routes';
+import { useRouter } from 'next/router';
+import { getLocalizedName } from '@utils/get-localized-name';
 
 type SearchProductProps = {
   item: any;
 };
 
 const SearchProduct: React.FC<SearchProductProps> = ({ item }) => {
+  const { locale } = useRouter();
+  const productName = getLocalizedName(item, locale);
   const { price, basePrice } = usePrice({
     amount: item.sale_price ? item.sale_price : item.price,
     baseAmount: item.price,
@@ -26,12 +30,12 @@ const SearchProduct: React.FC<SearchProductProps> = ({ item }) => {
           width={96}
           height={96}
           loading="eager"
-          alt={item.name || 'Product Image'}
+          alt={productName || 'Product Image'}
           className="object-cover bg-gray-200"
         />
       </div>
       <div className="flex flex-col w-full overflow-hidden">
-        <h3 className="mb-2 text-sm truncate text-heading">{item.name}</h3>
+        <h3 className="mb-2 text-sm truncate text-heading">{productName}</h3>
         <div className="text-sm font-semibold text-heading">
           {price}
           <del className="font-normal text-gray-400 ltr:pr-2 rtl:pl-2">

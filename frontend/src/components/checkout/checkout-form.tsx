@@ -12,6 +12,7 @@ import { ROUTES } from '@utils/routes';
 import { useRouter } from 'next/router';
 import { IoTrashOutline, IoHomeOutline, IoBriefcaseOutline, IoPricetagOutline, IoShieldCheckmarkOutline, IoLocationOutline } from 'react-icons/io5';
 import { formatPrice } from '@framework/product/use-price';
+import { useTranslation } from 'next-i18next';
 
 interface CheckoutInputType {
   firstName: string;
@@ -58,6 +59,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
 }) => {
   const { placeOrder, isEmpty, cartId, items } = useCart();
   const { isAuthorized } = useUI();
+  const { t } = useTranslation('common');
   const queryClient = useQueryClient();
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
@@ -294,7 +296,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
         <div className="space-y-4">
           <div className="flex items-center justify-between pb-2">
             <h2 className="text-sm md:text-base font-bold text-[#008755] uppercase tracking-wider font-body">
-              {!isAuthorized ? "GUEST CHECKOUT DETAILS" : showAddAddress ? "ADD NEW ADDRESS" : "DELIVERY ADDRESS"}
+              {!isAuthorized ? t("text-guest-checkout-details") : showAddAddress ? t("text-add-new-address") : t("text-delivery-address")}
             </h2>
             {isAuthorized && (
               <button
@@ -302,7 +304,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
                 onClick={() => setShowAddAddress(!showAddAddress)}
                 className="text-xs md:text-sm font-bold text-[#008755] hover:underline transition font-body"
               >
-                {showAddAddress ? "← Back to address list" : "+ Add new address"}
+                {showAddAddress ? t("text-back-to-address-list") : t("text-add-new-address-btn")}
               </button>
             )}
           </div>
@@ -310,72 +312,72 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
           {!isAuthorized ? (
             /* Guest Checkout Form */
             <div className="border border-gray-200 rounded-md p-5 bg-white shadow-sm space-y-4">
-              <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider font-body">Contact Info</h3>
+              <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider font-body">{t('text-contact-info')}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input
-                  labelKey="Email Address *"
+                  labelKey={t('text-email-address')}
                   type="email"
                   {...register('email', {
-                    required: 'Email is required',
+                    required: t('error-email-required'),
                     pattern: {
                       value: /^\S+@\S+$/i,
-                      message: 'Please enter a valid email address',
+                      message: t('error-email-invalid'),
                     },
                   })}
                   errorKey={errors.email?.message}
                   variant="solid"
                 />
                 <Input
-                  labelKey="Phone Number *"
+                  labelKey={t('text-phone-number')}
                   inputMode="numeric"
                   {...register('phone', {
-                    required: 'Phone number is required',
-                    pattern: { value: PHONE_ONLY_REGEX, message: 'Please enter a valid phone number (6 to 15 digits)' },
+                    required: t('error-phone-required'),
+                    pattern: { value: PHONE_ONLY_REGEX, message: t('error-phone-invalid') },
                   })}
                   errorKey={errors.phone?.message}
                   variant="solid"
                 />
               </div>
 
-              <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider font-body pt-2">Shipping Address</h3>
+              <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider font-body pt-2">{t('text-shipping-address')}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input
-                  labelKey="First Name *"
-                  {...register('firstName', { required: 'First name is required' })}
+                  labelKey={t('text-first-name')}
+                  {...register('firstName', { required: t('error-first-name-required') })}
                   errorKey={errors.firstName?.message}
                   variant="solid"
                 />
                 <Input
-                  labelKey="Last Name *"
-                  {...register('lastName', { required: 'Last name is required' })}
+                  labelKey={t('text-last-name')}
+                  {...register('lastName', { required: t('error-last-name-required') })}
                   errorKey={errors.lastName?.message}
                   variant="solid"
                 />
                 <Input
-                  labelKey="Address Line 1 *"
-                  {...register('address_1', { required: 'Address is required' })}
+                  labelKey={t('text-address-line-1')}
+                  {...register('address_1', { required: t('error-address-required') })}
                   errorKey={errors.address_1?.message}
                   variant="solid"
                 />
                 <Input
-                  labelKey="Address Line 2 (Optional)"
+                  labelKey={t('text-address-line-2')}
                   {...register('address_2')}
                   errorKey={errors.address_2?.message}
                   variant="solid"
                 />
                 <Input
-                  labelKey="City *"
-                  {...register('city', { required: 'City is required' })}
+                  labelKey={t('text-city')}
+                  {...register('city', { required: t('error-city-required') })}
                   errorKey={errors.city?.message}
                   variant="solid"
                 />
                 <div className="flex flex-col space-y-2">
-                  <label className="text-heading font-semibold text-sm leading-none cursor-pointer">Emirate *</label>
+                  <label className="text-heading font-semibold text-sm leading-none cursor-pointer">{t('text-emirate')}</label>
                   <select
-                    {...register('state', { required: 'Emirate is required' })}
+                    {...register('state', { required: t('error-emirate-required') })}
                     className="form-select py-2 px-4 w-full transition duration-150 ease-in-out border text-input text-13px lg:text-sm font-body rounded-md placeholder-body min-h-12 bg-white border-gray-300 focus:outline-none focus:border-heading h-11 md:h-12"
                   >
-                    <option value="">Select Emirate</option>
+                    <option value="">{t('text-select-emirate')}</option>
                     <option value="Abu Dhabi">Abu Dhabi</option>
                     <option value="Dubai">Dubai</option>
                     <option value="Sharjah">Sharjah</option>
@@ -389,11 +391,11 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
                   )}
                 </div>
                 <Input
-                  labelKey="Postal Code *"
+                  labelKey={t('text-postal-code')}
                   inputMode="numeric"
                   {...register('zipCode', {
-                    required: 'Postal code is required',
-                    pattern: { value: POSTAL_ONLY_REGEX, message: 'Please enter a valid postal code' },
+                    required: t('error-postal-code-required'),
+                    pattern: { value: POSTAL_ONLY_REGEX, message: t('error-postal-code-invalid') },
                   })}
                   errorKey={errors.zipCode?.message}
                   variant="solid"
@@ -434,8 +436,8 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
                 }}
                 className="w-full h-12 bg-[#005844] hover:bg-[#008755] text-white font-bold text-sm rounded-lg transition duration-200 flex items-center justify-center gap-2 font-body mt-3 tracking-wider uppercase"
               >
-                <span>Continue to Payment</span>
-                <span className="text-lg font-normal mb-0.5">→</span>
+                <span>{t('text-continue-to-payment')}</span>
+                <span className="text-lg font-normal mb-0.5 inline-block transform rtl:rotate-180">→</span>
               </button>
             </div>
           ) : showAddAddress ? (
@@ -479,7 +481,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
                     variant="solid"
                   />
                   <Input
-                    labelKey="Address Line 2"
+                    labelKey={t('text-address-line-2')}
                     {...registerNewAddress('address_2')}
                     errorKey={(newAddressErrors as any)?.address_2?.message}
                     variant="solid"
@@ -491,12 +493,12 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
                     variant="solid"
                   />
                   <div className="flex flex-col space-y-2">
-                    <label className="text-heading font-semibold text-sm leading-none cursor-pointer">Emirate *</label>
+                    <label className="text-heading font-semibold text-sm leading-none cursor-pointer">{t('text-emirate')}</label>
                     <select
                       {...registerNewAddress('province', { required: 'forms:state-required' } as any)}
                       className="form-select py-2 px-4 w-full transition duration-150 ease-in-out border text-input text-13px lg:text-sm font-body rounded-md placeholder-body min-h-12 bg-white border-gray-300 focus:outline-none focus:border-heading h-11 md:h-12"
                     >
-                      <option value="">Select Emirate</option>
+                      <option value="">{t('text-select-emirate')}</option>
                       <option value="Abu Dhabi">Abu Dhabi</option>
                       <option value="Dubai">Dubai</option>
                       <option value="Sharjah">Sharjah</option>
@@ -522,15 +524,15 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
                 </div>
 
                 <div className="mt-4 pb-2">
-                  <label className="block text-sm font-bold text-heading font-body mb-1">Address Type</label>
-                  <p className="text-sm text-body mb-3">Choose a label for this address</p>
+                  <label className="block text-sm font-bold text-heading font-body mb-1">{t("text-address-type")}</label>
+                  <p className="text-sm text-body mb-3">{t("text-choose-address-label")}</p>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <label className="cursor-pointer">
                       <input type="radio" value="Home" {...registerNewAddress("address_type")} className="sr-only" />
                       <div className={`flex items-center justify-between px-4 py-3 border rounded-md transition ${selectedAddressType === 'Home' ? 'border-[#008755] bg-[#F4F9F6]' : 'border-gray-200 bg-white'}`}>
                         <div className="flex items-center gap-3">
                           <IoHomeOutline className={`w-5 h-5 ${selectedAddressType === 'Home' ? 'text-[#008755]' : 'text-gray-500'}`} />
-                          <span className="text-sm font-medium text-heading">Home</span>
+                          <span className="text-sm font-medium text-heading">{t("text-home-label")}</span>
                         </div>
                         <div className={`w-4 h-4 rounded-full border transition-all ${selectedAddressType === 'Home' ? 'border-[#008755] border-[4px] bg-white' : 'border-gray-300 bg-white'}`}></div>
                       </div>
@@ -540,7 +542,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
                       <div className={`flex items-center justify-between px-4 py-3 border rounded-md transition ${selectedAddressType === 'Office' ? 'border-[#008755] bg-[#F4F9F6]' : 'border-gray-200 bg-white'}`}>
                         <div className="flex items-center gap-3">
                           <IoBriefcaseOutline className={`w-5 h-5 ${selectedAddressType === 'Office' ? 'text-[#008755]' : 'text-gray-500'}`} />
-                          <span className="text-sm font-medium text-heading">Office</span>
+                          <span className="text-sm font-medium text-heading">{t("text-office-label")}</span>
                         </div>
                         <div className={`w-4 h-4 rounded-full border transition-all ${selectedAddressType === 'Office' ? 'border-[#008755] border-[4px] bg-white' : 'border-gray-300 bg-white'}`}></div>
                       </div>
@@ -550,7 +552,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
                       <div className={`flex items-center justify-between px-4 py-3 border rounded-md transition ${selectedAddressType === 'Other' ? 'border-[#008755] bg-[#F4F9F6]' : 'border-gray-200 bg-white'}`}>
                         <div className="flex items-center gap-3">
                           <IoPricetagOutline className={`w-5 h-5 ${selectedAddressType === 'Other' ? 'text-[#008755]' : 'text-gray-500'}`} />
-                          <span className="text-sm font-medium text-heading">Other</span>
+                          <span className="text-sm font-medium text-heading">{t("text-other-label")}</span>
                         </div>
                         <div className={`w-4 h-4 rounded-full border transition-all ${selectedAddressType === 'Other' ? 'border-[#008755] border-[4px] bg-white' : 'border-gray-300 bg-white'}`}></div>
                       </div>
@@ -565,14 +567,14 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
                     loading={createAddressMutation.isPending}
                     disabled={createAddressMutation.isPending}
                   >
-                    Save
+                    {t('text-save')}
                   </Button>
                   <Button
                     type="button"
                     onClick={() => setShowAddAddress(false)}
                     className="h-11 px-6 bg-[#000000] hover:bg-gray-800 text-white font-semibold font-body rounded transition duration-150 text-xs uppercase"
                   >
-                    Cancel
+                    {t('text-cancel')}
                   </Button>
                 </div>
               </form>
@@ -622,15 +624,15 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
                               ) : (
                                 <IoHomeOutline className="text-xs" />
                               )}
-                              {a?.company || 'Home'}
+                              {a?.company || t('text-home-label')}
                             </span>
                             {a?.is_default_shipping && (
                               <span className="text-[10px] bg-gray-100 text-gray-600 px-2 py-1 rounded font-semibold flex items-center gap-1">
-                                <IoHomeOutline className="text-xs" /> Default
+                                <IoHomeOutline className="text-xs" /> {t('text-default-address')}
                               </span>
                             )}
                           </div>
-                          <h4 className="text-sm font-bold text-heading font-body">{name || 'Address'}</h4>
+                          <h4 className="text-sm font-bold text-heading font-body">{name || t('text-delivery-address')}</h4>
                           <div className="flex items-start gap-1.5 mt-1.5">
                             <IoLocationOutline className="text-sm text-gray-400 mt-0.5 flex-shrink-0" />
                             <span className="text-xs text-black font-medium leading-relaxed">{line || '-'}</span>
@@ -655,7 +657,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
                           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                           </svg>
-                          Edit Address
+                          {t('text-edit-address')}
                         </button>
                         <span className="text-gray-300">|</span>
                         <button
@@ -665,20 +667,20 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
                             e.preventDefault();
                             e.stopPropagation();
                             if (!id) return;
-                            if (typeof window !== 'undefined' && !window.confirm('Delete this address?')) return;
+                            if (typeof window !== 'undefined' && !window.confirm(t('text-delete-address-confirm') || 'Delete this address?')) return;
                             deleteAddressMutation.mutate(id);
                           }}
                           disabled={deleteAddressMutation.isPending}
                         >
                           <IoTrashOutline className="text-sm" />
-                          Delete
+                          {t('text-delete')}
                         </button>
                       </div>
                     </div>
                   );
                 })
               ) : (
-                <div className="text-sm text-body py-4 text-center">No saved addresses yet. Click &quot;+ Add new address&quot; to create one.</div>
+                <div className="text-sm text-body py-4 text-center">{t('text-no-addresses')}</div>
               )}
 
 
@@ -689,8 +691,8 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
                 disabled={!selectedAddressId}
                 className="w-full h-12 bg-[#005844] hover:bg-[#008755] text-white font-bold text-sm rounded-lg transition duration-200 flex items-center justify-center gap-2 font-body mt-3 disabled:opacity-50 tracking-wider uppercase"
               >
-                <span>Continue to Payment</span>
-                <span className="text-lg font-normal mb-0.5">→</span>
+                <span>{t('text-continue-to-payment')}</span>
+                <span className="text-lg font-normal mb-0.5 inline-block transform rtl:rotate-180">→</span>
               </button>
             </div>
           )}
@@ -703,7 +705,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
         <div className="flex flex-col gap-3">
           {/* Heading */}
           <h2 className="text-sm md:text-base font-bold text-[#005844] uppercase tracking-wider font-body mb-2">
-            Select Payment Method
+            {t('text-select-payment-method')}
           </h2>
 
           <form
@@ -756,10 +758,10 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
                   </div>
                   <div>
                     <h3 className="text-xs md:text-sm font-semibold text-heading font-body">
-                      Cash on Delivery
+                      {t('text-cash-on-delivery')}
                     </h3>
                     <p className="text-[11px] md:text-xs text-black font-body mt-0.5">
-                      Pay in cash when you receive your order.
+                      {t('text-cod-desc')}
                     </p>
                   </div>
                 </div>
@@ -804,10 +806,10 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
                   </div>
                   <div>
                     <h3 className="text-xs md:text-sm font-semibold text-heading font-body">
-                      Pay Online
+                      {t('text-pay-online')}
                     </h3>
                     <p className="text-[11px] md:text-xs text-black font-body mt-0.5">
-                      Pay securely using your card or other available methods.
+                      {t('text-pay-online-desc')}
                     </p>
                   </div>
                 </div>
@@ -835,10 +837,10 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
               >
                 <span>
                   {selectedPaymentProvider === 'pp_system_default'
-                    ? 'Place Order'
-                    : 'Pay Now'}
+                    ? t('text-place-order')
+                    : t('text-pay-now')}
                 </span>
-                <svg className="w-5 h-5 ml-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 ml-1 transform rtl:rotate-180" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
                 </svg>
               </Button>

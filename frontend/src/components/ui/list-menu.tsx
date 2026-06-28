@@ -30,7 +30,7 @@ const ListMenu = ({
         {t(label, { defaultValue: label })}
         {data.subMenu && (
           <span className="text-sm mt-0.5 shrink-0 ltr:ml-auto rtl:mr-auto">
-            <IoIosArrowForward className="transition duration-300 ease-in-out text-body group-hover:text-black" />
+            <IoIosArrowForward className="transform transition duration-300 ease-in-out text-body group-hover:text-black rtl:rotate-180" />
           </span>
         )}
       </Link>

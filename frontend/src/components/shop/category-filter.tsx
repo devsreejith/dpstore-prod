@@ -46,6 +46,34 @@ export const CategoryFilter = () => {
       { scroll: false }
     );
   }
+  const { t: tMenu } = useTranslation("menu");
+  const getLocalizedName = (item: any) => {
+    if (!item) return "";
+    
+    // 1. Check metadata
+    const meta = item?.metadata ?? {};
+    const currentLocale = router.locale || "en";
+    if (currentLocale === "ar") {
+      const arName = meta.name_ar || meta.nameAr || meta.ar || meta.ar_name || meta.arName;
+      if (arName) return String(arName);
+    } else {
+      const enName = meta.name_en || meta.nameEn || meta.en || meta.en_name || meta.enName;
+      if (enName) return String(enName);
+    }
+
+    // 2. Check JSON dictionary
+    const key = item?.slug ? `menu-${item.slug}` : "";
+    if (key) {
+      const translated = tMenu(key);
+      if (translated && translated !== key && !translated.startsWith("menu-")) {
+        return translated;
+      }
+    }
+
+    // 3. Fallback to name field
+    return item.name || "";
+  };
+
   const items = data?.categories.data;
   return (
     <div className="block border-b border-gray-300 pb-7 mb-7">
@@ -53,16 +81,19 @@ export const CategoryFilter = () => {
         {t("text-category")}
       </h3>
       <div className="mt-2 flex flex-col space-y-4">
-        {items?.map((item: any) => (
-          <CheckBox
-            key={item.id}
-            label={item.name}
-            name={item.name.toLowerCase()}
-            checked={formState.includes(item.slug)}
-            value={item.slug}
-            onChange={handleItemClick}
-          />
-        ))}
+        {items?.map((item: any) => {
+          const localizedName = getLocalizedName(item);
+          return (
+            <CheckBox
+              key={item.id}
+              label={localizedName}
+              name={localizedName.toLowerCase()}
+              checked={formState.includes(item.slug)}
+              value={item.slug}
+              onChange={handleItemClick}
+            />
+          );
+        })}
       </div>
     </div>
   );

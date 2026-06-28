@@ -9,6 +9,8 @@ import { ROUTES } from '@utils/routes';
 import { generateCartItemName } from '@utils/generate-cart-item-name';
 import { useTranslation } from 'next-i18next';
 import { useUI } from '@contexts/ui.context';
+import { useRouter } from 'next/router';
+import { getLocalizedName } from '@utils/get-localized-name';
 
 type CartItemProps = {
   item: any;
@@ -16,6 +18,8 @@ type CartItemProps = {
 
 const CartItem: React.FC<CartItemProps> = ({ item }) => {
   const { t } = useTranslation('common');
+  const { locale } = useRouter();
+  const itemName = getLocalizedName(item, locale);
   const { closeCart } = useUI();
   const { addItemToCart, removeItemFromCart, clearItemFromCart, inventoryMap } = useCart();
   const stock = inventoryMap[item.variant_id];
@@ -45,12 +49,12 @@ const CartItem: React.FC<CartItemProps> = ({ item }) => {
       exit="from"
       variants={fadeInOut(0.25)}
       className={`group w-full h-auto flex justify-start items-center bg-white py-4 md:py-7 border-b border-gray-100 relative last:border-b-0`}
-      title={item?.name}
+      title={itemName}
     >
       <div className="relative flex flex-shrink-0 w-24 h-24 overflow-hidden bg-gray-200 rounded-md cursor-pointer md:w-28 md:h-28 ltr:mr-4 rtl:ml-4">
         <img
           src={imageSrc}
-          alt={item.name || 'Product Image'}
+          alt={itemName || 'Product Image'}
           className="w-full h-full object-cover bg-gray-300"
         />
         <div
@@ -72,7 +76,7 @@ const CartItem: React.FC<CartItemProps> = ({ item }) => {
           onClick={closeCart}
           className="truncate text-sm text-heading mb-1.5 -mt-1"
         >
-          {generateCartItemName(item.name, item.attributes)}
+          {generateCartItemName(itemName, item.attributes)}
         </Link>
         {/* @ts-ignore */}
         <span className="text-sm text-gray-400 mb-2.5">

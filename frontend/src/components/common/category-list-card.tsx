@@ -38,7 +38,7 @@ const CategoryListCard: React.FC<Props> = ({ category }) => {
                 <div className="text-xs font-medium w-5 h-5 flex flex-shrink-0 justify-center items-center bg-gray-350 rounded ltr:2xl:mr-2 rtl:2xl:ml-2">
                     {productCount}
                 </div>
-                <IoIosArrowForward className="hidden 2xl:block text-sm text-heading" />
+                <IoIosArrowForward className="hidden 2xl:block text-sm text-heading transform rtl:rotate-180" />
             </div>
         </Link>
     );

@@ -9,6 +9,7 @@ import { fadeInTop } from "@utils/motion/fade-in-top";
 import { useMemo, useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { IoPencilOutline, IoTrashOutline, IoEllipsisVertical, IoHomeOutline, IoBriefcaseOutline, IoPricetagOutline } from "react-icons/io5";
+import { useTranslation } from "next-i18next";
 
 type CustomerAddressInput = {
   first_name?: string;
@@ -24,6 +25,7 @@ type CustomerAddressInput = {
 };
 
 export default function CustomerAddresses() {
+  const { t } = useTranslation('common');
   const queryClient = useQueryClient();
   const [addressError, setAddressError] = useState<string | null>(null);
   const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
@@ -215,7 +217,7 @@ export default function CustomerAddresses() {
     >
       {/* Header */}
       <h2 className="text-xl md:text-2xl font-bold text-[#005844] mb-6 font-body">
-        Manage Addresses
+        {t('text-manage-addresses')}
       </h2>
 
       {addressError ? <Alert message={addressError} /> : null}
@@ -244,7 +246,7 @@ export default function CustomerAddresses() {
           className="w-full border border-dashed border-gray-300 rounded py-3.5 px-4 flex items-center gap-2.5 text-[#008755] font-semibold text-sm hover:bg-gray-50 transition cursor-pointer font-body mb-2"
         >
           <span className="text-lg leading-none">+</span>
-          <span className="uppercase tracking-wide">Add a New Address</span>
+          <span className="uppercase tracking-wide">{t('text-add-new-address-title')}</span>
         </button>
       )}
 
@@ -252,7 +254,7 @@ export default function CustomerAddresses() {
       {showForm && (
         <div className="border border-dashed border-gray-300 rounded p-5 mb-2">
           <h3 className="text-sm font-semibold text-[#008755] uppercase tracking-wide mb-4 font-body">
-            {editingAddressId ? "Edit Address" : "Add a New Address"}
+            {editingAddressId ? t('text-edit-address') : t('text-add-new-address-title')}
           </h3>
           <form onSubmit={handleSubmit(onSubmitAddress)} noValidate>
             <div className="flex flex-col space-y-4 sm:space-y-5">
@@ -324,15 +326,15 @@ export default function CustomerAddresses() {
               <input type="hidden" value="ae" {...register("country_code")} />
               
               <div className="mt-4 pb-2">
-                <label className="block text-sm font-bold text-heading font-body mb-1">Address Type</label>
-                <p className="text-sm text-body mb-3">Choose a label for this address</p>
+                <label className="block text-sm font-bold text-heading font-body mb-1">{t('text-address-type')}</label>
+                <p className="text-sm text-body mb-3">{t('text-choose-address-label')}</p>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <label className="cursor-pointer">
                     <input type="radio" value="Home" {...register("address_type")} className="sr-only" />
                     <div className={`flex items-center justify-between px-4 py-3 border rounded-md transition ${selectedAddressType === 'Home' ? 'border-[#008755] bg-[#F4F9F6]' : 'border-gray-200 bg-white'}`}>
                       <div className="flex items-center gap-3">
                         <IoHomeOutline className={`w-5 h-5 ${selectedAddressType === 'Home' ? 'text-[#008755]' : 'text-gray-500'}`} />
-                        <span className="text-sm font-medium text-heading">Home</span>
+                        <span className="text-sm font-medium text-heading">{t('text-home-label')}</span>
                       </div>
                       <div className={`w-4 h-4 rounded-full border transition-all ${selectedAddressType === 'Home' ? 'border-[#008755] border-[4px] bg-white' : 'border-gray-300 bg-white'}`}></div>
                     </div>
@@ -342,7 +344,7 @@ export default function CustomerAddresses() {
                     <div className={`flex items-center justify-between px-4 py-3 border rounded-md transition ${selectedAddressType === 'Office' ? 'border-[#008755] bg-[#F4F9F6]' : 'border-gray-200 bg-white'}`}>
                       <div className="flex items-center gap-3">
                         <IoBriefcaseOutline className={`w-5 h-5 ${selectedAddressType === 'Office' ? 'text-[#008755]' : 'text-gray-500'}`} />
-                        <span className="text-sm font-medium text-heading">Office</span>
+                        <span className="text-sm font-medium text-heading">{t('text-office-label')}</span>
                       </div>
                       <div className={`w-4 h-4 rounded-full border transition-all ${selectedAddressType === 'Office' ? 'border-[#008755] border-[4px] bg-white' : 'border-gray-300 bg-white'}`}></div>
                     </div>
@@ -352,7 +354,7 @@ export default function CustomerAddresses() {
                     <div className={`flex items-center justify-between px-4 py-3 border rounded-md transition ${selectedAddressType === 'Other' ? 'border-[#008755] bg-[#F4F9F6]' : 'border-gray-200 bg-white'}`}>
                       <div className="flex items-center gap-3">
                         <IoPricetagOutline className={`w-5 h-5 ${selectedAddressType === 'Other' ? 'text-[#008755]' : 'text-gray-500'}`} />
-                        <span className="text-sm font-medium text-heading">Other</span>
+                        <span className="text-sm font-medium text-heading">{t('text-other-label')}</span>
                       </div>
                       <div className={`w-4 h-4 rounded-full border transition-all ${selectedAddressType === 'Other' ? 'border-[#008755] border-[4px] bg-white' : 'border-gray-300 bg-white'}`}></div>
                     </div>
@@ -367,14 +369,14 @@ export default function CustomerAddresses() {
                   disabled={createAddressMutation.isPending || updateAddressMutation.isPending}
                   className="h-11 px-8 bg-[#005844] hover:bg-[#008755] text-white font-semibold font-body rounded transition duration-150 sm:w-auto"
                 >
-                  {editingAddressId ? "Update" : "Save"}
+                  {editingAddressId ? t('text-update') : t('text-save')}
                 </Button>
                 <Button
                   type="button"
                   onClick={cancelEdit}
                   className="h-11 px-8 bg-[#000000] hover:bg-gray-800 text-white font-semibold font-body rounded transition duration-150 sm:w-auto"
                 >
-                  Cancel
+                  {t('text-cancel')}
                 </Button>
               </div>
             </div>
@@ -412,7 +414,7 @@ export default function CustomerAddresses() {
                             {name || "Address"}
                           </p>
                           <span className="inline-block text-[10px] font-semibold tracking-wide text-[#008755] border border-[#008755] rounded px-2 py-0.5 uppercase font-body">
-                            {a?.company || "HOME"}
+                            {a?.company || t('text-home-label').toUpperCase()}
                           </span>
                         </div>
 
@@ -442,7 +444,7 @@ export default function CustomerAddresses() {
                               className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition font-body cursor-pointer"
                             >
                               <IoPencilOutline className="w-4 h-4 text-[#008755]" />
-                              <span>Edit</span>
+                              <span>{t('text-edit')}</span>
                             </button>
                             <button
                               type="button"
@@ -456,7 +458,7 @@ export default function CustomerAddresses() {
                               className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition font-body cursor-pointer"
                             >
                               <IoTrashOutline className="w-4 h-4 text-red-500" />
-                              <span>Delete</span>
+                              <span>{t('text-delete')}</span>
                             </button>
                           </div>
                         )}
@@ -466,7 +468,7 @@ export default function CustomerAddresses() {
                 );
               })
             ) : (
-              !showForm && <div className="text-sm text-body py-6">No saved addresses yet.</div>
+              !showForm && <div className="text-sm text-body py-6">{t('text-no-addresses')}</div>
             )}
           </div>
         )}

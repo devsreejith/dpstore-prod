@@ -1,5 +1,6 @@
 import React from "react";
 import { CartProvider } from "./cart/cart.context";
+import { WishlistProvider } from "@utils/use-wishlist";
 import http from "@framework/utils/http";
 import { getToken } from "@framework/utils/get-token";
 import Cookies from "js-cookie";
@@ -371,6 +372,10 @@ export const ManagedUIContext: React.FC = ({ children }) => (
   // @ts-ignore
   <UIProvider>
     {/* @ts-ignore */}
-    <CartProvider>{children}</CartProvider>
+    <CartProvider>
+      <WishlistProvider>
+        {children}
+      </WishlistProvider>
+    </CartProvider>
   </UIProvider>
 );

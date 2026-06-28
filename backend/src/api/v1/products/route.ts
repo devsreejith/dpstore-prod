@@ -54,6 +54,30 @@ async function resolveCategoryDescendantIdsByHandles(query: any, handles: string
   return out
 }
 
+function normalizeText(str: string): string {
+  if (!str) return "";
+  let text = str.toLowerCase().trim();
+  
+  // Remove Arabic diacritics (Fatha, Damma, Kasra, Shadda, Sukun, Tanween)
+  text = text.replace(/[\u064B-\u0652]/g, "");
+  
+  // Normalize Alef (أ, إ, آ -> ا)
+  text = text.replace(/[أإآ]/g, "ا");
+  
+  // Normalize Teh Marbuta (ة -> ه)
+  text = text.replace(/ة/g, "ه");
+  
+  // Normalize Ya/Alef Maksura (ى -> ي)
+  text = text.replace(/ى/g, "ي");
+  
+  // Strip definite article "ال" (Al-) at the beginning of words
+  text = text.replace(/(?:^|\s)ال(\S{3,})/g, (match, word) => {
+    return match.startsWith(" ") ? " " + word : word;
+  });
+  
+  return text;
+}
+
 export async function GET(req: MedusaRequest, res: MedusaResponse) {
   const parsed = ProductListQuerySchema.safeParse(req.query)
   if (!parsed.success) {
@@ -237,62 +261,80 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
 
       for (const term of searchTerms) {
         let termMatched = false;
+
+        const cleanTerm = normalizeText(term);
+        const normalized = [cleanTerm];
+        
+        // English stemming
+        if (cleanTerm.endsWith("s") && cleanTerm.length > 3) {
+          normalized.push(cleanTerm.slice(0, -1)); // e.g. toys -> toy, backpacks -> backpack
+          if (cleanTerm.endsWith("es") && cleanTerm.length > 4) {
+            normalized.push(cleanTerm.slice(0, -2)); // e.g. boxes -> box
+          }
+          if (cleanTerm.endsWith("ies") && cleanTerm.length > 5) {
+            normalized.push(cleanTerm.slice(0, -3) + "y"); // e.g. categories -> category
+          }
+        } else if (cleanTerm.length > 3) {
+          normalized.push(cleanTerm + "s");
+          normalized.push(cleanTerm + "es");
+        }
         
         // 1. SKU Match (highest priority)
         for (const sku of skus) {
-          if (sku === term) {
+          const skuNorm = sku.toLowerCase();
+          if (skuNorm === cleanTerm) {
             score += 150;
             termMatched = true;
-          } else if (sku.startsWith(term)) {
+          } else if (skuNorm.startsWith(cleanTerm)) {
             score += 80;
             termMatched = true;
-          } else if (sku.includes(term)) {
+          } else if (skuNorm.includes(cleanTerm)) {
             score += 40;
             termMatched = true;
           }
         }
 
         // 2. Product Name/Title Match
-        if (titleLower === term) {
+        const titleNorm = normalizeText(titleLower);
+        if (titleNorm === cleanTerm) {
           score += 100;
           termMatched = true;
-        } else if (titleLower.startsWith(term)) {
+        } else if (titleNorm.startsWith(cleanTerm)) {
           score += 50;
           termMatched = true;
-        } else if (titleLower.includes(term)) {
+        } else if (titleNorm.includes(cleanTerm)) {
           score += 20;
           termMatched = true;
         }
 
-        // 3. Category Match
+        // 3. Category Match (with general plural/singular & Arabic normalization boosting)
         for (const cat of categoryNames) {
-          if (cat === term) {
-            score += 60;
-            termMatched = true;
-          } else if (cat.includes(term)) {
-            score += 20;
+          const catNorm = normalizeText(cat);
+          const isCategoryMatch = normalized.some(n => catNorm === n || catNorm.includes(n) || n.includes(catNorm));
+          if (isCategoryMatch) {
+            score += 150; // High score boost for category matches
             termMatched = true;
           }
         }
 
         // 4. Brand Match
         if (brand) {
-          if (brand === term) {
+          const brandNorm = normalizeText(brand);
+          if (brandNorm === cleanTerm) {
             score += 50;
             termMatched = true;
-          } else if (brand.includes(term)) {
+          } else if (brandNorm.includes(cleanTerm)) {
             score += 15;
             termMatched = true;
           }
         }
 
-        // 5. Collection Match
+        // 5. Collection Match (with general plural/singular & Arabic normalization boosting)
         if (collectionTitle) {
-          if (collectionTitle === term) {
-            score += 50;
-            termMatched = true;
-          } else if (collectionTitle.includes(term)) {
-            score += 15;
+          const colNorm = normalizeText(collectionTitle);
+          const isCollectionMatch = normalized.some(n => colNorm === n || colNorm.includes(n) || n.includes(colNorm));
+          if (isCollectionMatch) {
+            score += 150; // High score boost for collection matches
             termMatched = true;
           }
         }

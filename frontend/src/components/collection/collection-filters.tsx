@@ -4,9 +4,12 @@ import { useTranslation } from "next-i18next";
 import { useCollectionsQuery } from "@framework/collection/get-all-collection";
 import ActiveLink from "@components/ui/active-link";
 import { ROUTES } from "@utils/routes";
+import { useRouter } from "next/router";
+import { getLocalizedName } from "@utils/get-localized-name";
 
 export const CollectionFilters: React.FC = () => {
   const { t } = useTranslation("common");
+  const router = useRouter();
   const { data, isLoading } = useCollectionsQuery({
     limit: 15,
   });
@@ -31,7 +34,7 @@ export const CollectionFilters: React.FC = () => {
                 className="block transition duration-300 ease-in-out text-heading hover:font-semibold py-0.5"
                 activeClassName="font-semibold"
               >
-                {item.name}
+                {getLocalizedName(item, router.locale)}
               </ActiveLink>
             </li>
           ))}

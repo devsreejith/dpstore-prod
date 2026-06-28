@@ -51,6 +51,7 @@ export type Category = {
   icon?: string;
   products?: Product[];
   productCount?: number;
+  metadata?: any;
 };
 export type Collection = {
   id: number | string;
@@ -61,6 +62,7 @@ export type Collection = {
   icon?: string;
   products?: Product[];
   productCount?: number;
+  metadata?: any;
 };
 
 export type Tag = {
@@ -89,6 +91,7 @@ export type Product = {
   variations?: object;
   [key: string]: unknown;
   isNewArrival?: boolean;
+  metadata?: any;
 };
 export type OrderItem = {
   id: number | string;

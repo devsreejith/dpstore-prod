@@ -10,6 +10,7 @@ export const fetchCollections = async () => {
 		id: c.id,
 		name: c.title,
 		slug: c.handle,
+		metadata: c.metadata,
 	}));
 
 	return { collections: { data: mappedCollections as Collection[] } };

@@ -7,6 +7,8 @@ import cn from "classnames";
 import { useWishlist } from "@utils/use-wishlist";
 import ProductWishIcon from "@components/icons/product-wish-icon";
 import ProductViewIcon from "@components/icons/product-view-icon";
+import { useRouter } from "next/router";
+import { getLocalizedName } from "@utils/get-localized-name";
 
 interface ProductProps {
   product: Product;
@@ -48,6 +50,8 @@ const ProductOverlayCard: React.FC<ProductProps> = ({
     classes = "col-span-2 lg:col-span-1";
   }
 
+  const { locale } = useRouter();
+  const productName = getLocalizedName(product, locale);
   const { openModal, setModalView, setModalData } = useUI();
   const { toggleWishlist, isInWishlist } = useWishlist();
   const productWishlisted = isInWishlist(product?.id);
@@ -77,7 +81,7 @@ const ProductOverlayCard: React.FC<ProductProps> = ({
             "!p-0": variant === "modern",
           }
         )}
-        title={product?.name}
+        title={productName}
       >
         {/* Floating Icons Stack (bottom-right of image) */}
         <div className="absolute bottom-3.5 ltr:right-3.5 rtl:left-3.5 z-10 flex flex-col gap-y-2 items-center w-[45px]">
@@ -120,7 +124,7 @@ const ProductOverlayCard: React.FC<ProductProps> = ({
           width={size}
           height={size}
           loading={imgLoading}
-          alt={product?.name || "Product Image"}
+          alt={productName || "Product Image"}
           className="transition duration-500 ease-in-out transform group-hover:scale-110 object-contain"
         />
       </div>
@@ -155,11 +159,11 @@ const ProductOverlayCard: React.FC<ProductProps> = ({
 
       <div
         className="flex flex-col w-full px-4 pb-4 md:flex-row lg:flex-col 2xl:flex-row md:justify-between md:items-center lg:items-start 2xl:items-center md:px-5 3xl:px-7 md:pb-5 3xl:pb-7"
-        title={product?.name}
+        title={productName}
       >
         <div className="overflow-hidden ltr:md:pr-2 rtl:md:pl-2 ltr:lg:pr-0 rtl:lg:pl-0 ltr:2xl:pr-2 rtl:2xl:pl-2">
           <h2 className="mb-1 text-sm font-semibold truncate text-heading md:text-base xl:text-lg">
-            {product?.name}
+            {productName}
           </h2>
 
           {variant !== "modern" ? (
