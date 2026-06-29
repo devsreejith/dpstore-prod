@@ -446,8 +446,10 @@ export class NGeniusPaymentService extends AbstractPaymentProvider<any> {
         phoneNumber: cleanPhone(customerPhone) || "N/A",
       };
 
-      // Construct redirectParam using friendly order number
-      const redirectParam = `id=${orderReference}`;
+      // Construct redirectParam using cart ID to allow secure guest order retrieval on storefront return
+      const redirectParam = cartIdOrOrderId && cartIdOrOrderId.startsWith("cart_")
+        ? `cart_id=${cartIdOrOrderId}`
+        : `id=${orderReference}`;
 
       const orderResponse = await this.client.createOrder(
         minorAmount,

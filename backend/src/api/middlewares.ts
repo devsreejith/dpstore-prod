@@ -206,27 +206,57 @@ async function requireCustomerAuth(req: any, res: any, next: any) {
       if (cartMatch) cartId = cartMatch[1]
     } else if (isPaymentCollection) {
       cartId = req.body?.cart_id || null
+      if (!cartId) {
+        const payColMatch = pathName.match(/^\/?store\/payment-collections\/([^/]+)/)
+        const payColId = payColMatch ? payColMatch[1] : null
+        if (payColId && payColId !== "payment-sessions") {
+          try {
+            const pgClient = new pg.Client({ connectionString: process.env.DATABASE_URL })
+            await pgClient.connect()
+            try {
+              const resPayCol = await pgClient.query(
+                "SELECT cart_id FROM cart_payment_collection WHERE payment_collection_id = $1 LIMIT 1",
+                [payColId]
+              )
+              if (resPayCol.rows.length > 0) {
+                cartId = resPayCol.rows[0].cart_id
+              }
+            } finally {
+              await pgClient.end()
+            }
+          } catch (dbErr: any) {
+            console.error("[Guest Checkout Middleware Check Error - Payment Collection Lookup]", dbErr.message)
+          }
+        }
+      }
     }
 
     if (cartId) {
       try {
-        const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
-        const { data: carts } = await query.graph({
-          entity: "cart",
-          fields: ["id", "customer_id"],
-          filters: { id: cartId },
-        })
-        const cart = carts?.[0]
-        if (cart) {
-          // If it's a guest cart (customer_id is null/undefined), allow access
-          if (!cart.customer_id) {
-            return next()
+        const pgClient = new pg.Client({ connectionString: process.env.DATABASE_URL })
+        await pgClient.connect()
+        try {
+          const cartRes = await pgClient.query(
+            `SELECT c.id, c.customer_id, cust.has_account 
+             FROM cart c
+             LEFT JOIN customer cust ON cust.id = c.customer_id
+             WHERE c.id = $1 AND c.deleted_at IS NULL`,
+            [cartId]
+          )
+          if (cartRes.rows.length > 0) {
+            const cart = cartRes.rows[0]
+            // If it's a guest cart (customer_id is null/undefined), or customer has no account, allow access
+            if (!cart.customer_id || cart.has_account === false) {
+              return next()
+            }
+            // If the cart is associated with a customer, require authentication matching that customer
+            if (actorId && actorId === cart.customer_id) {
+              return next()
+            }
+            return res.status(403).json({ message: "You are not authorized to access this cart." })
           }
-          // If the cart is associated with a customer, require authentication matching that customer
-          if (actorId && actorId === cart.customer_id) {
-            return next()
-          }
-          return res.status(403).json({ message: "You are not authorized to access this cart." })
+        } finally {
+          await pgClient.end()
         }
       } catch (err: any) {
         console.error("[Guest Checkout Middleware Check Error]", err.message)
