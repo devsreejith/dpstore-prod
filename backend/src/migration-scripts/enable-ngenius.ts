@@ -1,9 +1,8 @@
 import { Modules } from "@medusajs/framework/utils";
-import { MedusaApp } from "@medusajs/framework";
+import { MedusaContainer } from "@medusajs/framework";
 
-async function run() {
-  console.log("[Setup] Bootstrapping Medusa Application to link N-Genius provider...");
-  const { container } = await MedusaApp.bootstrap();
+export default async function enable_ngenius({ container }: { container: MedusaContainer }) {
+  console.log("[Setup] Linking N-Genius provider to regions...");
   
   const regionService = container.resolve(Modules.REGION);
   const paymentService = container.resolve(Modules.PAYMENT);
@@ -34,10 +33,5 @@ async function run() {
   }
 
   logger.info("[Setup] Regions updated successfully!");
-  process.exit(0);
 }
 
-run().catch((err) => {
-  console.error("[Setup] Failed to update regions:", err);
-  process.exit(1);
-});
