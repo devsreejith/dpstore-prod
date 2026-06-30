@@ -198,7 +198,29 @@ class CommunicationModuleService extends MedusaService({
    */
   loadTemplate(templateName: string, replacements: Record<string, string>): string {
     try {
-      const templatePath = path.join(__dirname, "templates", `${templateName}.html`);
+      // 1. Try local templates folder relative to __dirname (development)
+      let templatePath = path.join(__dirname, "templates", `${templateName}.html`);
+      
+      // 2. If not found, try relative to process.cwd() (production: cwd is usually .medusa/server)
+      if (!fs.existsSync(templatePath)) {
+        const fallbackPath = path.resolve(process.cwd(), "../../src/modules/communication/templates", `${templateName}.html`);
+        if (fs.existsSync(fallbackPath)) {
+          templatePath = fallbackPath;
+        }
+      }
+
+      // 3. Fallback: try relative to project root from compiled directory
+      if (!fs.existsSync(templatePath)) {
+        const fallbackPath = path.resolve(__dirname, "../../../../..", "src/modules/communication/templates", `${templateName}.html`);
+        if (fs.existsSync(fallbackPath)) {
+          templatePath = fallbackPath;
+        }
+      }
+
+      if (!fs.existsSync(templatePath)) {
+        throw new Error(`Template file not found at ${templatePath}`);
+      }
+
       let html = fs.readFileSync(templatePath, "utf8");
 
       for (const [key, value] of Object.entries(replacements)) {
