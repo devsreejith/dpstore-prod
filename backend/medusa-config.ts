@@ -43,6 +43,9 @@ const modules = [
     resolve: "./src/modules/admin-users",
   },
   {
+    resolve: "./src/modules/communication",
+  },
+  {
     resolve: "@medusajs/medusa/file",
     options: {
       providers: [

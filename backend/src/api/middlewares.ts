@@ -490,6 +490,33 @@ async function checkDuplicateCustomerRegistration(req: any, res: any, next: any)
   next();
 }
 
+async function enforceOtpVerification(req: any, res: any, next: any) {
+  const email = String(req.body?.email || "").trim().toLowerCase();
+  if (!email) {
+    res.status(400).json({ message: "Email address is required." });
+    return;
+  }
+
+  try {
+    const communicationService = req.scope.resolve("communication");
+    const verified = await communicationService.isOtpVerified(email);
+
+    if (!verified) {
+      res.status(400).json({
+        message: "Email verification is required. Please verify your email via OTP before registering.",
+        code: "OTP_VERIFICATION_REQUIRED",
+      });
+      return;
+    }
+  } catch (err: any) {
+    console.error("[OTP Middleware Error]", err.message);
+    res.status(500).json({ message: "Failed to verify email OTP. Please try again." });
+    return;
+  }
+
+  next();
+}
+
 export default defineMiddlewares({
   routes: [
     {
@@ -498,7 +525,7 @@ export default defineMiddlewares({
     },
     {
       matcher: "/auth/customer/emailpass/register",
-      middlewares: [preventAdminLoginAsCustomer, checkDuplicateCustomerRegistration],
+      middlewares: [preventAdminLoginAsCustomer, checkDuplicateCustomerRegistration, enforceOtpVerification],
     },
     {
       matcher: "/v1/store/carts/*",
