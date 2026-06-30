@@ -80,16 +80,8 @@ export default async function initial_data_seed({
   const defaultRegionName = "UAE"
   const defaultStockLocationName = "Main Warehouse"
 
-  logger.info("Resetting products (keeping categories)...")
-  const { data: existingProducts } = await query.graph({
-    entity: "product",
-    fields: ["id"],
-    pagination: { skip: 0, take: 2000 },
-  })
-  const productIds = (existingProducts ?? []).map((p: any) => p.id).filter(Boolean)
-  if (productIds.length) {
-    await deleteProductsWorkflow(container).run({ input: { ids: productIds } })
-  }
+  logger.info("Skipping product reset step to preserve existing catalog items and active reservations.")
+
 
   logger.info("Ensuring sales channel...")
   const { data: existingSalesChannels } = await query.graph({
@@ -272,87 +264,6 @@ export default async function initial_data_seed({
     input: { id: stockLocation.id, add: [defaultSalesChannel.id] },
   })
 
-  const { data: shippingProfiles } = await query.graph({
-    entity: "shipping_profile",
-    fields: ["id"],
-    pagination: { skip: 0, take: 1 },
-  })
-  const shippingProfileId = shippingProfiles?.[0]?.id
-
-  logger.info("Creating sample category + sample product...")
-  const uploadUrl = writeSampleProductImage(getUploadDirAbsolute())
-
-  const sampleCategoryHandle = "sample-category"
-  const { data: existingCategory } = await query.graph({
-    entity: "product_category",
-    fields: ["id"],
-    filters: { handle: sampleCategoryHandle },
-    pagination: { skip: 0, take: 1 },
-  })
-
-  let defaultCategoryId = existingCategory?.[0]?.id as string | undefined
-  if (!defaultCategoryId) {
-    const { result: categoryResult } = await createProductCategoriesWorkflow(container).run({
-      input: {
-        product_categories: [
-          {
-            name: "Sample Category",
-            handle: sampleCategoryHandle,
-            description: "Sample category created by seed script.",
-            is_active: true,
-          },
-        ],
-      },
-    })
-    defaultCategoryId = categoryResult?.[0]?.id
-  }
-
-  await createProductsWorkflow(container).run({
-    input: {
-      products: [
-        {
-          title: "Dubai Police Sample Product",
-          handle: "dubai-police-sample-product",
-          description: "This is a single sample product served dynamically from Medusa.",
-          status: ProductStatus.PUBLISHED,
-          thumbnail: uploadUrl,
-          ...(shippingProfileId ? { shipping_profile_id: shippingProfileId } : {}),
-          ...(defaultCategoryId ? { category_ids: [defaultCategoryId] } : {}),
-          images: [{ url: uploadUrl }],
-          options: [{ title: "Default", values: ["Default"] }],
-          variants: [
-            {
-              title: "Default",
-              sku: "DP-SAMPLE-001",
-              options: { Default: "Default" },
-              prices: [{ amount: 100, currency_code: currencyCode }],
-            },
-          ],
-          sales_channels: [{ id: defaultSalesChannel.id }],
-          metadata: {
-            featured: true,
-            isNewArrival: true,
-          },
-        },
-      ],
-    },
-  })
-
-  logger.info("Seeding inventory levels...")
-  const { data: inventoryItems } = await query.graph({
-    entity: "inventory_item",
-    fields: ["id"],
-  })
-
-  await createInventoryLevelsWorkflow(container).run({
-    input: {
-      inventory_levels: (inventoryItems ?? []).map((item: any) => ({
-        location_id: stockLocation.id,
-        stocked_quantity: 1000000,
-        inventory_item_id: item.id,
-      })),
-    },
-  })
-
+  logger.info("Skipping product catalog and inventory level seeding (preserving existing database products).")
   logger.info("Initial data seed completed.")
 }
