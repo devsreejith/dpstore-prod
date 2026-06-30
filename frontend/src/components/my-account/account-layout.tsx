@@ -49,7 +49,9 @@ const AccountLayout: React.FunctionComponent<{
 				<Container>
 					<div className="py-6 lg:py-8 px-0 w-full">
 						<div className="flex flex-col md:flex-row md:items-start w-full gap-4">
-							<AccountNav customerName={customerName} />
+							<div className="hidden md:block">
+								<AccountNav customerName={customerName} />
+							</div>
 							<div className="w-full md:flex-1 min-w-0">
 								<div className="bg-white shadow-sm p-5 md:p-6 md:min-h-[450px] overflow-hidden">
 									{children}

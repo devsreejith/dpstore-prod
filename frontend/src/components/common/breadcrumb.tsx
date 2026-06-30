@@ -57,11 +57,19 @@ export const BreadcrumbItems = (props: any) => {
   );
 };
 
-const Breadcrumb: React.FC<{ separator?: string }> = ({ separator = "/" }) => {
+interface BreadcrumbProps {
+  separator?: string;
+  title?: string;
+}
+
+const Breadcrumb: React.FC<BreadcrumbProps> = ({ separator = "/", title }) => {
   const breadcrumbs = useBreadcrumb();
   const { t } = useTranslation(["common", "menu"]);
 
-  const getBreadcrumbLabel = (breadcrumbPart: string) => {
+  const getBreadcrumbLabel = (breadcrumbPart: string, isLast: boolean) => {
+    if (isLast && title) {
+      return title;
+    }
     const cleanPart = breadcrumbPart.toLowerCase().trim();
     
     // 1. Try static breadcrumb keys in common.json
@@ -88,14 +96,14 @@ const Breadcrumb: React.FC<{ separator?: string }> = ({ separator = "/" }) => {
         {t("breadcrumb-home")}
       </ActiveLink>
 
-      {breadcrumbs?.map((breadcrumb: any) => (
+      {breadcrumbs?.map((breadcrumb: any, index: number) => (
         <ActiveLink
           href={breadcrumb.href}
           activeClassName="font-semibold text-heading"
           className="capitalize"
           key={breadcrumb.href}
         >
-          {getBreadcrumbLabel(breadcrumb.breadcrumb)}
+          {getBreadcrumbLabel(breadcrumb.breadcrumb, index === breadcrumbs.length - 1)}
         </ActiveLink>
       ))}
     </BreadcrumbItems>

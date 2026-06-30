@@ -40,7 +40,8 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
     "shipping_methods.name", "shipping_methods.price",
     "items.id", "items.title", "items.quantity", "items.unit_price", "items.total", "items.subtotal", "items.thumbnail", "items.variant.id", "items.variant.sku", "items.variant.product.thumbnail", "items.variant.product.images.url",
     "payment_collections.id", "payment_collections.captured_amount", "payment_collections.amount", "payment_collections.authorized_amount", "payment_collections.payment_sessions.id", "payment_collections.payment_sessions.provider_id", "payment_collections.payment_sessions.status", "payment_collections.payment_sessions.data",
-    "payment_collections.payments.id", "payment_collections.payments.provider_id", "payment_collections.payments.data", "customer_id"
+    "payment_collections.payments.id", "payment_collections.payments.provider_id", "payment_collections.payments.data", "customer_id",
+    "fulfillments.id", "fulfillments.packed_at", "fulfillments.shipped_at", "fulfillments.delivered_at", "fulfillments.canceled_at"
   ];
 
   if (!fields.includes("customer_id")) {
@@ -192,6 +193,41 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
       res.status(404).json({ message: "Order not found" });
       return;
     }
+
+    // Compute fulfillment_status dynamically based on loaded fulfillments
+    const fulfillments = Array.isArray((order as any).fulfillments) ? (order as any).fulfillments : [];
+    const activeFulfillments = fulfillments.filter((f: any) => f && !f.canceled_at);
+    let computedFulfillmentStatus = "not_fulfilled";
+    if (activeFulfillments.length > 0) {
+      const allDelivered = activeFulfillments.every((f: any) => f.delivered_at);
+      const anyShipped = activeFulfillments.some((f: any) => f.shipped_at);
+      if (allDelivered) {
+        computedFulfillmentStatus = "delivered";
+      } else if (anyShipped) {
+        computedFulfillmentStatus = "shipped";
+      } else {
+        computedFulfillmentStatus = "fulfilled";
+      }
+    }
+    (order as any).fulfillment_status = computedFulfillmentStatus;
+
+    // Compute payment_status dynamically based on loaded payment collections
+    const collections = Array.isArray((order as any).payment_collections) ? (order as any).payment_collections : [];
+    let computedPaymentStatus = "not_paid";
+    if (collections.length > 0) {
+      const collection = collections[0];
+      const capturedAmount = Number(collection.captured_amount ?? 0);
+      const authorizedAmount = Number(collection.authorized_amount ?? 0);
+      const totalAmount = Number(collection.amount ?? (order as any).total ?? 0);
+      if (capturedAmount >= totalAmount && totalAmount > 0) {
+        computedPaymentStatus = "captured";
+      } else if (authorizedAmount >= totalAmount && totalAmount > 0) {
+        computedPaymentStatus = "authorized";
+      } else if (capturedAmount > 0) {
+        computedPaymentStatus = "partially_captured";
+      }
+    }
+    (order as any).payment_status = computedPaymentStatus;
  
     if (!isSecureId) {
       const orderEmail = String(order.email ?? "").trim().toLowerCase();

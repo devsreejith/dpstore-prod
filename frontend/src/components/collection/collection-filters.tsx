@@ -34,7 +34,7 @@ export const CollectionFilters: React.FC = () => {
                 className="block transition duration-300 ease-in-out text-heading hover:font-semibold py-0.5"
                 activeClassName="font-semibold"
               >
-                {getLocalizedName(item, router.locale)}
+                {t(getLocalizedName(item, router.locale))}
               </ActiveLink>
             </li>
           ))}
