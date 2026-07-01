@@ -126,12 +126,12 @@ export default function Home() {
           data={collection}
           sectionHeading="text-trending-collection"
         />
-        
-        <TestimonialCarousel
+
+        {/* <TestimonialCarousel
           sectionHeading="text-testimonial"
           type="list"
           className="relative mb-12 md:mb-14 xl:mb-16"
-        />
+        /> */}
         <Subscription className="bg-opacity-0 px-5 sm:px-16 xl:px-0 mb-12 md:mb-14 xl:mb-16 lg:mt-16 mt-12 !py-0 !md:py-0 !lg:py-0" />
       </Container>
     </>
@@ -154,7 +154,7 @@ export const getStaticProps: GetStaticProps = async ({ locale }) => {
     queryKey: [API_ENDPOINTS.NEW_ARRIVAL_PRODUCTS, { limit: 10 }],
     queryFn: fetchNewArrivalProducts
   });
-  
+
 
   return {
     props: {
