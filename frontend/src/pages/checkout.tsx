@@ -8,9 +8,11 @@ import Link from "@components/ui/link";
 import { IoArrowBackOutline, IoCheckmarkCircle } from "react-icons/io5";
 import Container from "@components/ui/container";
 import { useTranslation } from "next-i18next";
+import { useUI } from "@contexts/ui.context";
 
 export default function CheckoutPage() {
   const { t } = useTranslation('common');
+  const { isAuthorized } = useUI();
   const [selectedAddress, setSelectedAddress] = useState<any>(null);
   const [activeStep, setActiveStep] = useState<1 | 2 | 3>(2);
 
@@ -46,7 +48,7 @@ export default function CheckoutPage() {
 
             {/* Checkout Title */}
             <h1 className="text-xl md:text-2xl font-bold text-[#005844] font-body mb-6 ltr:text-left rtl:text-right">
-              {t('text-checkout-title')}
+              {!isAuthorized ? t("text-guest-checkout-details") : t('text-checkout-title')}
             </h1>
 
             {/* Progress Stepper */}

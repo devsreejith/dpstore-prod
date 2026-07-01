@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState } from "react";
-import { IoLocation, IoNavigate, IoSearch } from "react-icons/io5";
+import React, { useEffect, useRef, useState, useCallback } from "react";
+import { IoLocation, IoNavigate, IoSearch, IoClose } from "react-icons/io5";
 import { useTranslation } from "next-i18next";
 import cn from "classnames";
 
@@ -11,6 +11,8 @@ export interface MapLocation {
   province?: string;
   postalCode?: string;
   countryCode?: string;
+  address_1?: string;
+  building?: string;
 }
 
 interface GoogleMapPickerProps {
@@ -41,8 +43,27 @@ const loadGoogleMapsScript = (apiKey: string): Promise<void> => {
   return googleMapsPromise;
 };
 
+// Helper to normalize UAE emirate names to match form selector options
+const normalizeEmirate = (province: string): string => {
+  if (!province) return "";
+  const p = province.toLowerCase();
+  if (p.includes("dubai") || p.includes("dubayy")) return "Dubai";
+  if (p.includes("abu dhabi") || p.includes("abu zaby")) return "Abu Dhabi";
+  if (p.includes("sharjah") || p.includes("shariqah")) return "Sharjah";
+  if (p.includes("ajman")) return "Ajman";
+  if (p.includes("fujairah") || p.includes("fujayrah")) return "Fujairah";
+  if (p.includes("ras al khaimah") || p.includes("khaymah")) return "Ras Al Khaimah";
+  if (p.includes("umm al quwain") || p.includes("qaywayn")) return "Umm Al Quwain";
+  return province;
+};
+
 // Helper to extract address components from Geocoding response
-const extractAddressComponents = (components: any[]) => {
+const extractAddressComponents = (components: any[], formattedAddress: string) => {
+  let streetNumber = "";
+  let route = "";
+  let neighborhood = "";
+  let premise = "";
+  let subpremise = "";
   let city = "";
   let province = "";
   let postalCode = "";
@@ -50,10 +71,20 @@ const extractAddressComponents = (components: any[]) => {
 
   for (const component of components) {
     const types = component.types;
-    if (types.includes("locality")) {
+    if (types.includes("street_number")) {
+      streetNumber = component.long_name;
+    } else if (types.includes("route")) {
+      route = component.long_name;
+    } else if (types.includes("neighborhood") || types.includes("sublocality_level_1")) {
+      neighborhood = component.long_name;
+    } else if (types.includes("premise")) {
+      premise = component.long_name;
+    } else if (types.includes("subpremise")) {
+      subpremise = component.long_name;
+    } else if (types.includes("locality")) {
       city = component.long_name;
     } else if (types.includes("administrative_area_level_1")) {
-      province = component.long_name; // e.g. "Dubai"
+      province = normalizeEmirate(component.long_name); // e.g. "Dubai"
     } else if (types.includes("postal_code")) {
       postalCode = component.long_name;
     } else if (types.includes("country")) {
@@ -64,7 +95,57 @@ const extractAddressComponents = (components: any[]) => {
   // Fallbacks for UAE regions
   if (!city && province) city = province;
 
-  return { city, province, postalCode, countryCode };
+  // 1. Build the building name/number
+  let building = [premise, subpremise].filter(Boolean).join(", ");
+  if (!building && streetNumber) {
+    building = streetNumber;
+  }
+
+  // 2. Build the Address line (address_1)
+  let temp = formattedAddress;
+
+  // Strip plus code prefix (e.g. "673C+W8M Alsaillkabeer Saudi Arabia - ")
+  temp = temp.replace(/^[A-Z0-9]{4,8}\+[A-Z0-9]{2,}[^,\-]*[,\-]\s*/i, "");
+
+  let countryName = "";
+  for (const component of components) {
+    if (component.types.includes("country")) {
+      countryName = component.long_name;
+      break;
+    }
+  }
+
+  const escapeRegExp = (str: string) => {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  };
+
+  const stripTrailing = (str: string, term: string) => {
+    if (!term) return str;
+    const regex = new RegExp(`[,\\-\\s]+${escapeRegExp(term)}\\s*$`, 'i');
+    return str.replace(regex, '');
+  };
+
+  temp = stripTrailing(temp, countryName);
+  temp = stripTrailing(temp, province);
+  if (city && city !== province) {
+    temp = stripTrailing(temp, city);
+  }
+  if (postalCode) {
+    temp = stripTrailing(temp, postalCode);
+  }
+
+  // Clean remaining trailing spaces/dashes/commas
+  let address_1 = temp.replace(/[,\\-\s]+$/, '').trim();
+
+  // Fallback if address_1 becomes empty
+  if (!address_1) {
+    let addressParts: string[] = [];
+    if (route) addressParts.push(route);
+    if (neighborhood) addressParts.push(neighborhood);
+    address_1 = addressParts.join(", ");
+  }
+
+  return { city, province, postalCode, countryCode, address_1, building };
 };
 
 export const GoogleMapPicker: React.FC<GoogleMapPickerProps> = ({
@@ -77,6 +158,9 @@ export const GoogleMapPicker: React.FC<GoogleMapPickerProps> = ({
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const geocoderRef = useRef<any>(null);
+  const lastGeocodedCoordsRef = useRef<{ lat: number; lng: number } | null>(null);
+  const justZoomedRef = useRef(false);
 
   const [map, setMap] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -84,6 +168,53 @@ export const GoogleMapPicker: React.FC<GoogleMapPickerProps> = ({
   const [formattedAddress, setFormattedAddress] = useState("");
   const [currentLocation, setCurrentLocation] = useState<MapLocation | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showClearButton, setShowClearButton] = useState(false);
+
+  const handleClearSearch = () => {
+    if (searchInputRef.current) {
+      searchInputRef.current.value = "";
+      searchInputRef.current.focus();
+      setShowClearButton(false);
+    }
+  };
+
+  const reverseGeocode = useCallback((lat: number, lng: number) => {
+    if (!geocoderRef.current && (window as any).google?.maps) {
+      geocoderRef.current = new (window as any).google.maps.Geocoder();
+    }
+    if (!geocoderRef.current) return;
+
+
+    setGeocoding(true);
+    geocoderRef.current.geocode({ location: { lat, lng } }, (results: any, status: string) => {
+      setGeocoding(false);
+      if (status === "OK" && results && results[0]) {
+        const result = results[0];
+        setFormattedAddress(result.formatted_address);
+
+        // Cache coordinates to prevent redundant geocoding on idle/zooms
+        lastGeocodedCoordsRef.current = { lat, lng };
+
+        const extracted = extractAddressComponents(result.address_components, result.formatted_address);
+        setCurrentLocation({
+          lat,
+          lng,
+          formattedAddress: result.formatted_address,
+          ...extracted,
+        });
+      } else {
+        setFormattedAddress("Location coordinates (" + lat.toFixed(5) + ", " + lng.toFixed(5) + ")");
+        setCurrentLocation({
+          lat,
+          lng,
+          formattedAddress: `Coordinates: ${lat}, ${lng}`,
+          city: "Dubai",
+          province: "Dubai",
+          countryCode: "ae",
+        });
+      }
+    });
+  }, []);
 
   // Load script on mount
   useEffect(() => {
@@ -121,7 +252,7 @@ export const GoogleMapPicker: React.FC<GoogleMapPickerProps> = ({
     setMap(mapInstance);
   }, [loading, error]);
 
-  // Bind places autocomplete and map idle events
+  // Bind places autocomplete and map events
   useEffect(() => {
     if (!map) return;
 
@@ -140,47 +271,77 @@ export const GoogleMapPicker: React.FC<GoogleMapPickerProps> = ({
         if (place?.geometry?.location) {
           map.panTo(place.geometry.location);
           map.setZoom(16);
+
+          const lat = place.geometry.location.lat();
+          const lng = place.geometry.location.lng();
+          const addr = place.formatted_address || searchInputRef.current?.value || "";
+          setFormattedAddress(addr);
+
+          // Show clear button when search result is populated
+          setShowClearButton(true);
+
+          // Update lastGeocodedCoordsRef to prevent idle geocoder from overwriting search result
+          lastGeocodedCoordsRef.current = { lat, lng };
+
+          if (place.address_components) {
+            const extracted = extractAddressComponents(place.address_components, addr);
+            setCurrentLocation({
+              lat,
+              lng,
+              formattedAddress: addr,
+              ...extracted,
+            });
+          }
         }
       });
     }
 
-    // Geocoder instance
-    const geocoder = new (window as any).google.maps.Geocoder();
-
-    const reverseGeocode = (lat: number, lng: number) => {
-      setGeocoding(true);
-      geocoder.geocode({ location: { lat, lng } }, (results: any, status: string) => {
-        setGeocoding(false);
-        if (status === "OK" && results && results[0]) {
-          const result = results[0];
-          setFormattedAddress(result.formatted_address);
-
-          const extracted = extractAddressComponents(result.address_components);
-          setCurrentLocation({
-            lat,
-            lng,
-            formattedAddress: result.formatted_address,
-            ...extracted,
-          });
-        } else {
-          setFormattedAddress("Location coordinates (" + lat.toFixed(5) + ", " + lng.toFixed(5) + ")");
-          setCurrentLocation({
-            lat,
-            lng,
-            formattedAddress: `Coordinates: ${lat}, ${lng}`,
-            city: "Dubai",
-            province: "Dubai",
-            countryCode: "ae",
-          });
-        }
-      });
+    // Monitor input events to toggle search clear button
+    const searchInput = searchInputRef.current;
+    const handleInputChange = () => {
+      if (searchInput) {
+        setShowClearButton(searchInput.value.length > 0);
+      }
     };
+    if (searchInput) {
+      searchInput.addEventListener("input", handleInputChange);
+    }
 
-    // Listen to map idle to geocode the center
+    // Listen to zoom changes to skip next geocoding
+    const zoomListener = map.addListener("zoom_changed", () => {
+      justZoomedRef.current = true;
+    });
+
+    // Listen to map idle to update address as user pans/drags the map
     const idleListener = map.addListener("idle", () => {
+      if (justZoomedRef.current) {
+        justZoomedRef.current = false;
+        return;
+      }
       const center = map.getCenter();
       if (center) {
-        reverseGeocode(center.lat(), center.lng());
+        const newLat = center.lat();
+        const newLng = center.lng();
+
+        // Keep a secondary fallback check: if the center hasn't moved significantly,
+        // we also skip reverse geocoding to preserve search selection details.
+        if (
+          lastGeocodedCoordsRef.current &&
+          Math.abs(lastGeocodedCoordsRef.current.lat - newLat) < 0.0001 &&
+          Math.abs(lastGeocodedCoordsRef.current.lng - newLng) < 0.0001
+        ) {
+          return;
+        }
+
+        reverseGeocode(newLat, newLng);
+      }
+    });
+
+    // Listen to map clicks to center and geocode the clicked point
+    const clickListener = map.addListener("click", (e: any) => {
+      if (e.latLng) {
+        map.panTo(e.latLng);
+        reverseGeocode(e.latLng.lat(), e.latLng.lng());
       }
     });
 
@@ -191,11 +352,20 @@ export const GoogleMapPicker: React.FC<GoogleMapPickerProps> = ({
     }
 
     return () => {
+      if (searchInput) {
+        searchInput.removeEventListener("input", handleInputChange);
+      }
+      if (zoomListener) {
+        (window as any).google.maps.event.removeListener(zoomListener);
+      }
       if (idleListener) {
         (window as any).google.maps.event.removeListener(idleListener);
       }
+      if (clickListener) {
+        (window as any).google.maps.event.removeListener(clickListener);
+      }
     };
-  }, [map]);
+  }, [map, reverseGeocode]);
 
   const handleGetCurrentLocation = () => {
     if (!map) return;
@@ -210,6 +380,7 @@ export const GoogleMapPicker: React.FC<GoogleMapPickerProps> = ({
           };
           map.panTo(userLocation);
           map.setZoom(16);
+          reverseGeocode(userLocation.lat, userLocation.lng);
         },
         () => {
           setGeocoding(false);
@@ -258,9 +429,24 @@ export const GoogleMapPicker: React.FC<GoogleMapPickerProps> = ({
           ref={searchInputRef}
           type="text"
           placeholder="Search for your building, street, or area..."
-          className="w-full pl-10 pr-4 py-2.5 text-xs lg:text-sm border border-gray-300 rounded-md focus:outline-none focus:border-heading h-11 md:h-12 bg-white"
+          className="w-full pl-10 pr-10 py-2.5 text-xs lg:text-sm border border-gray-300 rounded-md focus:outline-none focus:border-heading h-11 md:h-12 bg-white"
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+            }
+          }}
         />
         <IoSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+        {showClearButton && (
+          <button
+            type="button"
+            onClick={handleClearSearch}
+            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none p-1 transition cursor-pointer"
+            title="Clear search"
+          >
+            <IoClose className="w-5 h-5" />
+          </button>
+        )}
       </div>
 
       {/* Map view area */}
@@ -278,7 +464,7 @@ export const GoogleMapPicker: React.FC<GoogleMapPickerProps> = ({
         <button
           type="button"
           onClick={handleGetCurrentLocation}
-          className="absolute bottom-4 right-4 bg-white shadow-md rounded-full p-2.5 z-10 flex items-center justify-center hover:bg-gray-50 border border-gray-250 cursor-pointer transition active:scale-95"
+          className="absolute top-4 right-4 bg-white shadow-md rounded-full p-2.5 z-10 flex items-center justify-center hover:bg-gray-50 border border-gray-250 cursor-pointer transition active:scale-95"
           title="Use Current Location"
         >
           <IoNavigate className="text-[#008755] w-5 h-5 rotate-45" />
@@ -306,15 +492,6 @@ export const GoogleMapPicker: React.FC<GoogleMapPickerProps> = ({
 
       {/* Action Buttons */}
       <div className="flex gap-3">
-        {onCancel && (
-          <button
-            type="button"
-            onClick={onCancel}
-            className="flex-1 py-3 px-4 border border-gray-300 text-heading font-semibold rounded-md hover:bg-gray-50 transition cursor-pointer text-center text-xs sm:text-sm"
-          >
-            Cancel
-          </button>
-        )}
         <button
           type="button"
           disabled={!currentLocation || geocoding}
@@ -328,6 +505,15 @@ export const GoogleMapPicker: React.FC<GoogleMapPickerProps> = ({
         >
           Confirm Address
         </button>
+        {onCancel && (
+          <button
+            type="button"
+            onClick={onCancel}
+            className="flex-1 py-3 px-4 border border-gray-300 text-heading font-semibold rounded-md hover:bg-gray-50 transition cursor-pointer text-center text-xs sm:text-sm"
+          >
+            Cancel
+          </button>
+        )}
       </div>
     </div>
   );

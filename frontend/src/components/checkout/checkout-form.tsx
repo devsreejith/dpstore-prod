@@ -12,7 +12,7 @@ import { PhoneInput } from '@components/ui/phone-input';
 import { isValidPhoneNumber } from 'libphonenumber-js';
 import { ROUTES } from '@utils/routes';
 import { useRouter } from 'next/router';
-import { IoTrashOutline, IoHomeOutline, IoBriefcaseOutline, IoPricetagOutline, IoShieldCheckmarkOutline, IoLocationOutline, IoMapOutline, IoCreateOutline } from 'react-icons/io5';
+import { IoTrashOutline, IoHomeOutline, IoBriefcaseOutline, IoPricetagOutline, IoShieldCheckmarkOutline, IoLocationOutline, IoMapOutline, IoCreateOutline, IoPencilOutline, IoSaveOutline, IoCloseOutline, IoCheckmarkCircleOutline } from 'react-icons/io5';
 import { GoogleMapPicker } from '@components/ui/google-map-picker';
 import { parseAddress2, serializeAddress2, formatAddress2ForDisplay } from '@utils/address-helper';
 import { formatPrice } from '@framework/product/use-price';
@@ -36,6 +36,20 @@ interface CheckoutInputType {
   landmark?: string;
   lat?: string;
   lng?: string;
+  address_type?: string;
+
+  // Billing address fields
+  billing_firstName?: string;
+  billing_lastName?: string;
+  billing_phone?: string;
+  billing_address_1?: string;
+  billing_city?: string;
+  billing_state?: string;
+  billing_zipCode?: string;
+  billing_building?: string;
+  billing_landmark?: string;
+  billing_lat?: string;
+  billing_lng?: string;
 }
 
 type AddressInput = {
@@ -95,8 +109,17 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
     control,
     formState: { errors },
   } = useForm<CheckoutInputType>({
-    defaultValues: { apartment: "", building: "", floor: "", landmark: "", lat: "", lng: "" }
+    defaultValues: {
+      apartment: "", building: "", floor: "", landmark: "", lat: "", lng: "", address_type: "Home",
+      billing_firstName: "", billing_lastName: "", billing_phone: "", billing_address_1: "",
+      billing_city: "", billing_state: "", billing_zipCode: "", billing_building: "",
+      billing_landmark: "", billing_lat: "", billing_lng: ""
+    }
   });
+
+  const [billingSameAsShipping, setBillingSameAsShipping] = useState<boolean>(true);
+  const [showBillingMapPicker, setShowBillingMapPicker] = useState<boolean>(true);
+  const [selectedBillingAddress, setSelectedBillingAddress] = useState<any>(null);
 
   const {
     register: registerNewAddress,
@@ -114,6 +137,34 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
   const [showModalMapPicker, setShowModalMapPicker] = useState<boolean>(true);
 
   const selectedAddressType = watchNewAddress('address_type') ?? 'Home';
+  const selectedGuestAddressType = watch('address_type') ?? 'Home';
+
+  useEffect(() => {
+    if (!billingSameAsShipping) {
+      const currentValues = getValues();
+      if (!getValues('billing_firstName')) setValue('billing_firstName', currentValues.firstName);
+      if (!getValues('billing_lastName')) setValue('billing_lastName', currentValues.lastName);
+      if (!getValues('billing_phone')) setValue('billing_phone', currentValues.phone);
+    }
+  }, [billingSameAsShipping, setValue, getValues]);
+
+  useEffect(() => {
+    if (billingSameAsShipping) {
+      setValue('billing_firstName', '');
+      setValue('billing_lastName', '');
+      setValue('billing_phone', '');
+      setValue('billing_address_1', '');
+      setValue('billing_city', '');
+      setValue('billing_state', '');
+      setValue('billing_zipCode', '');
+      setValue('billing_building', '');
+      setValue('billing_landmark', '');
+      setValue('billing_lat', '');
+      setValue('billing_lng', '');
+      setSelectedBillingAddress(null);
+      setShowBillingMapPicker(true);
+    }
+  }, [billingSameAsShipping, setValue]);
 
   const customerQuery = useQuery({
     queryKey: ['store.customer.me.checkout'],
@@ -260,11 +311,32 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
           postal_code: String(input.zipCode || selectedAddress?.postal_code || '00000').trim(),
           phone: phone,
           country_code: 'ae',
+          company: selectedAddress?.company || input.address_type || 'Home',
         };
+        const billing_address = billingSameAsShipping
+          ? shipping_address
+          : (selectedBillingAddress || {
+              first_name: String(input.billing_firstName || 'N/A').trim(),
+              last_name: String(input.billing_lastName || 'N/A').trim(),
+              address_1: String(input.billing_address_1 || 'N/A').trim(),
+              address_2: serializeAddress2({
+                apartment: "",
+                building: "",
+                floor: "",
+                landmark: "",
+                lat: input.billing_lat,
+                lng: input.billing_lng,
+              }),
+              city: String(input.billing_city || 'N/A').trim(),
+              province: String(input.billing_state || 'N/A').trim(),
+              postal_code: String(input.billing_zipCode || '00000').trim(),
+              phone: String(input.billing_phone || '987654321').trim(),
+              country_code: 'ae',
+            });
         const result = await placeOrder({
           email,
           shipping_address,
-          billing_address: shipping_address,
+          billing_address,
           shipping_option_id: shippingOptionId || undefined,
           payment_provider_id: selectedPaymentProvider,
         });
@@ -354,11 +426,11 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
       {/* STEP 2: DELIVERY ADDRESS */}
       {activeStep === 2 && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between pb-2">
-            <h2 className="text-sm md:text-base font-bold text-[#008755] uppercase tracking-wider font-body">
-              {!isAuthorized ? t("text-guest-checkout-details") : showAddAddress ? t("text-add-new-address") : t("text-delivery-address")}
-            </h2>
-            {isAuthorized && (
+          {isAuthorized && (
+            <div className="flex items-center justify-between pb-2">
+              <h2 className="text-sm md:text-base font-bold text-[#008755] uppercase tracking-wider font-body">
+                {showAddAddress ? t("text-add-new-address") : t("text-delivery-address")}
+              </h2>
               <button
                 type="button"
                 onClick={() => setShowAddAddress(!showAddAddress)}
@@ -366,23 +438,35 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
               >
                 {showAddAddress ? t("text-back-to-address-list") : t("text-add-new-address-btn")}
               </button>
-            )}
-          </div>
+            </div>
+          )}
 
           {!isAuthorized ? (
-            /* Guest Checkout Form */
+            /* Guest Checkout Input Form */
             <div className="border border-gray-200 rounded-md p-5 bg-white shadow-sm space-y-4">
-              <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider font-body">{t('text-contact-info')}</h3>
+              <h3 className="text-sm font-bold text-[#005844] uppercase tracking-wider font-body">{t('text-contact-info')}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input
                   labelKey={t('text-first-name')}
-                  {...register('firstName', { required: t('error-first-name-required') })}
+                  {...register('firstName', {
+                    required: t('error-first-name-required'),
+                    pattern: {
+                      value: /^[a-zA-Z\s\.\u0600-\u06FF\u00C0-\u017F]+$/,
+                      message: t('error-first-name-invalid'),
+                    },
+                  })}
                   errorKey={errors.firstName?.message}
                   variant="solid"
                 />
                 <Input
                   labelKey={t('text-last-name')}
-                  {...register('lastName', { required: t('error-last-name-required') })}
+                  {...register('lastName', {
+                    required: t('error-last-name-required'),
+                    pattern: {
+                      value: /^[a-zA-Z\s\.\u0600-\u06FF\u00C0-\u017F]+$/,
+                      message: t('error-last-name-invalid'),
+                    },
+                  })}
                   errorKey={errors.lastName?.message}
                   variant="solid"
                 />
@@ -421,7 +505,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
                 />
               </div>
 
-              <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider font-body pt-2">{t('text-shipping-address')}</h3>
+              <h3 className="text-sm font-bold text-[#005844] uppercase tracking-wider font-body pt-2">{t('text-shipping-address')}</h3>
               
               {showMapPicker ? (
                 <div className="pt-2">
@@ -432,10 +516,11 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
                         : undefined
                     }
                     onConfirm={(loc) => {
-                      setValue('address_1', loc.formattedAddress);
-                      if (loc.city) setValue('city', loc.city);
-                      if (loc.province) setValue('state', loc.province);
-                      if (loc.postalCode) setValue('zipCode', loc.postalCode);
+                      setValue('address_1', loc.address_1 || loc.formattedAddress, { shouldValidate: true, shouldDirty: true });
+                      if (loc.building) setValue('building', loc.building, { shouldValidate: true, shouldDirty: true });
+                      if (loc.city) setValue('city', loc.city, { shouldValidate: true, shouldDirty: true });
+                      if (loc.province) setValue('state', loc.province, { shouldValidate: true, shouldDirty: true });
+                      if (loc.postalCode) setValue('zipCode', loc.postalCode, { shouldValidate: true, shouldDirty: true });
                       if (loc.lat) setValue('lat', String(loc.lat));
                       if (loc.lng) setValue('lng', String(loc.lng));
                       setShowMapPicker(false);
@@ -443,127 +528,371 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
                   />
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {watch('lat') && watch('lng') && (
-                    <div className="col-span-full p-3 bg-green-50 border border-green-200 text-green-800 rounded-md text-xs sm:text-sm flex items-center justify-between">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="flex-shrink-0">📍</span>
-                        <span className="truncate">Map location selected: <strong>{watch('address_1')}</strong></span>
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {watch('lat') && watch('lng') && (
+                      <div className="col-span-full p-3 bg-green-50 border border-green-200 text-green-800 rounded-md text-xs sm:text-sm flex items-center justify-between">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="flex-shrink-0">📍</span>
+                          <span className="truncate">Map location selected: <strong>{watch('address_1')}</strong></span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setShowMapPicker(true)}
+                          className="text-[#008755] font-semibold underline hover:text-[#007044] text-xs ml-2 cursor-pointer whitespace-nowrap"
+                        >
+                          Change Location
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => setShowMapPicker(true)}
-                        className="text-[#008755] font-semibold underline hover:text-[#007044] text-xs ml-2 cursor-pointer whitespace-nowrap"
+                    )}
+
+                    <Input
+                      labelKey={t('text-address-line-1')}
+                      {...register('address_1', { required: t('error-address-required') })}
+                      errorKey={errors.address_1?.message}
+                      variant="solid"
+                    />
+                    <Input
+                      labelKey="text-building-name-number"
+                      {...register('building')}
+                      placeholderKey="placeholder-building"
+                      variant="solid"
+                    />
+                    <Input
+                      labelKey={t('text-city')}
+                      {...register('city', { required: t('error-city-required') })}
+                      errorKey={errors.city?.message}
+                      variant="solid"
+                    />
+                    <div className="flex flex-col space-y-2">
+                      <label className="text-heading font-semibold text-sm leading-none cursor-pointer">{t('text-emirate')}</label>
+                      <select
+                        {...register('state', { required: t('error-emirate-required') })}
+                        className="form-select py-2 px-4 w-full transition duration-150 ease-in-out border text-input text-13px lg:text-sm font-body rounded-md placeholder-body min-h-12 bg-white border-gray-300 focus:outline-none focus:border-heading h-11 md:h-12"
                       >
-                        Change Location
-                      </button>
+                        <option value="">{t('text-select-emirate')}</option>
+                        <option value="Abu Dhabi">Abu Dhabi</option>
+                        <option value="Dubai">Dubai</option>
+                        <option value="Sharjah">Sharjah</option>
+                        <option value="Ajman">Ajman</option>
+                        <option value="Umm Al Quwain">Umm Al Quwain</option>
+                        <option value="Ras Al Khaimah">Ras Al Khaimah</option>
+                        <option value="Fujairah">Fujairah</option>
+                      </select>
+                      {errors.state && (
+                        <p className="my-2 text-13px text-brandRed">{errors.state.message}</p>
+                      )}
+                    </div>
+                    <Input
+                      labelKey={t('text-postal-code')}
+                      inputMode="numeric"
+                      {...register('zipCode', {
+                        required: t('error-postal-code-required'),
+                        pattern: { value: POSTAL_ONLY_REGEX, message: t('error-postal-code-invalid') },
+                      })}
+                      errorKey={errors.zipCode?.message}
+                      variant="solid"
+                    />
+                    <Input
+                      labelKey="text-landmark"
+                      {...register('landmark')}
+                      placeholderKey="placeholder-landmark"
+                      variant="solid"
+                    />
+                    <input type="hidden" {...register('lat')} />
+                    <input type="hidden" {...register('lng')} />
+                    <input type="hidden" {...register('apartment')} />
+                    <input type="hidden" {...register('floor')} />
+                  </div>
+
+                  {/* Premium Address Type selector */}
+                  <div className="mt-6 pb-2 border-t border-gray-100 pt-4">
+                    <div className="mb-3">
+                      <h4 className="text-sm md:text-base font-bold text-heading font-body leading-none">{t('text-address-type')}</h4>
+                      <p className="text-xs text-body mt-1 leading-none">{t('text-choose-address-label')}</p>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <label className="cursor-pointer">
+                        <input type="radio" value="Home" {...register("address_type")} className="sr-only" />
+                        <div className={`flex items-center justify-between px-4 py-3 border rounded-md transition ${selectedGuestAddressType === 'Home' ? 'border-[#008755] bg-[#F4F9F6]' : 'border-gray-200 bg-white'}`}>
+                          <div className="flex items-center gap-3">
+                            <IoHomeOutline className={`w-5 h-5 ${selectedGuestAddressType === 'Home' ? 'text-[#008755]' : 'text-gray-400'}`} />
+                            <div className="flex flex-col">
+                              <span className="text-sm font-semibold text-heading">{t('text-home-label')}</span>
+                              <span className="text-[10px] text-gray-500 mt-0.5">{t('text-home-desc')}</span>
+                            </div>
+                          </div>
+                          <div className={`w-4 h-4 rounded-full border transition-all ${selectedGuestAddressType === 'Home' ? 'border-[#008755] border-[4px] bg-white' : 'border-gray-300 bg-white'}`}></div>
+                        </div>
+                      </label>
+                      <label className="cursor-pointer">
+                        <input type="radio" value="Office" {...register("address_type")} className="sr-only" />
+                        <div className={`flex items-center justify-between px-4 py-3 border rounded-md transition ${selectedGuestAddressType === 'Office' ? 'border-[#008755] bg-[#F4F9F6]' : 'border-gray-200 bg-white'}`}>
+                          <div className="flex items-center gap-3">
+                            <IoBriefcaseOutline className={`w-5 h-5 ${selectedGuestAddressType === 'Office' ? 'text-[#008755]' : 'text-gray-400'}`} />
+                            <div className="flex flex-col">
+                              <span className="text-sm font-semibold text-heading">{t('text-office-label')}</span>
+                              <span className="text-[10px] text-gray-500 mt-0.5">{t('text-office-desc')}</span>
+                            </div>
+                          </div>
+                          <div className={`w-4 h-4 rounded-full border transition-all ${selectedGuestAddressType === 'Office' ? 'border-[#008755] border-[4px] bg-white' : 'border-gray-300 bg-white'}`}></div>
+                        </div>
+                      </label>
+                      <label className="cursor-pointer">
+                        <input type="radio" value="Other" {...register("address_type")} className="sr-only" />
+                        <div className={`flex items-center justify-between px-4 py-3 border rounded-md transition ${selectedGuestAddressType === 'Other' ? 'border-[#008755] bg-[#F4F9F6]' : 'border-gray-200 bg-white'}`}>
+                          <div className="flex items-center gap-3">
+                            <IoPencilOutline className={`w-5 h-5 ${selectedGuestAddressType === 'Other' ? 'text-[#008755]' : 'text-gray-400'}`} />
+                            <div className="flex flex-col">
+                              <span className="text-sm font-semibold text-heading">{t('text-other-label')}</span>
+                              <span className="text-[10px] text-gray-500 mt-0.5">{t('text-other-desc')}</span>
+                            </div>
+                          </div>
+                          <div className={`w-4 h-4 rounded-full border transition-all ${selectedGuestAddressType === 'Other' ? 'border-[#008755] border-[4px] bg-white' : 'border-gray-300 bg-white'}`}></div>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Billing address same as shipping address checkbox */}
+                  <div className="mt-4 pt-4 border-t border-gray-100 flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="billing-same-as-shipping"
+                      className="form-checkbox text-[#008755] focus:ring-[#008755] h-4.5 w-4.5 rounded border-gray-300 transition duration-150 cursor-pointer"
+                      checked={billingSameAsShipping}
+                      onChange={(e) => setBillingSameAsShipping(e.target.checked)}
+                    />
+                    <label htmlFor="billing-same-as-shipping" className="text-sm font-semibold text-heading cursor-pointer select-none">
+                      {t('text-billing-same-as-shipping', 'Billing address same as shipping address')}
+                    </label>
+                  </div>
+
+                  {/* Billing Address Section */}
+                  {!billingSameAsShipping && (
+                    <div className="mt-6 pt-6 border-t border-gray-150 space-y-4">
+                      <h3 className="text-sm font-bold text-[#005844] uppercase tracking-wider font-body">{t('text-billing-address', 'Billing Address')}</h3>
+                      {showBillingMapPicker ? (
+                        <div className="pt-2">
+                          <GoogleMapPicker
+                            initialLocation={
+                              watch('billing_lat') && watch('billing_lng')
+                                ? { lat: parseFloat(watch('billing_lat')!), lng: parseFloat(watch('billing_lng')!) }
+                                : undefined
+                            }
+                            onConfirm={(loc) => {
+                              setValue('billing_address_1', loc.address_1 || loc.formattedAddress, { shouldValidate: true, shouldDirty: true });
+                              if (loc.city) setValue('billing_city', loc.city, { shouldValidate: true, shouldDirty: true });
+                              if (loc.province) setValue('billing_state', loc.province, { shouldValidate: true, shouldDirty: true });
+                              if (loc.postalCode) setValue('billing_zipCode', loc.postalCode, { shouldValidate: true, shouldDirty: true });
+                              if (loc.lat) setValue('billing_lat', String(loc.lat));
+                              if (loc.lng) setValue('billing_lng', String(loc.lng));
+                              setShowBillingMapPicker(false);
+                            }}
+                          />
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {watch('billing_lat') && watch('billing_lng') && (
+                            <div className="col-span-full p-3 bg-green-50 border border-green-200 text-green-800 rounded-md text-xs sm:text-sm flex items-center justify-between">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="flex-shrink-0">📍</span>
+                                <span className="truncate">Map location selected: <strong>{watch('billing_address_1')}</strong></span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setShowBillingMapPicker(true)}
+                                className="text-[#008755] font-semibold underline hover:text-[#007044] text-xs ml-2 cursor-pointer whitespace-nowrap"
+                              >
+                                Change Location
+                              </button>
+                            </div>
+                          )}
+
+                          <Input
+                            labelKey={t('text-first-name')}
+                            {...register('billing_firstName', {
+                              required: t('error-first-name-required'),
+                              pattern: {
+                                value: /^[a-zA-Z\s\.\u0600-\u06FF\u00C0-\u017F]+$/,
+                                message: t('error-first-name-invalid'),
+                              },
+                            })}
+                            errorKey={errors.billing_firstName?.message}
+                            variant="solid"
+                          />
+                          <Input
+                            labelKey={t('text-last-name')}
+                            {...register('billing_lastName', {
+                              required: t('error-last-name-required'),
+                              pattern: {
+                                value: /^[a-zA-Z\s\.\u0600-\u06FF\u00C0-\u017F]+$/,
+                                message: t('error-last-name-invalid'),
+                              },
+                            })}
+                            errorKey={errors.billing_lastName?.message}
+                            variant="solid"
+                          />
+                          <Controller
+                            name="billing_phone"
+                            control={control}
+                            rules={{
+                              required: t('error-phone-required'),
+                              validate: (value) => {
+                                if (!value) return t('error-phone-required');
+                                return isValidPhoneNumber(value) || t('error-phone-invalid');
+                              }
+                            }}
+                            render={({ field: { onChange, value } }) => (
+                              <PhoneInput
+                                labelKey="text-phone-number"
+                                value={value}
+                                onChange={onChange}
+                                errorKey={errors.billing_phone?.message}
+                                variant="solid"
+                              />
+                            )}
+                          />
+                          <Input
+                            labelKey={t('text-address-line-1')}
+                            {...register('billing_address_1', { required: t('error-address-required') })}
+                            errorKey={errors.billing_address_1?.message}
+                            variant="solid"
+                          />
+                          <Input
+                            labelKey={t('text-city')}
+                            {...register('billing_city', { required: t('error-city-required') })}
+                            errorKey={errors.billing_city?.message}
+                            variant="solid"
+                          />
+                          <div className="flex flex-col space-y-2">
+                            <label className="text-heading font-semibold text-sm leading-none cursor-pointer">{t('text-emirate')}</label>
+                            <select
+                              {...register('billing_state', { required: t('error-emirate-required') })}
+                              className="form-select py-2 px-4 w-full transition duration-150 ease-in-out border text-input text-13px lg:text-sm font-body rounded-md placeholder-body min-h-12 bg-white border-gray-300 focus:outline-none focus:border-heading h-11 md:h-12"
+                            >
+                              <option value="">{t('text-select-emirate')}</option>
+                              <option value="Abu Dhabi">Abu Dhabi</option>
+                              <option value="Dubai">Dubai</option>
+                              <option value="Sharjah">Sharjah</option>
+                              <option value="Ajman">Ajman</option>
+                              <option value="Umm Al Quwain">Umm Al Quwain</option>
+                              <option value="Ras Al Khaimah">Ras Al Khaimah</option>
+                              <option value="Fujairah">Fujairah</option>
+                            </select>
+                            {errors.billing_state && (
+                              <p className="my-2 text-13px text-brandRed">{errors.billing_state.message}</p>
+                            )}
+                          </div>
+                          <Input
+                            labelKey={t('text-postal-code')}
+                            inputMode="numeric"
+                            {...register('billing_zipCode', {
+                              required: t('error-postal-code-required'),
+                              pattern: { value: POSTAL_ONLY_REGEX, message: t('error-postal-code-invalid') },
+                            })}
+                            errorKey={errors.billing_zipCode?.message}
+                            variant="solid"
+                          />
+                          <input type="hidden" {...register('billing_lat')} />
+                          <input type="hidden" {...register('billing_lng')} />
+                        </div>
+                      )}
                     </div>
                   )}
 
-                  <Input
-                    labelKey={t('text-address-line-1')}
-                    {...register('address_1', { required: t('error-address-required') })}
-                    errorKey={errors.address_1?.message}
-                    variant="solid"
-                  />
-                  <Input
-                    labelKey="Building Name/Number"
-                    {...register('building')}
-                    placeholder="e.g. Silver Tower / Villa 15"
-                    variant="solid"
-                  />
-                  <Input
-                    labelKey="Landmark"
-                    {...register('landmark')}
-                    placeholder="e.g. Near Twar Metro Station"
-                    variant="solid"
-                  />
-                  <Input
-                    labelKey={t('text-city')}
-                    {...register('city', { required: t('error-city-required') })}
-                    errorKey={errors.city?.message}
-                    variant="solid"
-                  />
-                  <div className="flex flex-col space-y-2">
-                    <label className="text-heading font-semibold text-sm leading-none cursor-pointer">{t('text-emirate')}</label>
-                    <select
-                      {...register('state', { required: t('error-emirate-required') })}
-                      className="form-select py-2 px-4 w-full transition duration-150 ease-in-out border text-input text-13px lg:text-sm font-body rounded-md placeholder-body min-h-12 bg-white border-gray-300 focus:outline-none focus:border-heading h-11 md:h-12"
-                    >
-                      <option value="">{t('text-select-emirate')}</option>
-                      <option value="Abu Dhabi">Abu Dhabi</option>
-                      <option value="Dubai">Dubai</option>
-                      <option value="Sharjah">Sharjah</option>
-                      <option value="Ajman">Ajman</option>
-                      <option value="Umm Al Quwain">Umm Al Quwain</option>
-                      <option value="Ras Al Khaimah">Ras Al Khaimah</option>
-                      <option value="Fujairah">Fujairah</option>
-                    </select>
-                    {errors.state && (
-                      <p className="my-2 text-13px text-brandRed">{errors.state.message}</p>
-                    )}
-                  </div>
-                  <Input
-                    labelKey={t('text-postal-code')}
-                    inputMode="numeric"
-                    {...register('zipCode', {
-                      required: t('error-postal-code-required'),
-                      pattern: { value: POSTAL_ONLY_REGEX, message: t('error-postal-code-invalid') },
-                    })}
-                    errorKey={errors.zipCode?.message}
-                    variant="solid"
-                  />
-                  <input type="hidden" {...register('lat')} />
-                  <input type="hidden" {...register('lng')} />
-                  <input type="hidden" {...register('apartment')} />
-                  <input type="hidden" {...register('floor')} />
-                </div>
-              )}
+                  {/* Continue to Payment Button */}
+                  {!( !billingSameAsShipping && showBillingMapPicker ) && (
+                    <div className="pt-6 border-t border-gray-100 mt-6">
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const fieldsToTrigger = [
+                            'email',
+                            'phone',
+                            'firstName',
+                            'lastName',
+                            'address_1',
+                            'city',
+                            'state',
+                            'zipCode',
+                          ];
+                          if (!billingSameAsShipping) {
+                            fieldsToTrigger.push(
+                              'billing_firstName',
+                              'billing_lastName',
+                              'billing_phone',
+                              'billing_address_1',
+                              'billing_city',
+                              'billing_state',
+                              'billing_zipCode'
+                            );
+                          }
+                          const isValid = await trigger(fieldsToTrigger as any);
+                          if (isValid) {
+                            const values = getValues();
+                            const addr = {
+                              first_name: values.firstName,
+                              last_name: values.lastName,
+                              phone: values.phone,
+                              address_1: values.address_1,
+                              address_2: serializeAddress2({
+                                apartment: values.apartment,
+                                building: values.building,
+                                floor: values.floor,
+                                landmark: values.landmark,
+                                lat: values.lat,
+                                lng: values.lng,
+                              }),
+                              city: values.city,
+                              province: values.state,
+                              postal_code: values.zipCode,
+                              country_code: 'ae',
+                              email: values.email,
+                              company: values.address_type || 'Home',
+                            };
+                            setSelectedAddress(addr);
 
-              <button
-                type="button"
-                onClick={async () => {
-                  const isValid = await trigger([
-                    'email',
-                    'phone',
-                    'firstName',
-                    'lastName',
-                    'address_1',
-                    'address_2',
-                    'city',
-                    'state',
-                    'zipCode',
-                  ]);
-                  if (isValid) {
-                    const values = getValues();
-                    const addr = {
-                      first_name: values.firstName,
-                      last_name: values.lastName,
-                      phone: values.phone,
-                      address_1: values.address_1,
-                      address_2: values.address_2,
-                      city: values.city,
-                      province: values.state,
-                      postal_code: values.zipCode,
-                      country_code: 'ae',
-                      email: values.email,
-                    };
-                    setSelectedAddress(addr);
-                    setActiveStep(3);
-                  }
-                }}
-                className="w-full h-12 bg-[#005844] hover:bg-[#008755] text-white font-bold text-sm rounded-lg transition duration-200 flex items-center justify-center gap-2 font-body mt-3 tracking-wider uppercase"
-              >
-                <span>{t('text-continue-to-payment')}</span>
-                <span className="text-lg font-normal mb-0.5 inline-block transform rtl:rotate-180">→</span>
-              </button>
+                            if (!billingSameAsShipping) {
+                              const billAddr = {
+                                first_name: values.billing_firstName,
+                                last_name: values.billing_lastName,
+                                phone: values.billing_phone,
+                                address_1: values.billing_address_1,
+                                address_2: serializeAddress2({
+                                  apartment: "",
+                                  building: "",
+                                  floor: "",
+                                  landmark: "",
+                                  lat: values.billing_lat,
+                                  lng: values.billing_lng,
+                                }),
+                                city: values.billing_city,
+                                province: values.billing_state,
+                                postal_code: values.billing_zipCode,
+                                country_code: 'ae',
+                              };
+                              setSelectedBillingAddress(billAddr);
+                            } else {
+                              setSelectedBillingAddress(null);
+                            }
+
+                            setActiveStep(3);
+                          }
+                        }}
+                        className="w-full h-12 bg-[#005844] hover:bg-[#008755] text-white font-bold text-sm rounded-lg transition duration-200 flex items-center justify-center gap-2 font-body mt-3 tracking-wider uppercase"
+                      >
+                        <span>{t('text-continue-to-payment')}</span>
+                        <span className="text-lg font-normal mb-0.5 inline-block transform rtl:rotate-180">→</span>
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           ) : showAddAddress ? (
             /* Form container */
             <div className="border border-gray-200 rounded-md p-5 bg-white shadow-sm">
-              <h3 className="text-sm font-semibold text-[#008755] uppercase tracking-wide mb-4 font-body">
-                {t('text-add-new-address-title')}
-              </h3>
               {showModalMapPicker ? (
                 <GoogleMapPicker
                   initialLocation={
@@ -572,10 +901,11 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
                       : undefined
                   }
                   onConfirm={(loc) => {
-                    setValueNewAddress('address_1', loc.formattedAddress, { shouldValidate: true });
-                    setValueNewAddress('city', loc.city || '', { shouldValidate: true });
-                    setValueNewAddress('province', loc.province || '', { shouldValidate: true });
-                    setValueNewAddress('postal_code', loc.postalCode || '', { shouldValidate: true });
+                    setValueNewAddress('address_1', loc.address_1 || loc.formattedAddress, { shouldValidate: true, shouldDirty: true });
+                    if (loc.building) setValueNewAddress('building', loc.building, { shouldValidate: true, shouldDirty: true });
+                    setValueNewAddress('city', loc.city || '', { shouldValidate: true, shouldDirty: true });
+                    setValueNewAddress('province', loc.province || '', { shouldValidate: true, shouldDirty: true });
+                    setValueNewAddress('postal_code', loc.postalCode || '', { shouldValidate: true, shouldDirty: true });
                     setValueNewAddress('lat', String(loc.lat));
                     setValueNewAddress('lng', String(loc.lng));
                     setShowModalMapPicker(false);
@@ -611,13 +941,25 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <Input
                       labelKey="forms:label-first-name"
-                      {...registerNewAddress('first_name', { required: 'forms:first-name-required' } as any)}
+                      {...registerNewAddress('first_name', {
+                        required: 'forms:first-name-required',
+                        pattern: {
+                          value: /^[a-zA-Z\s\.\u0600-\u06FF\u00C0-\u017F]+$/,
+                          message: 'forms:first-name-invalid',
+                        },
+                      } as any)}
                       errorKey={(newAddressErrors as any)?.first_name?.message}
                       variant="solid"
                     />
                     <Input
                       labelKey="forms:label-last-name"
-                      {...registerNewAddress('last_name', { required: 'forms:last-name-required' } as any)}
+                      {...registerNewAddress('last_name', {
+                        required: 'forms:last-name-required',
+                        pattern: {
+                          value: /^[a-zA-Z\s\.\u0600-\u06FF\u00C0-\u017F]+$/,
+                          message: 'forms:last-name-invalid',
+                        },
+                      } as any)}
                       errorKey={(newAddressErrors as any)?.last_name?.message}
                       variant="solid"
                     />
@@ -647,15 +989,9 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
                       variant="solid"
                     />
                     <Input
-                      labelKey="Building Name/Number"
+                      labelKey="text-building-name-number"
                       {...registerNewAddress('building')}
-                      placeholder="e.g. Silver Tower / Villa 15"
-                      variant="solid"
-                    />
-                    <Input
-                      labelKey="Landmark"
-                      {...registerNewAddress('landmark')}
-                      placeholder="e.g. Near Twar Metro Station"
+                      placeholderKey="placeholder-building"
                       variant="solid"
                     />
                     <Input
@@ -693,6 +1029,12 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
                       errorKey={(newAddressErrors as any)?.postal_code?.message}
                       variant="solid"
                     />
+                    <Input
+                      labelKey="text-landmark"
+                      {...registerNewAddress('landmark')}
+                      placeholderKey="placeholder-landmark"
+                      variant="solid"
+                    />
                   </div>
                   <input type="hidden" value="ae" {...registerNewAddress("country_code")} />
                   <input type="hidden" {...registerNewAddress("lat")} />
@@ -700,16 +1042,21 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
                   <input type="hidden" {...registerNewAddress("apartment")} />
                   <input type="hidden" {...registerNewAddress("floor")} />
 
-                  <div className="mt-4 pb-2">
-                    <label className="block text-sm font-bold text-heading font-body mb-1">{t("text-address-type")}</label>
-                    <p className="text-sm text-body mb-3">{t("text-choose-address-label")}</p>
+                  <div className="mt-6 pb-2">
+                    <div className="mb-3">
+                      <h4 className="text-sm md:text-base font-bold text-heading font-body leading-none">{t('text-address-type')}</h4>
+                      <p className="text-xs text-body mt-1 leading-none">{t('text-choose-address-label')}</p>
+                    </div>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <label className="cursor-pointer">
                         <input type="radio" value="Home" {...registerNewAddress("address_type")} className="sr-only" />
                         <div className={`flex items-center justify-between px-4 py-3 border rounded-md transition ${selectedAddressType === 'Home' ? 'border-[#008755] bg-[#F4F9F6]' : 'border-gray-200 bg-white'}`}>
                           <div className="flex items-center gap-3">
-                            <IoHomeOutline className={`w-5 h-5 ${selectedAddressType === 'Home' ? 'text-[#008755]' : 'text-gray-500'}`} />
-                            <span className="text-sm font-medium text-heading">{t("text-home-label")}</span>
+                            <IoHomeOutline className={`w-5 h-5 ${selectedAddressType === 'Home' ? 'text-[#008755]' : 'text-gray-400'}`} />
+                            <div className="flex flex-col">
+                              <span className="text-sm font-semibold text-heading">{t('text-home-label')}</span>
+                              <span className="text-[10px] text-gray-500 mt-0.5">{t('text-home-desc')}</span>
+                            </div>
                           </div>
                           <div className={`w-4 h-4 rounded-full border transition-all ${selectedAddressType === 'Home' ? 'border-[#008755] border-[4px] bg-white' : 'border-gray-300 bg-white'}`}></div>
                         </div>
@@ -718,8 +1065,11 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
                         <input type="radio" value="Office" {...registerNewAddress("address_type")} className="sr-only" />
                         <div className={`flex items-center justify-between px-4 py-3 border rounded-md transition ${selectedAddressType === 'Office' ? 'border-[#008755] bg-[#F4F9F6]' : 'border-gray-200 bg-white'}`}>
                           <div className="flex items-center gap-3">
-                            <IoBriefcaseOutline className={`w-5 h-5 ${selectedAddressType === 'Office' ? 'text-[#008755]' : 'text-gray-500'}`} />
-                            <span className="text-sm font-medium text-heading">{t("text-office-label")}</span>
+                            <IoBriefcaseOutline className={`w-5 h-5 ${selectedAddressType === 'Office' ? 'text-[#008755]' : 'text-gray-400'}`} />
+                            <div className="flex flex-col">
+                              <span className="text-sm font-semibold text-heading">{t('text-office-label')}</span>
+                              <span className="text-[10px] text-gray-500 mt-0.5">{t('text-office-desc')}</span>
+                            </div>
                           </div>
                           <div className={`w-4 h-4 rounded-full border transition-all ${selectedAddressType === 'Office' ? 'border-[#008755] border-[4px] bg-white' : 'border-gray-300 bg-white'}`}></div>
                         </div>
@@ -728,8 +1078,11 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
                         <input type="radio" value="Other" {...registerNewAddress("address_type")} className="sr-only" />
                         <div className={`flex items-center justify-between px-4 py-3 border rounded-md transition ${selectedAddressType === 'Other' ? 'border-[#008755] bg-[#F4F9F6]' : 'border-gray-200 bg-white'}`}>
                           <div className="flex items-center gap-3">
-                            <IoPricetagOutline className={`w-5 h-5 ${selectedAddressType === 'Other' ? 'text-[#008755]' : 'text-gray-500'}`} />
-                            <span className="text-sm font-medium text-heading">{t("text-other-label")}</span>
+                            <IoPencilOutline className={`w-5 h-5 ${selectedAddressType === 'Other' ? 'text-[#008755]' : 'text-gray-400'}`} />
+                            <div className="flex flex-col">
+                              <span className="text-sm font-semibold text-heading">{t('text-other-label')}</span>
+                              <span className="text-[10px] text-gray-500 mt-0.5">{t('text-other-desc')}</span>
+                            </div>
                           </div>
                           <div className={`w-4 h-4 rounded-full border transition-all ${selectedAddressType === 'Other' ? 'border-[#008755] border-[4px] bg-white' : 'border-gray-300 bg-white'}`}></div>
                         </div>
@@ -737,22 +1090,24 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
                     </div>
                   </div>
 
-                  <div className="flex gap-3">
+                  <div className="flex gap-3 mt-6 border-t border-gray-100 pt-4">
                     <Button
                       type="submit"
-                      className="h-11 px-6 font-bold font-body text-xs uppercase cursor-pointer"
+                      className="h-11 px-6 bg-[#005844] hover:bg-[#008755] text-white font-semibold font-body rounded transition duration-150 flex items-center gap-2 cursor-pointer text-xs md:text-sm uppercase tracking-wide"
                       loading={createAddressMutation.isPending}
                       disabled={createAddressMutation.isPending}
                     >
-                      {t('text-save')}
+                      <IoSaveOutline className="text-base" />
+                      <span>{t('text-save-address')}</span>
                     </Button>
-                    <Button
+                    <button
                       type="button"
                       onClick={() => setShowAddAddress(false)}
-                      className="h-11 px-6 bg-[#000000] hover:bg-gray-800 text-white font-semibold font-body rounded transition duration-150 text-xs uppercase cursor-pointer"
+                      className="h-11 px-6 bg-white border border-gray-200 text-[#005844] hover:bg-gray-50 hover:border-[#008755] font-semibold font-body rounded transition duration-150 flex items-center justify-center gap-2 cursor-pointer text-xs md:text-sm uppercase tracking-wide"
                     >
-                      {t('text-cancel')}
-                    </Button>
+                      <IoCloseOutline className="text-lg" />
+                      <span>{t('text-cancel')}</span>
+                    </button>
                   </div>
                 </form>
               )}

@@ -8,7 +8,7 @@ import { motion } from "framer-motion";
 import { fadeInTop } from "@utils/motion/fade-in-top";
 import { useMemo, useState, useEffect, useRef } from "react";
 import { useForm, Controller } from "react-hook-form";
-import { IoPencilOutline, IoTrashOutline, IoEllipsisVertical, IoHomeOutline, IoBriefcaseOutline, IoPricetagOutline, IoMapOutline, IoCreateOutline } from "react-icons/io5";
+import { IoPencilOutline, IoTrashOutline, IoEllipsisVertical, IoHomeOutline, IoBriefcaseOutline, IoPricetagOutline, IoMapOutline, IoCreateOutline, IoSaveOutline, IoCloseOutline, IoLocationOutline } from "react-icons/io5";
 import { useTranslation } from "next-i18next";
 import { PhoneInput } from "@components/ui/phone-input";
 import { isValidPhoneNumber } from "libphonenumber-js";
@@ -229,7 +229,7 @@ export default function CustomerAddresses() {
       lat: parsedExtra.lat,
       lng: parsedExtra.lng,
     } as any);
-    setShowMapPicker(false); // Go straight to form for edit mode
+    setShowMapPicker(true);
     setShowForm(true);
   };
 
@@ -301,10 +301,11 @@ export default function CustomerAddresses() {
                   : undefined
               }
               onConfirm={(loc) => {
-                setValue('address_1', loc.formattedAddress);
-                if (loc.city) setValue('city', loc.city);
-                if (loc.province) setValue('province', loc.province);
-                if (loc.postalCode) setValue('postal_code', loc.postalCode);
+                setValue('address_1', loc.address_1 || loc.formattedAddress, { shouldValidate: true, shouldDirty: true });
+                if (loc.building) setValue('building', loc.building, { shouldValidate: true, shouldDirty: true });
+                if (loc.city) setValue('city', loc.city, { shouldValidate: true, shouldDirty: true });
+                if (loc.province) setValue('province', loc.province, { shouldValidate: true, shouldDirty: true });
+                if (loc.postalCode) setValue('postal_code', loc.postalCode, { shouldValidate: true, shouldDirty: true });
                 if (loc.lat) setValue('lat', String(loc.lat));
                 if (loc.lng) setValue('lng', String(loc.lng));
                 setShowMapPicker(false);
@@ -333,13 +334,25 @@ export default function CustomerAddresses() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <Input
                     labelKey="forms:label-first-name"
-                    {...register("first_name", { required: "forms:first-name-required" })}
+                    {...register("first_name", {
+                      required: "forms:first-name-required",
+                      pattern: {
+                        value: /^[a-zA-Z\s\.\u0600-\u06FF\u00C0-\u017F]+$/,
+                        message: "forms:first-name-invalid",
+                      },
+                    })}
                     variant="solid"
                     errorKey={errors.first_name?.message as any}
                   />
                   <Input
                     labelKey="forms:label-last-name"
-                    {...register("last_name", { required: "forms:last-name-required" })}
+                    {...register("last_name", {
+                      required: "forms:last-name-required",
+                      pattern: {
+                        value: /^[a-zA-Z\s\.\u0600-\u06FF\u00C0-\u017F]+$/,
+                        message: "forms:last-name-invalid",
+                      },
+                    })}
                     variant="solid"
                     errorKey={errors.last_name?.message as any}
                   />
@@ -370,15 +383,9 @@ export default function CustomerAddresses() {
                     errorKey={errors.address_1?.message as any}
                   />
                   <Input
-                    labelKey="Building Name/Number"
+                    labelKey="text-building-name-number"
                     {...register("building")}
-                    placeholder="e.g. Silver Tower / Villa 15"
-                    variant="solid"
-                  />
-                  <Input
-                    labelKey="Landmark"
-                    {...register("landmark")}
-                    placeholder="e.g. Near Twar Metro Station"
+                    placeholderKey="placeholder-building"
                     variant="solid"
                   />
                   <Input
@@ -414,6 +421,12 @@ export default function CustomerAddresses() {
                     variant="solid"
                     errorKey={errors.postal_code?.message as any}
                   />
+                  <Input
+                    labelKey="text-landmark"
+                    {...register("landmark")}
+                    placeholderKey="placeholder-landmark"
+                    variant="solid"
+                  />
                 </div>
                 <input type="hidden" value="ae" {...register("country_code")} />
                 <input type="hidden" {...register("lat")} />
@@ -421,16 +434,21 @@ export default function CustomerAddresses() {
                 <input type="hidden" {...register("apartment")} />
                 <input type="hidden" {...register("floor")} />
                 
-                <div className="mt-4 pb-2">
-                  <label className="block text-sm font-bold text-heading font-body mb-1">{t('text-address-type')}</label>
-                  <p className="text-sm text-body mb-3">{t('text-choose-address-label')}</p>
+                <div className="mt-6 pb-2">
+                  <div className="mb-3">
+                    <h4 className="text-sm md:text-base font-bold text-heading font-body leading-none">{t('text-address-type')}</h4>
+                    <p className="text-xs text-body mt-1 leading-none">{t('text-choose-address-label')}</p>
+                  </div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <label className="cursor-pointer">
                       <input type="radio" value="Home" {...register("address_type")} className="sr-only" />
                       <div className={`flex items-center justify-between px-4 py-3 border rounded-md transition ${selectedAddressType === 'Home' ? 'border-[#008755] bg-[#F4F9F6]' : 'border-gray-200 bg-white'}`}>
                         <div className="flex items-center gap-3">
-                          <IoHomeOutline className={`w-5 h-5 ${selectedAddressType === 'Home' ? 'text-[#008755]' : 'text-gray-500'}`} />
-                          <span className="text-sm font-medium text-heading">{t('text-home-label')}</span>
+                          <IoHomeOutline className={`w-5 h-5 ${selectedAddressType === 'Home' ? 'text-[#008755]' : 'text-gray-400'}`} />
+                          <div className="flex flex-col">
+                            <span className="text-sm font-semibold text-heading">{t('text-home-label')}</span>
+                            <span className="text-[10px] text-gray-500 mt-0.5">{t('text-home-desc')}</span>
+                          </div>
                         </div>
                         <div className={`w-4 h-4 rounded-full border transition-all ${selectedAddressType === 'Home' ? 'border-[#008755] border-[4px] bg-white' : 'border-gray-300 bg-white'}`}></div>
                       </div>
@@ -439,8 +457,11 @@ export default function CustomerAddresses() {
                       <input type="radio" value="Office" {...register("address_type")} className="sr-only" />
                       <div className={`flex items-center justify-between px-4 py-3 border rounded-md transition ${selectedAddressType === 'Office' ? 'border-[#008755] bg-[#F4F9F6]' : 'border-gray-200 bg-white'}`}>
                         <div className="flex items-center gap-3">
-                          <IoBriefcaseOutline className={`w-5 h-5 ${selectedAddressType === 'Office' ? 'text-[#008755]' : 'text-gray-500'}`} />
-                          <span className="text-sm font-medium text-heading">{t('text-office-label')}</span>
+                          <IoBriefcaseOutline className={`w-5 h-5 ${selectedAddressType === 'Office' ? 'text-[#008755]' : 'text-gray-400'}`} />
+                          <div className="flex flex-col">
+                            <span className="text-sm font-semibold text-heading">{t('text-office-label')}</span>
+                            <span className="text-[10px] text-gray-500 mt-0.5">{t('text-office-desc')}</span>
+                          </div>
                         </div>
                         <div className={`w-4 h-4 rounded-full border transition-all ${selectedAddressType === 'Office' ? 'border-[#008755] border-[4px] bg-white' : 'border-gray-300 bg-white'}`}></div>
                       </div>
@@ -449,8 +470,11 @@ export default function CustomerAddresses() {
                       <input type="radio" value="Other" {...register("address_type")} className="sr-only" />
                       <div className={`flex items-center justify-between px-4 py-3 border rounded-md transition ${selectedAddressType === 'Other' ? 'border-[#008755] bg-[#F4F9F6]' : 'border-gray-200 bg-white'}`}>
                         <div className="flex items-center gap-3">
-                          <IoPricetagOutline className={`w-5 h-5 ${selectedAddressType === 'Other' ? 'text-[#008755]' : 'text-gray-500'}`} />
-                          <span className="text-sm font-medium text-heading">{t('text-other-label')}</span>
+                          <IoPencilOutline className={`w-5 h-5 ${selectedAddressType === 'Other' ? 'text-[#008755]' : 'text-gray-400'}`} />
+                          <div className="flex flex-col">
+                            <span className="text-sm font-semibold text-heading">{t('text-other-label')}</span>
+                            <span className="text-[10px] text-gray-500 mt-0.5">{t('text-other-desc')}</span>
+                          </div>
                         </div>
                         <div className={`w-4 h-4 rounded-full border transition-all ${selectedAddressType === 'Other' ? 'border-[#008755] border-[4px] bg-white' : 'border-gray-300 bg-white'}`}></div>
                       </div>
@@ -458,22 +482,24 @@ export default function CustomerAddresses() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 mt-4">
+                <div className="flex items-center gap-3 mt-6 border-t border-gray-100 pt-4">
                   <Button
                     type="submit"
                     loading={createAddressMutation.isPending || updateAddressMutation.isPending}
                     disabled={createAddressMutation.isPending || updateAddressMutation.isPending}
-                    className="h-11 px-8 bg-[#005844] hover:bg-[#008755] text-white font-semibold font-body rounded transition duration-150 sm:w-auto cursor-pointer"
+                    className="h-11 px-6 bg-[#005844] hover:bg-[#008755] text-white font-semibold font-body rounded transition duration-150 flex items-center gap-2 cursor-pointer text-xs md:text-sm uppercase tracking-wide"
                   >
-                    {editingAddressId ? t('text-update') : t('text-save')}
+                    <IoSaveOutline className="text-base" />
+                    <span>{editingAddressId ? t('text-update') : t('text-save-address')}</span>
                   </Button>
-                  <Button
+                  <button
                     type="button"
                     onClick={cancelEdit}
-                    className="h-11 px-8 bg-[#000000] hover:bg-gray-800 text-white font-semibold font-body rounded transition duration-150 sm:w-auto cursor-pointer"
+                    className="h-11 px-6 bg-white border border-gray-200 text-[#005844] hover:bg-gray-50 hover:border-[#008755] font-semibold font-body rounded transition duration-150 flex items-center justify-center gap-2 cursor-pointer text-xs md:text-sm uppercase tracking-wide"
                   >
-                    {t('text-cancel')}
-                  </Button>
+                    <IoCloseOutline className="text-lg" />
+                    <span>{t('text-cancel')}</span>
+                  </button>
                 </div>
               </div>
             </form>

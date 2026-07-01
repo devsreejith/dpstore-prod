@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Listbox, ListboxButton, ListboxOptions, ListboxOption } from "@headlessui/react";
 import cn from "classnames";
 import { useTranslation } from "next-i18next";
-import { AsYouType, parsePhoneNumberFromString, CountryCode, getCountries, getCountryCallingCode } from "libphonenumber-js";
+import { AsYouType, parsePhoneNumberFromString, CountryCode, getCountries, getCountryCallingCode, Metadata } from "libphonenumber-js";
 
 export interface Country {
   code: string;
@@ -54,6 +54,42 @@ const generateCountriesList = (): Country[] => {
 };
 
 export const COUNTRIES = generateCountriesList();
+
+export const getCountryMaxDigits = (countryCode: string): number => {
+  const predefined: Record<string, number> = {
+    IN: 10,
+    AE: 9,
+    SA: 9,
+    QA: 8,
+    OM: 8,
+    BH: 8,
+    KW: 8,
+    US: 10,
+    CA: 10,
+    GB: 10,
+    EG: 10,
+    PK: 10,
+  };
+  
+  if (predefined[countryCode]) {
+    return predefined[countryCode];
+  }
+  
+  try {
+    const metadata = new Metadata();
+    metadata.selectNumberingPlan(countryCode as any);
+    if (metadata.numberingPlan) {
+      const lengths = metadata.numberingPlan.possibleLengths();
+      if (lengths && lengths.length > 0) {
+        return Math.max(...lengths);
+      }
+    }
+  } catch (e) {
+    // Ignore
+  }
+  
+  return 15;
+};
 
 // Helper to parse phone number into country and national number
 export const parsePhone = (value: string = "") => {
@@ -139,8 +175,14 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
       const parsed = parsePhone(value);
       setSelectedCountry(parsed.country);
 
+      let rawDigits = parsed.localNumber.replace(/\D/g, "");
+      const maxDigits = getCountryMaxDigits(parsed.country.code);
+      if (rawDigits.length > maxDigits) {
+        rawDigits = rawDigits.slice(0, maxDigits);
+      }
+
       const formatter = new AsYouType(parsed.country.code as CountryCode);
-      const formatted = formatter.input(parsed.localNumber);
+      const formatted = formatter.input(rawDigits);
       setLocalNumber(formatted);
     }
   }, [value]);
@@ -148,7 +190,11 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
   const handleCountryChange = (country: Country) => {
     setSelectedCountry(country);
     // Strip non-digits and reformat for new country
-    const rawDigits = localNumber.replace(/\D/g, "");
+    let rawDigits = localNumber.replace(/\D/g, "");
+    const maxDigits = getCountryMaxDigits(country.code);
+    if (rawDigits.length > maxDigits) {
+      rawDigits = rawDigits.slice(0, maxDigits);
+    }
     const formatter = new AsYouType(country.code as CountryCode);
     const formatted = formatter.input(rawDigits);
     setLocalNumber(formatted);
@@ -159,7 +205,11 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
 
   const handleLocalNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const inputVal = e.target.value;
-    const rawDigits = inputVal.replace(/\D/g, "");
+    let rawDigits = inputVal.replace(/\D/g, "");
+    const maxDigits = getCountryMaxDigits(selectedCountry.code);
+    if (rawDigits.length > maxDigits) {
+      rawDigits = rawDigits.slice(0, maxDigits);
+    }
 
     const formatter = new AsYouType(selectedCountry.code as CountryCode);
     const formatted = formatter.input(rawDigits);
