@@ -7,9 +7,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { fadeInTop } from "@utils/motion/fade-in-top";
 import { useMemo, useState, useEffect, useRef } from "react";
-import { useForm } from "react-hook-form";
-import { IoPencilOutline, IoTrashOutline, IoEllipsisVertical, IoHomeOutline, IoBriefcaseOutline, IoPricetagOutline } from "react-icons/io5";
+import { useForm, Controller } from "react-hook-form";
+import { IoPencilOutline, IoTrashOutline, IoEllipsisVertical, IoHomeOutline, IoBriefcaseOutline, IoPricetagOutline, IoMapOutline, IoCreateOutline } from "react-icons/io5";
 import { useTranslation } from "next-i18next";
+import { PhoneInput } from "@components/ui/phone-input";
+import { isValidPhoneNumber } from "libphonenumber-js";
+import { GoogleMapPicker } from "@components/ui/google-map-picker";
+import { parseAddress2, serializeAddress2, formatAddress2ForDisplay } from "@utils/address-helper";
 
 type CustomerAddressInput = {
   first_name?: string;
@@ -22,6 +26,12 @@ type CustomerAddressInput = {
   country_code: string;
   phone?: string;
   address_type?: string;
+  apartment?: string;
+  building?: string;
+  floor?: string;
+  landmark?: string;
+  lat?: string;
+  lng?: string;
 };
 
 export default function CustomerAddresses() {
@@ -30,6 +40,7 @@ export default function CustomerAddresses() {
   const [addressError, setAddressError] = useState<string | null>(null);
   const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [showMapPicker, setShowMapPicker] = useState<boolean>(true);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
@@ -39,9 +50,10 @@ export default function CustomerAddresses() {
     setValue,
     reset,
     watch,
+    control,
     formState: { errors },
   } = useForm<CustomerAddressInput>({
-    defaultValues: { country_code: "ae", address_1: "", address_type: "Home" } as any,
+    defaultValues: { country_code: "ae", address_1: "", address_type: "Home", apartment: "", building: "", floor: "", landmark: "", lat: "", lng: "" } as any,
   });
 
   const addressesQuery = useQuery({
@@ -171,11 +183,25 @@ export default function CustomerAddresses() {
   });
 
   const onSubmitAddress = (input: CustomerAddressInput) => {
+    const address_2 = serializeAddress2({
+      apartment: input.apartment,
+      building: input.building,
+      floor: input.floor,
+      landmark: input.landmark,
+      lat: input.lat,
+      lng: input.lng,
+    });
+
+    const payloadInput = {
+      ...input,
+      address_2,
+    };
+
     if (editingAddressId) {
-      updateAddressMutation.mutate({ id: editingAddressId, data: input });
+      updateAddressMutation.mutate({ id: editingAddressId, data: payloadInput });
       return;
     }
-    createAddressMutation.mutate(input);
+    createAddressMutation.mutate(payloadInput);
   };
 
   const startEditAddress = (a: any) => {
@@ -184,6 +210,7 @@ export default function CustomerAddresses() {
     const id = String(a?.id ?? "").trim();
     if (!id) return;
     setEditingAddressId(id);
+    const parsedExtra = parseAddress2(a?.address_2 ?? "");
     reset({
       first_name: a?.first_name ?? "",
       last_name: a?.last_name ?? "",
@@ -195,14 +222,22 @@ export default function CustomerAddresses() {
       country_code: a?.country_code ?? "ae",
       phone: a?.phone ?? "",
       address_type: a?.company ?? "Home",
+      apartment: parsedExtra.apartment,
+      building: parsedExtra.building,
+      floor: parsedExtra.floor,
+      landmark: parsedExtra.landmark,
+      lat: parsedExtra.lat,
+      lng: parsedExtra.lng,
     } as any);
+    setShowMapPicker(false); // Go straight to form for edit mode
     setShowForm(true);
   };
 
   const cancelEdit = () => {
     setAddressError(null);
     setEditingAddressId(null);
-    reset({ country_code: "ae", address_1: "", address_type: "Home" } as any);
+    reset({ country_code: "ae", address_1: "", address_type: "Home", apartment: "", building: "", floor: "", landmark: "", lat: "", lng: "" } as any);
+    setShowMapPicker(true);
     setShowForm(false);
   };
 
@@ -228,6 +263,7 @@ export default function CustomerAddresses() {
           type="button"
           onClick={() => {
             setEditingAddressId(null);
+            setShowMapPicker(true);
             if (addresses.length === 0 && customerQuery.data) {
               const c = customerQuery.data as any;
               reset({
@@ -252,135 +288,196 @@ export default function CustomerAddresses() {
 
       {/* Add/Edit Form */}
       {showForm && (
-        <div className="border border-dashed border-gray-300 rounded p-5 mb-2">
+        <div className="border border-dashed border-gray-300 rounded p-5 mb-2 bg-white">
           <h3 className="text-sm font-semibold text-[#008755] uppercase tracking-wide mb-4 font-body">
             {editingAddressId ? t('text-edit-address') : t('text-add-new-address-title')}
           </h3>
-          <form onSubmit={handleSubmit(onSubmitAddress)} noValidate>
-            <div className="flex flex-col space-y-4 sm:space-y-5">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input
-                  labelKey="forms:label-first-name"
-                  {...register("first_name", { required: "forms:first-name-required" })}
-                  variant="solid"
-                  errorKey={errors.first_name?.message as any}
-                />
-                <Input
-                  labelKey="forms:label-last-name"
-                  {...register("last_name", { required: "forms:last-name-required" })}
-                  variant="solid"
-                  errorKey={errors.last_name?.message as any}
-                />
-                <Input
-                  type="tel"
-                  labelKey="forms:label-phone"
-                  inputMode="numeric"
-                  {...register("phone", {
-                    required: "forms:phone-required",
-                    pattern: { value: /^[0-9]{6,15}$/, message: "forms:phone-invalid" },
-                  })}
-                  variant="solid"
-                  errorKey={errors.phone?.message as any}
-                />
-                <Input
-                  labelKey="forms:label-address"
-                  {...register("address_1", { required: "forms:address-required" })}
-                  variant="solid"
-                  errorKey={errors.address_1?.message as any}
-                />
-                <Input labelKey="Address Line 2" {...register("address_2")} variant="solid" />
-                <Input
-                  labelKey="forms:label-city"
-                  {...register("city", { required: "forms:city-required" })}
-                  variant="solid"
-                  errorKey={errors.city?.message as any}
-                />
-                <div className="flex flex-col space-y-2">
-                  <label className="text-heading font-semibold text-sm leading-none cursor-pointer">Emirate *</label>
-                  <select
-                    {...register("province", { required: "forms:state-required" })}
-                    className="form-select py-2 px-4 w-full transition duration-150 ease-in-out border text-input text-13px lg:text-sm font-body rounded-md placeholder-body min-h-12 bg-white border-gray-300 focus:outline-none focus:border-heading h-11 md:h-12"
-                  >
-                    <option value="">Select Emirate</option>
-                    <option value="Abu Dhabi">Abu Dhabi</option>
-                    <option value="Dubai">Dubai</option>
-                    <option value="Sharjah">Sharjah</option>
-                    <option value="Ajman">Ajman</option>
-                    <option value="Umm Al Quwain">Umm Al Quwain</option>
-                    <option value="Ras Al Khaimah">Ras Al Khaimah</option>
-                    <option value="Fujairah">Fujairah</option>
-                  </select>
-                  {errors.province && <p className="my-2 text-13px text-brandRed">{errors.province.message as any}</p>}
-                </div>
-                <Input
-                  labelKey="forms:label-postcode"
-                  inputMode="numeric"
-                  {...register("postal_code", {
-                    required: "forms:postcode-required",
-                    pattern: { value: /^[0-9]{3,10}$/, message: "forms:postcode-invalid" },
-                  })}
-                  variant="solid"
-                  errorKey={errors.postal_code?.message as any}
-                />
-              </div>
-              <input type="hidden" value="ae" {...register("country_code")} />
-              
-              <div className="mt-4 pb-2">
-                <label className="block text-sm font-bold text-heading font-body mb-1">{t('text-address-type')}</label>
-                <p className="text-sm text-body mb-3">{t('text-choose-address-label')}</p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <label className="cursor-pointer">
-                    <input type="radio" value="Home" {...register("address_type")} className="sr-only" />
-                    <div className={`flex items-center justify-between px-4 py-3 border rounded-md transition ${selectedAddressType === 'Home' ? 'border-[#008755] bg-[#F4F9F6]' : 'border-gray-200 bg-white'}`}>
-                      <div className="flex items-center gap-3">
-                        <IoHomeOutline className={`w-5 h-5 ${selectedAddressType === 'Home' ? 'text-[#008755]' : 'text-gray-500'}`} />
-                        <span className="text-sm font-medium text-heading">{t('text-home-label')}</span>
-                      </div>
-                      <div className={`w-4 h-4 rounded-full border transition-all ${selectedAddressType === 'Home' ? 'border-[#008755] border-[4px] bg-white' : 'border-gray-300 bg-white'}`}></div>
-                    </div>
-                  </label>
-                  <label className="cursor-pointer">
-                    <input type="radio" value="Office" {...register("address_type")} className="sr-only" />
-                    <div className={`flex items-center justify-between px-4 py-3 border rounded-md transition ${selectedAddressType === 'Office' ? 'border-[#008755] bg-[#F4F9F6]' : 'border-gray-200 bg-white'}`}>
-                      <div className="flex items-center gap-3">
-                        <IoBriefcaseOutline className={`w-5 h-5 ${selectedAddressType === 'Office' ? 'text-[#008755]' : 'text-gray-500'}`} />
-                        <span className="text-sm font-medium text-heading">{t('text-office-label')}</span>
-                      </div>
-                      <div className={`w-4 h-4 rounded-full border transition-all ${selectedAddressType === 'Office' ? 'border-[#008755] border-[4px] bg-white' : 'border-gray-300 bg-white'}`}></div>
-                    </div>
-                  </label>
-                  <label className="cursor-pointer">
-                    <input type="radio" value="Other" {...register("address_type")} className="sr-only" />
-                    <div className={`flex items-center justify-between px-4 py-3 border rounded-md transition ${selectedAddressType === 'Other' ? 'border-[#008755] bg-[#F4F9F6]' : 'border-gray-200 bg-white'}`}>
-                      <div className="flex items-center gap-3">
-                        <IoPricetagOutline className={`w-5 h-5 ${selectedAddressType === 'Other' ? 'text-[#008755]' : 'text-gray-500'}`} />
-                        <span className="text-sm font-medium text-heading">{t('text-other-label')}</span>
-                      </div>
-                      <div className={`w-4 h-4 rounded-full border transition-all ${selectedAddressType === 'Other' ? 'border-[#008755] border-[4px] bg-white' : 'border-gray-300 bg-white'}`}></div>
-                    </div>
-                  </label>
-                </div>
-              </div>
 
-              <div className="flex items-center gap-3 mt-4">
-                <Button
-                  type="submit"
-                  loading={createAddressMutation.isPending || updateAddressMutation.isPending}
-                  disabled={createAddressMutation.isPending || updateAddressMutation.isPending}
-                  className="h-11 px-8 bg-[#005844] hover:bg-[#008755] text-white font-semibold font-body rounded transition duration-150 sm:w-auto"
-                >
-                  {editingAddressId ? t('text-update') : t('text-save')}
-                </Button>
-                <Button
-                  type="button"
-                  onClick={cancelEdit}
-                  className="h-11 px-8 bg-[#000000] hover:bg-gray-800 text-white font-semibold font-body rounded transition duration-150 sm:w-auto"
-                >
-                  {t('text-cancel')}
-                </Button>
+          {showMapPicker ? (
+            <GoogleMapPicker
+              initialLocation={
+                watch('lat') && watch('lng')
+                  ? { lat: parseFloat(watch('lat')!), lng: parseFloat(watch('lng')!) }
+                  : undefined
+              }
+              onConfirm={(loc) => {
+                setValue('address_1', loc.formattedAddress);
+                if (loc.city) setValue('city', loc.city);
+                if (loc.province) setValue('province', loc.province);
+                if (loc.postalCode) setValue('postal_code', loc.postalCode);
+                if (loc.lat) setValue('lat', String(loc.lat));
+                if (loc.lng) setValue('lng', String(loc.lng));
+                setShowMapPicker(false);
+              }}
+              onCancel={cancelEdit}
+            />
+          ) : (
+            <form onSubmit={handleSubmit(onSubmitAddress)} noValidate>
+              {watch('lat') && watch('lng') && (
+                <div className="p-3 bg-green-50 border border-green-200 text-green-800 rounded-md text-xs sm:text-sm flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="flex-shrink-0">📍</span>
+                    <span className="truncate">Map location selected: <strong>{watch('address_1')}</strong></span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowMapPicker(true)}
+                    className="text-[#008755] font-semibold underline hover:text-[#007044] text-xs ml-2 cursor-pointer whitespace-nowrap"
+                  >
+                    Change Location
+                  </button>
+                </div>
+              )}
+
+              <div className="flex flex-col space-y-4 sm:space-y-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Input
+                    labelKey="forms:label-first-name"
+                    {...register("first_name", { required: "forms:first-name-required" })}
+                    variant="solid"
+                    errorKey={errors.first_name?.message as any}
+                  />
+                  <Input
+                    labelKey="forms:label-last-name"
+                    {...register("last_name", { required: "forms:last-name-required" })}
+                    variant="solid"
+                    errorKey={errors.last_name?.message as any}
+                  />
+                  <Controller
+                    name="phone"
+                    control={control}
+                    rules={{
+                      required: "forms:phone-required",
+                      validate: (value) => {
+                        if (!value) return "forms:phone-required";
+                        return isValidPhoneNumber(value) || "forms:phone-invalid";
+                      }
+                    }}
+                    render={({ field: { onChange, value } }) => (
+                      <PhoneInput
+                        labelKey="forms:label-phone"
+                        value={value}
+                        onChange={onChange}
+                        errorKey={errors.phone?.message as any}
+                        variant="solid"
+                      />
+                    )}
+                  />
+                  <Input
+                    labelKey="forms:label-address"
+                    {...register("address_1", { required: "forms:address-required" })}
+                    variant="solid"
+                    errorKey={errors.address_1?.message as any}
+                  />
+                  <Input
+                    labelKey="Building Name/Number"
+                    {...register("building")}
+                    placeholder="e.g. Silver Tower / Villa 15"
+                    variant="solid"
+                  />
+                  <Input
+                    labelKey="Landmark"
+                    {...register("landmark")}
+                    placeholder="e.g. Near Twar Metro Station"
+                    variant="solid"
+                  />
+                  <Input
+                    labelKey="forms:label-city"
+                    {...register("city", { required: "forms:city-required" })}
+                    variant="solid"
+                    errorKey={errors.city?.message as any}
+                  />
+                  <div className="flex flex-col space-y-2">
+                    <label className="text-heading font-semibold text-sm leading-none cursor-pointer">Emirate *</label>
+                    <select
+                      {...register("province", { required: "forms:state-required" })}
+                      className="form-select py-2 px-4 w-full transition duration-150 ease-in-out border text-input text-13px lg:text-sm font-body rounded-md placeholder-body min-h-12 bg-white border-gray-300 focus:outline-none focus:border-heading h-11 md:h-12"
+                    >
+                      <option value="">Select Emirate</option>
+                      <option value="Abu Dhabi">Abu Dhabi</option>
+                      <option value="Dubai">Dubai</option>
+                      <option value="Sharjah">Sharjah</option>
+                      <option value="Ajman">Ajman</option>
+                      <option value="Umm Al Quwain">Umm Al Quwain</option>
+                      <option value="Ras Al Khaimah">Ras Al Khaimah</option>
+                      <option value="Fujairah">Fujairah</option>
+                    </select>
+                    {errors.province && <p className="my-2 text-13px text-brandRed">{errors.province.message as any}</p>}
+                  </div>
+                  <Input
+                    labelKey="forms:label-postcode"
+                    inputMode="numeric"
+                    {...register("postal_code", {
+                      required: "forms:postcode-required",
+                      pattern: { value: /^[0-9]{3,10}$/, message: "forms:postcode-invalid" },
+                    })}
+                    variant="solid"
+                    errorKey={errors.postal_code?.message as any}
+                  />
+                </div>
+                <input type="hidden" value="ae" {...register("country_code")} />
+                <input type="hidden" {...register("lat")} />
+                <input type="hidden" {...register("lng")} />
+                <input type="hidden" {...register("apartment")} />
+                <input type="hidden" {...register("floor")} />
+                
+                <div className="mt-4 pb-2">
+                  <label className="block text-sm font-bold text-heading font-body mb-1">{t('text-address-type')}</label>
+                  <p className="text-sm text-body mb-3">{t('text-choose-address-label')}</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <label className="cursor-pointer">
+                      <input type="radio" value="Home" {...register("address_type")} className="sr-only" />
+                      <div className={`flex items-center justify-between px-4 py-3 border rounded-md transition ${selectedAddressType === 'Home' ? 'border-[#008755] bg-[#F4F9F6]' : 'border-gray-200 bg-white'}`}>
+                        <div className="flex items-center gap-3">
+                          <IoHomeOutline className={`w-5 h-5 ${selectedAddressType === 'Home' ? 'text-[#008755]' : 'text-gray-500'}`} />
+                          <span className="text-sm font-medium text-heading">{t('text-home-label')}</span>
+                        </div>
+                        <div className={`w-4 h-4 rounded-full border transition-all ${selectedAddressType === 'Home' ? 'border-[#008755] border-[4px] bg-white' : 'border-gray-300 bg-white'}`}></div>
+                      </div>
+                    </label>
+                    <label className="cursor-pointer">
+                      <input type="radio" value="Office" {...register("address_type")} className="sr-only" />
+                      <div className={`flex items-center justify-between px-4 py-3 border rounded-md transition ${selectedAddressType === 'Office' ? 'border-[#008755] bg-[#F4F9F6]' : 'border-gray-200 bg-white'}`}>
+                        <div className="flex items-center gap-3">
+                          <IoBriefcaseOutline className={`w-5 h-5 ${selectedAddressType === 'Office' ? 'text-[#008755]' : 'text-gray-500'}`} />
+                          <span className="text-sm font-medium text-heading">{t('text-office-label')}</span>
+                        </div>
+                        <div className={`w-4 h-4 rounded-full border transition-all ${selectedAddressType === 'Office' ? 'border-[#008755] border-[4px] bg-white' : 'border-gray-300 bg-white'}`}></div>
+                      </div>
+                    </label>
+                    <label className="cursor-pointer">
+                      <input type="radio" value="Other" {...register("address_type")} className="sr-only" />
+                      <div className={`flex items-center justify-between px-4 py-3 border rounded-md transition ${selectedAddressType === 'Other' ? 'border-[#008755] bg-[#F4F9F6]' : 'border-gray-200 bg-white'}`}>
+                        <div className="flex items-center gap-3">
+                          <IoPricetagOutline className={`w-5 h-5 ${selectedAddressType === 'Other' ? 'text-[#008755]' : 'text-gray-500'}`} />
+                          <span className="text-sm font-medium text-heading">{t('text-other-label')}</span>
+                        </div>
+                        <div className={`w-4 h-4 rounded-full border transition-all ${selectedAddressType === 'Other' ? 'border-[#008755] border-[4px] bg-white' : 'border-gray-300 bg-white'}`}></div>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 mt-4">
+                  <Button
+                    type="submit"
+                    loading={createAddressMutation.isPending || updateAddressMutation.isPending}
+                    disabled={createAddressMutation.isPending || updateAddressMutation.isPending}
+                    className="h-11 px-8 bg-[#005844] hover:bg-[#008755] text-white font-semibold font-body rounded transition duration-150 sm:w-auto cursor-pointer"
+                  >
+                    {editingAddressId ? t('text-update') : t('text-save')}
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={cancelEdit}
+                    className="h-11 px-8 bg-[#000000] hover:bg-gray-800 text-white font-semibold font-body rounded transition duration-150 sm:w-auto cursor-pointer"
+                  >
+                    {t('text-cancel')}
+                  </Button>
+                </div>
               </div>
-            </div>
-          </form>
+            </form>
+          )}
         </div>
       )}
 
@@ -396,7 +493,7 @@ export default function CustomerAddresses() {
                 const name = `${String(a?.first_name ?? "").trim()} ${String(a?.last_name ?? "").trim()}`.trim();
                 const cc = String(a?.country_code ?? "").toUpperCase();
 
-                const line1 = [a?.address_1, a?.address_2].map((x) => String(x ?? "").trim()).filter(Boolean).join(", ");
+                const line1 = [a?.address_1, formatAddress2ForDisplay(a?.address_2)].map((x) => String(x ?? "").trim()).filter(Boolean).join(", ");
                 const line2 = [a?.city, a?.province, a?.postal_code].map((x) => String(x ?? "").trim()).filter(Boolean).join(", ");
                 const line3 = a?.phone ? String(a?.phone).trim() : "";
 

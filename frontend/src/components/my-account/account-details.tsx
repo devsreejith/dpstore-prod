@@ -1,6 +1,6 @@
 import Input from '@components/ui/input';
 import Button from '@components/ui/button';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { motion } from 'framer-motion';
 import { fadeInTop } from '@utils/motion/fade-in-top';
 import {
@@ -12,6 +12,8 @@ import { useTranslation } from 'next-i18next';
 import { useQuery } from '@tanstack/react-query';
 import http from '@framework/utils/http';
 import { useEffect } from 'react';
+import { PhoneInput } from '@components/ui/phone-input';
+import { isValidPhoneNumber } from 'libphonenumber-js';
 
 const defaultValues = {};
 
@@ -23,6 +25,7 @@ const AccountDetails: React.FC = () => {
     handleSubmit,
     setValue,
     reset,
+    control,
     formState: { errors },
   } = useForm<UpdateUserType>({
     defaultValues,
@@ -91,17 +94,26 @@ const AccountDetails: React.FC = () => {
           </div>
 
           <div className="flex flex-col sm:flex-row sm:gap-x-3 space-y-4 sm:space-y-0">
-            <Input
-              type="tel"
-              labelKey="forms:label-phone"
-              inputMode="numeric"
-              {...register('phoneNumber', {
+            <Controller
+              name="phoneNumber"
+              control={control}
+              rules={{
                 required: 'forms:phone-required',
-                pattern: { value: /^[0-9]{6,15}$/, message: 'forms:phone-invalid' },
-              })}
-              variant="solid"
-              className="w-full sm:w-1/2"
-              errorKey={errors.phoneNumber?.message}
+                validate: (value) => {
+                  if (!value) return 'forms:phone-required';
+                  return isValidPhoneNumber(value) || 'forms:phone-invalid';
+                }
+              }}
+              render={({ field: { onChange, value } }) => (
+                <PhoneInput
+                  labelKey="forms:label-phone"
+                  value={value}
+                  onChange={onChange}
+                  errorKey={errors.phoneNumber?.message}
+                  variant="solid"
+                  className="w-full sm:w-1/2"
+                />
+              )}
             />
             <Input
               type="email"

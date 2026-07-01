@@ -198,27 +198,34 @@ class CommunicationModuleService extends MedusaService({
    */
   loadTemplate(templateName: string, replacements: Record<string, string>): string {
     try {
-      // 1. Try local templates folder relative to __dirname (development)
-      let templatePath = path.join(__dirname, "templates", `${templateName}.html`);
+      let templatePath: string | null = null;
+      let currentDir = __dirname;
       
-      // 2. If not found, try relative to process.cwd() (production: cwd is usually .medusa/server)
-      if (!fs.existsSync(templatePath)) {
-        const fallbackPath = path.resolve(process.cwd(), "../../src/modules/communication/templates", `${templateName}.html`);
-        if (fs.existsSync(fallbackPath)) {
-          templatePath = fallbackPath;
+      // Walk up the directory tree to find the template
+      while (true) {
+        // Check 1: templates/name.html (e.g. in development or if copied to build dir)
+        const directPath = path.join(currentDir, "templates", `${templateName}.html`);
+        if (fs.existsSync(directPath)) {
+          templatePath = directPath;
+          break;
         }
+        
+        // Check 2: src/modules/communication/templates/name.html (relative to project root)
+        const srcPath = path.join(currentDir, "src", "modules", "communication", "templates", `${templateName}.html`);
+        if (fs.existsSync(srcPath)) {
+          templatePath = srcPath;
+          break;
+        }
+
+        const parentDir = path.dirname(currentDir);
+        if (parentDir === currentDir) {
+          break;
+        }
+        currentDir = parentDir;
       }
 
-      // 3. Fallback: try relative to project root from compiled directory
-      if (!fs.existsSync(templatePath)) {
-        const fallbackPath = path.resolve(__dirname, "../../../../..", "src/modules/communication/templates", `${templateName}.html`);
-        if (fs.existsSync(fallbackPath)) {
-          templatePath = fallbackPath;
-        }
-      }
-
-      if (!fs.existsSync(templatePath)) {
-        throw new Error(`Template file not found at ${templatePath}`);
+      if (!templatePath || !fs.existsSync(templatePath)) {
+        throw new Error(`Template file "${templateName}.html" not found starting from ${__dirname}`);
       }
 
       let html = fs.readFileSync(templatePath, "utf8");

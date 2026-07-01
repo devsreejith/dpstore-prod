@@ -1,4 +1,4 @@
-import { SAFlag } from '@components/icons/SAFlag';
+import { UAEFlag } from '@components/icons/UAEFlag';
 import { USFlag } from '@components/icons/USFlag';
 import { ThunderIcon } from '@components/icons/thunder-icon';
 
@@ -23,13 +23,13 @@ export const siteSettings = {
     languageMenu: [
       {
         id: 'ar',
-        name: 'عربى - AR',
+        name: 'AR',
         value: 'ar',
-        icon: <SAFlag width="20px" height="15px" />,
+        icon: <UAEFlag width="20px" height="15px" />,
       },
       {
         id: 'en',
-        name: 'English - EN',
+        name: 'EN',
         value: 'en',
         icon: <USFlag width="20px" height="15px" />,
       },

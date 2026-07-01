@@ -2,15 +2,19 @@ import Input from '@components/ui/input';
 import TextArea from '@components/ui/text-area';
 import Button from '@components/ui/button';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { useCart } from '@contexts/cart/cart.context';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import http from '@framework/utils/http';
 import { useUI } from '@contexts/ui.context';
 import Alert from '@components/ui/alert';
+import { PhoneInput } from '@components/ui/phone-input';
+import { isValidPhoneNumber } from 'libphonenumber-js';
 import { ROUTES } from '@utils/routes';
 import { useRouter } from 'next/router';
-import { IoTrashOutline, IoHomeOutline, IoBriefcaseOutline, IoPricetagOutline, IoShieldCheckmarkOutline, IoLocationOutline } from 'react-icons/io5';
+import { IoTrashOutline, IoHomeOutline, IoBriefcaseOutline, IoPricetagOutline, IoShieldCheckmarkOutline, IoLocationOutline, IoMapOutline, IoCreateOutline } from 'react-icons/io5';
+import { GoogleMapPicker } from '@components/ui/google-map-picker';
+import { parseAddress2, serializeAddress2, formatAddress2ForDisplay } from '@utils/address-helper';
 import { formatPrice } from '@framework/product/use-price';
 import { useTranslation } from 'next-i18next';
 
@@ -26,6 +30,12 @@ interface CheckoutInputType {
   note: string;
   address_1?: string;
   address_2?: string;
+  apartment?: string;
+  building?: string;
+  floor?: string;
+  landmark?: string;
+  lat?: string;
+  lng?: string;
 }
 
 type AddressInput = {
@@ -39,6 +49,12 @@ type AddressInput = {
   country_code: string;
   phone?: string;
   address_type?: string;
+  apartment?: string;
+  building?: string;
+  floor?: string;
+  landmark?: string;
+  lat?: string;
+  lng?: string;
 };
 
 const PHONE_ONLY_REGEX = /^[0-9]{6,15}$/;
@@ -75,18 +91,27 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
     setValue,
     trigger,
     getValues,
+    watch,
+    control,
     formState: { errors },
-  } = useForm<CheckoutInputType>();
+  } = useForm<CheckoutInputType>({
+    defaultValues: { apartment: "", building: "", floor: "", landmark: "", lat: "", lng: "" }
+  });
 
   const {
     register: registerNewAddress,
     handleSubmit: handleSubmitNewAddress,
     reset: resetNewAddress,
     watch: watchNewAddress,
+    control: controlNewAddress,
+    setValue: setValueNewAddress,
     formState: { errors: newAddressErrors },
   } = useForm<AddressInput>({
-    defaultValues: { country_code: 'ae', address_type: 'Home' },
+    defaultValues: { country_code: 'ae', address_type: 'Home', apartment: "", building: "", floor: "", landmark: "", lat: "", lng: "" },
   });
+
+  const [showMapPicker, setShowMapPicker] = useState<boolean>(true);
+  const [showModalMapPicker, setShowModalMapPicker] = useState<boolean>(true);
 
   const selectedAddressType = watchNewAddress('address_type') ?? 'Home';
 
@@ -142,7 +167,8 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
         }
         applyAddressToForm(maybeAddress);
       }
-      resetNewAddress({ country_code: 'ae', address_type: 'Home' } as any);
+      resetNewAddress({ country_code: 'ae', address_type: 'Home', apartment: '', building: '', floor: '', landmark: '', lat: '', lng: '' } as any);
+      setShowModalMapPicker(true);
       setShowAddAddress(false);
       await queryClient.invalidateQueries({ queryKey: ['store.customer.addresses.checkout'] });
     },
@@ -161,6 +187,21 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
       await queryClient.invalidateQueries({ queryKey: ['store.customer.addresses.checkout'] });
     },
   });
+
+  const onSubmitAddressModal = (input: AddressInput) => {
+    const address_2 = serializeAddress2({
+      apartment: input.apartment,
+      building: input.building,
+      floor: input.floor,
+      landmark: input.landmark,
+      lat: input.lat,
+      lng: input.lng,
+    });
+    createAddressMutation.mutate({
+      ...input,
+      address_2,
+    });
+  };
 
   const shippingOptionsQuery = useQuery({
     queryKey: ['store.shipping-options', cartId],
@@ -205,8 +246,15 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
         const shipping_address = {
           first_name: String(input.firstName || selectedAddress?.first_name || 'N/A').trim(),
           last_name: String(input.lastName || selectedAddress?.last_name || 'N/A').trim(),
-          address_1: selectedAddress?.address_1 || 'N/A',
-          address_2: selectedAddress?.address_2 || deliveryInstructions || undefined,
+          address_1: selectedAddress?.address_1 || String(input.address_1 || '').trim() || 'N/A',
+          address_2: selectedAddress?.address_2 || serializeAddress2({
+            apartment: input.apartment,
+            building: input.building,
+            floor: input.floor,
+            landmark: input.landmark,
+            lat: input.lat,
+            lng: input.lng,
+          }) || deliveryInstructions || undefined,
           city: String(input.city || selectedAddress?.city || 'N/A').trim(),
           province: String(input.state || selectedAddress?.province || 'N/A').trim(),
           postal_code: String(input.zipCode || selectedAddress?.postal_code || '00000').trim(),
@@ -262,15 +310,27 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
     const first = String(a?.first_name ?? '').trim();
     const last = String(a?.last_name ?? '').trim();
     const phone = String(a?.phone ?? '').trim();
+    const address1 = String(a?.address_1 ?? '').trim();
     const city = String(a?.city ?? '').trim();
     const state = String(a?.province ?? '').trim();
     const zip = String(a?.postal_code ?? '').trim();
+    
     if (first) setValue('firstName', first);
     if (last) setValue('lastName', last);
     if (phone) setValue('phone', phone);
+    if (address1) setValue('address_1', address1);
     if (city) setValue('city', city);
     if (state) setValue('state', state);
     if (zip) setValue('zipCode', zip);
+
+    // Parse extra details from address_2
+    const parsedExtra = parseAddress2(a?.address_2 ?? '');
+    setValue('apartment', parsedExtra.apartment);
+    setValue('building', parsedExtra.building);
+    setValue('floor', parsedExtra.floor);
+    setValue('landmark', parsedExtra.landmark);
+    setValue('lat', parsedExtra.lat);
+    setValue('lng', parsedExtra.lng);
   }, [setValue]);
 
   useEffect(() => {
@@ -315,33 +375,6 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
               <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider font-body">{t('text-contact-info')}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input
-                  labelKey={t('text-email-address')}
-                  type="email"
-                  {...register('email', {
-                    required: t('error-email-required'),
-                    pattern: {
-                      value: /^\S+@\S+$/i,
-                      message: t('error-email-invalid'),
-                    },
-                  })}
-                  errorKey={errors.email?.message}
-                  variant="solid"
-                />
-                <Input
-                  labelKey={t('text-phone-number')}
-                  inputMode="numeric"
-                  {...register('phone', {
-                    required: t('error-phone-required'),
-                    pattern: { value: PHONE_ONLY_REGEX, message: t('error-phone-invalid') },
-                  })}
-                  errorKey={errors.phone?.message}
-                  variant="solid"
-                />
-              </div>
-
-              <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider font-body pt-2">{t('text-shipping-address')}</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input
                   labelKey={t('text-first-name')}
                   {...register('firstName', { required: t('error-first-name-required') })}
                   errorKey={errors.firstName?.message}
@@ -354,53 +387,138 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
                   variant="solid"
                 />
                 <Input
-                  labelKey={t('text-address-line-1')}
-                  {...register('address_1', { required: t('error-address-required') })}
-                  errorKey={errors.address_1?.message}
-                  variant="solid"
-                />
-                <Input
-                  labelKey={t('text-address-line-2')}
-                  {...register('address_2')}
-                  errorKey={errors.address_2?.message}
-                  variant="solid"
-                />
-                <Input
-                  labelKey={t('text-city')}
-                  {...register('city', { required: t('error-city-required') })}
-                  errorKey={errors.city?.message}
-                  variant="solid"
-                />
-                <div className="flex flex-col space-y-2">
-                  <label className="text-heading font-semibold text-sm leading-none cursor-pointer">{t('text-emirate')}</label>
-                  <select
-                    {...register('state', { required: t('error-emirate-required') })}
-                    className="form-select py-2 px-4 w-full transition duration-150 ease-in-out border text-input text-13px lg:text-sm font-body rounded-md placeholder-body min-h-12 bg-white border-gray-300 focus:outline-none focus:border-heading h-11 md:h-12"
-                  >
-                    <option value="">{t('text-select-emirate')}</option>
-                    <option value="Abu Dhabi">Abu Dhabi</option>
-                    <option value="Dubai">Dubai</option>
-                    <option value="Sharjah">Sharjah</option>
-                    <option value="Ajman">Ajman</option>
-                    <option value="Umm Al Quwain">Umm Al Quwain</option>
-                    <option value="Ras Al Khaimah">Ras Al Khaimah</option>
-                    <option value="Fujairah">Fujairah</option>
-                  </select>
-                  {errors.state && (
-                    <p className="my-2 text-13px text-brandRed">{errors.state.message}</p>
-                  )}
-                </div>
-                <Input
-                  labelKey={t('text-postal-code')}
-                  inputMode="numeric"
-                  {...register('zipCode', {
-                    required: t('error-postal-code-required'),
-                    pattern: { value: POSTAL_ONLY_REGEX, message: t('error-postal-code-invalid') },
+                  labelKey={t('text-email-address')}
+                  type="email"
+                  {...register('email', {
+                    required: t('error-email-required'),
+                    pattern: {
+                      value: /^\S+@\S+$/i,
+                      message: t('error-email-invalid'),
+                    },
                   })}
-                  errorKey={errors.zipCode?.message}
+                  errorKey={errors.email?.message}
                   variant="solid"
+                />
+                <Controller
+                  name="phone"
+                  control={control}
+                  rules={{
+                    required: t('error-phone-required'),
+                    validate: (value) => {
+                      if (!value) return t('error-phone-required');
+                      return isValidPhoneNumber(value) || t('error-phone-invalid');
+                    }
+                  }}
+                  render={({ field: { onChange, value } }) => (
+                    <PhoneInput
+                      labelKey="text-phone-number"
+                      value={value}
+                      onChange={onChange}
+                      errorKey={errors.phone?.message}
+                      variant="solid"
+                    />
+                  )}
                 />
               </div>
+
+              <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider font-body pt-2">{t('text-shipping-address')}</h3>
+              
+              {showMapPicker ? (
+                <div className="pt-2">
+                  <GoogleMapPicker
+                    initialLocation={
+                      watch('lat') && watch('lng')
+                        ? { lat: parseFloat(watch('lat')!), lng: parseFloat(watch('lng')!) }
+                        : undefined
+                    }
+                    onConfirm={(loc) => {
+                      setValue('address_1', loc.formattedAddress);
+                      if (loc.city) setValue('city', loc.city);
+                      if (loc.province) setValue('state', loc.province);
+                      if (loc.postalCode) setValue('zipCode', loc.postalCode);
+                      if (loc.lat) setValue('lat', String(loc.lat));
+                      if (loc.lng) setValue('lng', String(loc.lng));
+                      setShowMapPicker(false);
+                    }}
+                  />
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {watch('lat') && watch('lng') && (
+                    <div className="col-span-full p-3 bg-green-50 border border-green-200 text-green-800 rounded-md text-xs sm:text-sm flex items-center justify-between">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="flex-shrink-0">📍</span>
+                        <span className="truncate">Map location selected: <strong>{watch('address_1')}</strong></span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowMapPicker(true)}
+                        className="text-[#008755] font-semibold underline hover:text-[#007044] text-xs ml-2 cursor-pointer whitespace-nowrap"
+                      >
+                        Change Location
+                      </button>
+                    </div>
+                  )}
+
+                  <Input
+                    labelKey={t('text-address-line-1')}
+                    {...register('address_1', { required: t('error-address-required') })}
+                    errorKey={errors.address_1?.message}
+                    variant="solid"
+                  />
+                  <Input
+                    labelKey="Building Name/Number"
+                    {...register('building')}
+                    placeholder="e.g. Silver Tower / Villa 15"
+                    variant="solid"
+                  />
+                  <Input
+                    labelKey="Landmark"
+                    {...register('landmark')}
+                    placeholder="e.g. Near Twar Metro Station"
+                    variant="solid"
+                  />
+                  <Input
+                    labelKey={t('text-city')}
+                    {...register('city', { required: t('error-city-required') })}
+                    errorKey={errors.city?.message}
+                    variant="solid"
+                  />
+                  <div className="flex flex-col space-y-2">
+                    <label className="text-heading font-semibold text-sm leading-none cursor-pointer">{t('text-emirate')}</label>
+                    <select
+                      {...register('state', { required: t('error-emirate-required') })}
+                      className="form-select py-2 px-4 w-full transition duration-150 ease-in-out border text-input text-13px lg:text-sm font-body rounded-md placeholder-body min-h-12 bg-white border-gray-300 focus:outline-none focus:border-heading h-11 md:h-12"
+                    >
+                      <option value="">{t('text-select-emirate')}</option>
+                      <option value="Abu Dhabi">Abu Dhabi</option>
+                      <option value="Dubai">Dubai</option>
+                      <option value="Sharjah">Sharjah</option>
+                      <option value="Ajman">Ajman</option>
+                      <option value="Umm Al Quwain">Umm Al Quwain</option>
+                      <option value="Ras Al Khaimah">Ras Al Khaimah</option>
+                      <option value="Fujairah">Fujairah</option>
+                    </select>
+                    {errors.state && (
+                      <p className="my-2 text-13px text-brandRed">{errors.state.message}</p>
+                    )}
+                  </div>
+                  <Input
+                    labelKey={t('text-postal-code')}
+                    inputMode="numeric"
+                    {...register('zipCode', {
+                      required: t('error-postal-code-required'),
+                      pattern: { value: POSTAL_ONLY_REGEX, message: t('error-postal-code-invalid') },
+                    })}
+                    errorKey={errors.zipCode?.message}
+                    variant="solid"
+                  />
+                  <input type="hidden" {...register('lat')} />
+                  <input type="hidden" {...register('lng')} />
+                  <input type="hidden" {...register('apartment')} />
+                  <input type="hidden" {...register('floor')} />
+                </div>
+              )}
 
               <button
                 type="button"
@@ -443,141 +561,201 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
           ) : showAddAddress ? (
             /* Form container */
             <div className="border border-gray-200 rounded-md p-5 bg-white shadow-sm">
-              <form
-                className="space-y-4"
-                onSubmit={handleSubmitNewAddress((input) => createAddressMutation.mutate(input))}
-                noValidate
-              >
-                {createAddressMutation.error ? (
-                  <Alert message={String((createAddressMutation.error as any)?.message ?? 'Failed to save address')} />
-                ) : null}
+              <h3 className="text-sm font-semibold text-[#008755] uppercase tracking-wide mb-4 font-body">
+                {t('text-add-new-address-title')}
+              </h3>
+              {showModalMapPicker ? (
+                <GoogleMapPicker
+                  initialLocation={
+                    watchNewAddress('lat') && watchNewAddress('lng')
+                      ? { lat: parseFloat(watchNewAddress('lat')!), lng: parseFloat(watchNewAddress('lng')!) }
+                      : undefined
+                  }
+                  onConfirm={(loc) => {
+                    setValueNewAddress('address_1', loc.formattedAddress, { shouldValidate: true });
+                    setValueNewAddress('city', loc.city || '', { shouldValidate: true });
+                    setValueNewAddress('province', loc.province || '', { shouldValidate: true });
+                    setValueNewAddress('postal_code', loc.postalCode || '', { shouldValidate: true });
+                    setValueNewAddress('lat', String(loc.lat));
+                    setValueNewAddress('lng', String(loc.lng));
+                    setShowModalMapPicker(false);
+                  }}
+                  onCancel={() => setShowAddAddress(false)}
+                />
+              ) : (
+                <form
+                  className="space-y-4"
+                  onSubmit={handleSubmitNewAddress(onSubmitAddressModal)}
+                  noValidate
+                >
+                  {createAddressMutation.error ? (
+                    <Alert message={String((createAddressMutation.error as any)?.message ?? 'Failed to save address')} />
+                  ) : null}
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Input
-                    labelKey="forms:label-first-name"
-                    {...registerNewAddress('first_name', { required: 'forms:first-name-required' } as any)}
-                    errorKey={(newAddressErrors as any)?.first_name?.message}
-                    variant="solid"
-                  />
-                  <Input
-                    labelKey="forms:label-last-name"
-                    {...registerNewAddress('last_name', { required: 'forms:last-name-required' } as any)}
-                    errorKey={(newAddressErrors as any)?.last_name?.message}
-                    variant="solid"
-                  />
-                  <Input
-                    labelKey="forms:label-phone"
-                    inputMode="numeric"
-                    {...registerNewAddress('phone', {
-                      pattern: { value: PHONE_ONLY_REGEX, message: 'forms:phone-invalid' },
-                    } as any)}
-                    errorKey={(newAddressErrors as any)?.phone?.message}
-                    variant="solid"
-                  />
-                  <Input
-                    labelKey="forms:label-address"
-                    {...registerNewAddress('address_1', { required: 'forms:address-required' } as any)}
-                    errorKey={(newAddressErrors as any)?.address_1?.message}
-                    variant="solid"
-                  />
-                  <Input
-                    labelKey={t('text-address-line-2')}
-                    {...registerNewAddress('address_2')}
-                    errorKey={(newAddressErrors as any)?.address_2?.message}
-                    variant="solid"
-                  />
-                  <Input
-                    labelKey="forms:label-city"
-                    {...registerNewAddress('city', { required: 'forms:city-required' } as any)}
-                    errorKey={(newAddressErrors as any)?.city?.message}
-                    variant="solid"
-                  />
-                  <div className="flex flex-col space-y-2">
-                    <label className="text-heading font-semibold text-sm leading-none cursor-pointer">{t('text-emirate')}</label>
-                    <select
-                      {...registerNewAddress('province', { required: 'forms:state-required' } as any)}
-                      className="form-select py-2 px-4 w-full transition duration-150 ease-in-out border text-input text-13px lg:text-sm font-body rounded-md placeholder-body min-h-12 bg-white border-gray-300 focus:outline-none focus:border-heading h-11 md:h-12"
+                  {watchNewAddress('lat') && watchNewAddress('lng') && (
+                    <div className="p-3 bg-green-50 border border-green-200 text-green-800 rounded-md text-xs sm:text-sm flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="flex-shrink-0">📍</span>
+                        <span className="truncate">Map location selected: <strong>{watchNewAddress('address_1')}</strong></span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowModalMapPicker(true)}
+                        className="text-[#008755] font-semibold underline hover:text-[#007044] text-xs ml-2 cursor-pointer whitespace-nowrap"
+                      >
+                        Change Location
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Input
+                      labelKey="forms:label-first-name"
+                      {...registerNewAddress('first_name', { required: 'forms:first-name-required' } as any)}
+                      errorKey={(newAddressErrors as any)?.first_name?.message}
+                      variant="solid"
+                    />
+                    <Input
+                      labelKey="forms:label-last-name"
+                      {...registerNewAddress('last_name', { required: 'forms:last-name-required' } as any)}
+                      errorKey={(newAddressErrors as any)?.last_name?.message}
+                      variant="solid"
+                    />
+                    <Controller
+                      name="phone"
+                      control={controlNewAddress}
+                      rules={{
+                        validate: (value) => {
+                          if (!value) return true;
+                          return isValidPhoneNumber(value) || 'forms:phone-invalid';
+                        }
+                      }}
+                      render={({ field: { onChange, value } }) => (
+                        <PhoneInput
+                          labelKey="forms:label-phone"
+                          value={value}
+                          onChange={onChange}
+                          errorKey={(newAddressErrors as any)?.phone?.message}
+                          variant="solid"
+                        />
+                      )}
+                    />
+                    <Input
+                      labelKey="forms:label-address"
+                      {...registerNewAddress('address_1', { required: 'forms:address-required' } as any)}
+                      errorKey={(newAddressErrors as any)?.address_1?.message}
+                      variant="solid"
+                    />
+                    <Input
+                      labelKey="Building Name/Number"
+                      {...registerNewAddress('building')}
+                      placeholder="e.g. Silver Tower / Villa 15"
+                      variant="solid"
+                    />
+                    <Input
+                      labelKey="Landmark"
+                      {...registerNewAddress('landmark')}
+                      placeholder="e.g. Near Twar Metro Station"
+                      variant="solid"
+                    />
+                    <Input
+                      labelKey="forms:label-city"
+                      {...registerNewAddress('city', { required: 'forms:city-required' } as any)}
+                      errorKey={(newAddressErrors as any)?.city?.message}
+                      variant="solid"
+                    />
+                    <div className="flex flex-col space-y-2">
+                      <label className="text-heading font-semibold text-sm leading-none cursor-pointer">{t('text-emirate')}</label>
+                      <select
+                        {...registerNewAddress('province', { required: 'forms:state-required' } as any)}
+                        className="form-select py-2 px-4 w-full transition duration-150 ease-in-out border text-input text-13px lg:text-sm font-body rounded-md placeholder-body min-h-12 bg-white border-gray-300 focus:outline-none focus:border-heading h-11 md:h-12"
+                      >
+                        <option value="">{t('text-select-emirate')}</option>
+                        <option value="Abu Dhabi">Abu Dhabi</option>
+                        <option value="Dubai">Dubai</option>
+                        <option value="Sharjah">Sharjah</option>
+                        <option value="Ajman">Ajman</option>
+                        <option value="Umm Al Quwain">Umm Al Quwain</option>
+                        <option value="Ras Al Khaimah">Ras Al Khaimah</option>
+                        <option value="Fujairah">Fujairah</option>
+                      </select>
+                      {(newAddressErrors as any)?.province && (
+                        <p className="my-2 text-13px text-brandRed">{(newAddressErrors as any).province.message}</p>
+                      )}
+                    </div>
+                    <Input
+                      labelKey="forms:label-postcode"
+                      inputMode="numeric"
+                      {...registerNewAddress('postal_code', {
+                        required: 'forms:postcode-required',
+                        pattern: { value: POSTAL_ONLY_REGEX, message: 'forms:postcode-invalid' },
+                      } as any)}
+                      errorKey={(newAddressErrors as any)?.postal_code?.message}
+                      variant="solid"
+                    />
+                  </div>
+                  <input type="hidden" value="ae" {...registerNewAddress("country_code")} />
+                  <input type="hidden" {...registerNewAddress("lat")} />
+                  <input type="hidden" {...registerNewAddress("lng")} />
+                  <input type="hidden" {...registerNewAddress("apartment")} />
+                  <input type="hidden" {...registerNewAddress("floor")} />
+
+                  <div className="mt-4 pb-2">
+                    <label className="block text-sm font-bold text-heading font-body mb-1">{t("text-address-type")}</label>
+                    <p className="text-sm text-body mb-3">{t("text-choose-address-label")}</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <label className="cursor-pointer">
+                        <input type="radio" value="Home" {...registerNewAddress("address_type")} className="sr-only" />
+                        <div className={`flex items-center justify-between px-4 py-3 border rounded-md transition ${selectedAddressType === 'Home' ? 'border-[#008755] bg-[#F4F9F6]' : 'border-gray-200 bg-white'}`}>
+                          <div className="flex items-center gap-3">
+                            <IoHomeOutline className={`w-5 h-5 ${selectedAddressType === 'Home' ? 'text-[#008755]' : 'text-gray-500'}`} />
+                            <span className="text-sm font-medium text-heading">{t("text-home-label")}</span>
+                          </div>
+                          <div className={`w-4 h-4 rounded-full border transition-all ${selectedAddressType === 'Home' ? 'border-[#008755] border-[4px] bg-white' : 'border-gray-300 bg-white'}`}></div>
+                        </div>
+                      </label>
+                      <label className="cursor-pointer">
+                        <input type="radio" value="Office" {...registerNewAddress("address_type")} className="sr-only" />
+                        <div className={`flex items-center justify-between px-4 py-3 border rounded-md transition ${selectedAddressType === 'Office' ? 'border-[#008755] bg-[#F4F9F6]' : 'border-gray-200 bg-white'}`}>
+                          <div className="flex items-center gap-3">
+                            <IoBriefcaseOutline className={`w-5 h-5 ${selectedAddressType === 'Office' ? 'text-[#008755]' : 'text-gray-500'}`} />
+                            <span className="text-sm font-medium text-heading">{t("text-office-label")}</span>
+                          </div>
+                          <div className={`w-4 h-4 rounded-full border transition-all ${selectedAddressType === 'Office' ? 'border-[#008755] border-[4px] bg-white' : 'border-gray-300 bg-white'}`}></div>
+                        </div>
+                      </label>
+                      <label className="cursor-pointer">
+                        <input type="radio" value="Other" {...registerNewAddress("address_type")} className="sr-only" />
+                        <div className={`flex items-center justify-between px-4 py-3 border rounded-md transition ${selectedAddressType === 'Other' ? 'border-[#008755] bg-[#F4F9F6]' : 'border-gray-200 bg-white'}`}>
+                          <div className="flex items-center gap-3">
+                            <IoPricetagOutline className={`w-5 h-5 ${selectedAddressType === 'Other' ? 'text-[#008755]' : 'text-gray-500'}`} />
+                            <span className="text-sm font-medium text-heading">{t("text-other-label")}</span>
+                          </div>
+                          <div className={`w-4 h-4 rounded-full border transition-all ${selectedAddressType === 'Other' ? 'border-[#008755] border-[4px] bg-white' : 'border-gray-300 bg-white'}`}></div>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <Button
+                      type="submit"
+                      className="h-11 px-6 font-bold font-body text-xs uppercase cursor-pointer"
+                      loading={createAddressMutation.isPending}
+                      disabled={createAddressMutation.isPending}
                     >
-                      <option value="">{t('text-select-emirate')}</option>
-                      <option value="Abu Dhabi">Abu Dhabi</option>
-                      <option value="Dubai">Dubai</option>
-                      <option value="Sharjah">Sharjah</option>
-                      <option value="Ajman">Ajman</option>
-                      <option value="Umm Al Quwain">Umm Al Quwain</option>
-                      <option value="Ras Al Khaimah">Ras Al Khaimah</option>
-                      <option value="Fujairah">Fujairah</option>
-                    </select>
-                    {(newAddressErrors as any)?.province && (
-                      <p className="my-2 text-13px text-brandRed">{(newAddressErrors as any).province.message}</p>
-                    )}
+                      {t('text-save')}
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => setShowAddAddress(false)}
+                      className="h-11 px-6 bg-[#000000] hover:bg-gray-800 text-white font-semibold font-body rounded transition duration-150 text-xs uppercase cursor-pointer"
+                    >
+                      {t('text-cancel')}
+                    </Button>
                   </div>
-                  <Input
-                    labelKey="forms:label-postcode"
-                    inputMode="numeric"
-                    {...registerNewAddress('postal_code', {
-                      required: 'forms:postcode-required',
-                      pattern: { value: POSTAL_ONLY_REGEX, message: 'forms:postcode-invalid' },
-                    } as any)}
-                    errorKey={(newAddressErrors as any)?.postal_code?.message}
-                    variant="solid"
-                  />
-                </div>
-
-                <div className="mt-4 pb-2">
-                  <label className="block text-sm font-bold text-heading font-body mb-1">{t("text-address-type")}</label>
-                  <p className="text-sm text-body mb-3">{t("text-choose-address-label")}</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <label className="cursor-pointer">
-                      <input type="radio" value="Home" {...registerNewAddress("address_type")} className="sr-only" />
-                      <div className={`flex items-center justify-between px-4 py-3 border rounded-md transition ${selectedAddressType === 'Home' ? 'border-[#008755] bg-[#F4F9F6]' : 'border-gray-200 bg-white'}`}>
-                        <div className="flex items-center gap-3">
-                          <IoHomeOutline className={`w-5 h-5 ${selectedAddressType === 'Home' ? 'text-[#008755]' : 'text-gray-500'}`} />
-                          <span className="text-sm font-medium text-heading">{t("text-home-label")}</span>
-                        </div>
-                        <div className={`w-4 h-4 rounded-full border transition-all ${selectedAddressType === 'Home' ? 'border-[#008755] border-[4px] bg-white' : 'border-gray-300 bg-white'}`}></div>
-                      </div>
-                    </label>
-                    <label className="cursor-pointer">
-                      <input type="radio" value="Office" {...registerNewAddress("address_type")} className="sr-only" />
-                      <div className={`flex items-center justify-between px-4 py-3 border rounded-md transition ${selectedAddressType === 'Office' ? 'border-[#008755] bg-[#F4F9F6]' : 'border-gray-200 bg-white'}`}>
-                        <div className="flex items-center gap-3">
-                          <IoBriefcaseOutline className={`w-5 h-5 ${selectedAddressType === 'Office' ? 'text-[#008755]' : 'text-gray-500'}`} />
-                          <span className="text-sm font-medium text-heading">{t("text-office-label")}</span>
-                        </div>
-                        <div className={`w-4 h-4 rounded-full border transition-all ${selectedAddressType === 'Office' ? 'border-[#008755] border-[4px] bg-white' : 'border-gray-300 bg-white'}`}></div>
-                      </div>
-                    </label>
-                    <label className="cursor-pointer">
-                      <input type="radio" value="Other" {...registerNewAddress("address_type")} className="sr-only" />
-                      <div className={`flex items-center justify-between px-4 py-3 border rounded-md transition ${selectedAddressType === 'Other' ? 'border-[#008755] bg-[#F4F9F6]' : 'border-gray-200 bg-white'}`}>
-                        <div className="flex items-center gap-3">
-                          <IoPricetagOutline className={`w-5 h-5 ${selectedAddressType === 'Other' ? 'text-[#008755]' : 'text-gray-500'}`} />
-                          <span className="text-sm font-medium text-heading">{t("text-other-label")}</span>
-                        </div>
-                        <div className={`w-4 h-4 rounded-full border transition-all ${selectedAddressType === 'Other' ? 'border-[#008755] border-[4px] bg-white' : 'border-gray-300 bg-white'}`}></div>
-                      </div>
-                    </label>
-                  </div>
-                </div>
-
-                <div className="flex gap-3">
-                  <Button
-                    type="submit"
-                    className="h-11 px-6 font-bold font-body text-xs uppercase"
-                    loading={createAddressMutation.isPending}
-                    disabled={createAddressMutation.isPending}
-                  >
-                    {t('text-save')}
-                  </Button>
-                  <Button
-                    type="button"
-                    onClick={() => setShowAddAddress(false)}
-                    className="h-11 px-6 bg-[#000000] hover:bg-gray-800 text-white font-semibold font-body rounded transition duration-150 text-xs uppercase"
-                  >
-                    {t('text-cancel')}
-                  </Button>
-                </div>
-              </form>
+                </form>
+              )}
             </div>
           ) : (
             /* Address cards list */
@@ -587,7 +765,8 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
                   const id = String(a?.id ?? '');
                   const name = `${String(a?.first_name ?? '').trim()} ${String(a?.last_name ?? '').trim()}`.trim();
                   const cc = String(a?.country_code ?? '').toUpperCase();
-                  const line = [a?.address_1, a?.address_2, a?.city, a?.province, a?.postal_code, cc]
+                  const displayAddress2 = formatAddress2ForDisplay(a?.address_2);
+                  const line = [a?.address_1, displayAddress2, a?.city, a?.province, a?.postal_code, cc]
                     .map((x) => String(x ?? '').trim())
                     .filter(Boolean)
                     .join(', ');
