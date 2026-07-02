@@ -54,8 +54,8 @@ const CheckoutCard: React.FC<CheckoutCardProps> = ({
 
   const shippingAmount = 25; // 25 AED for all orders
   const itemSubtotal = items.reduce((sum: number, it: any) => sum + (it.price * (it.quantity ?? 1)), 0);
-  const vatAmount = (itemSubtotal + shippingAmount) * 0.05;
-  const finalTotal = itemSubtotal + shippingAmount + vatAmount;
+  const finalTotal = itemSubtotal + shippingAmount;
+  const vatAmount = (finalTotal / 105) * 5;
 
   const { price: priceOriginal } = usePrice({
     amount: itemSubtotal,

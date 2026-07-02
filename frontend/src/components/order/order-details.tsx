@@ -340,8 +340,8 @@ const OrderDetails: React.FC<{ className?: string }> = ({
   const createdAt = fmtDateTime((order as any)?.created_at);
   const totalAmount = Number((order as any)?.total ?? 0) || 0;
   const shippingAmount = Number((order as any)?.shipping_total ?? 0) || 0;
-  const taxAmount = Number((order as any)?.tax_total ?? (order as any)?.taxes_total ?? 0) || 0;
-  const subtotalAmount = totalAmount - shippingAmount - taxAmount; // Exact price paid
+  const taxAmount = (totalAmount / 105) * 5;
+  const subtotalAmount = totalAmount - shippingAmount; // Exact price paid
   const discountAmount = 0; // Force discount to 0 to hide it
 
   const continuePayment = async () => {
@@ -467,139 +467,77 @@ const OrderDetails: React.FC<{ className?: string }> = ({
 
     const friendlyOrderNumber = formattedOrderNumber;
     const currency = String(order.currency_code ?? 'AED').toUpperCase();
+    const logoUrl = typeof window !== 'undefined' ? `${window.location.origin}/assets/images/Al-Jaber-Gallery-Logo.png` : '';
 
-    const itemsHtml = items.map((it: any) => {
-      const qty = Number(it.quantity ?? 1);
-      const totalVal = Number(it.total ?? it.unit_price * qty);
-      const unitVal = totalVal / qty;
-      return `
-        <tr>
-          <td style="padding: 12px; border-bottom: 1px solid #eee;">
-            <div style="font-weight: bold; color: #111;">${it.title || it.product_title}</div>
-            <div style="font-size: 11px; color: #666;">SKU: ${it.variant?.sku || 'N/A'}</div>
-          </td>
-          <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: center;">${fmt(unitVal, currency)}</td>
-          <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: center;">${qty}</td>
-          <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right; font-weight: bold;">${fmt(totalVal, currency)}</td>
-        </tr>
-      `;
-    }).join('');
+    // Chunk items into lists of up to 5 items
+    const itemChunks: any[][] = [];
+    for (let i = 0; i < items.length; i += 5) {
+      itemChunks.push(items.slice(i, i + 5));
+    }
+    if (itemChunks.length === 0) {
+      itemChunks.push([]);
+    }
 
-    const invoiceHtml = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Invoice - ${friendlyOrderNumber}</title>
-        <style>
-          body {
-            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-            color: #333;
-            margin: 0;
-            padding: 40px;
-          }
-          .invoice-box {
-            max-width: 800px;
-            margin: auto;
-            border: 1px solid #eee;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
-            padding: 30px;
-            border-radius: 8px;
-            background: #fff;
-          }
-          .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            border-bottom: 2px solid #008755;
-            padding-bottom: 20px;
-            margin-bottom: 30px;
-          }
-          .logo {
-            font-size: 24px;
-            font-weight: bold;
-            color: #008755;
-          }
-          .title {
-            font-size: 28px;
-            font-weight: bold;
-            color: #111;
-            text-align: right;
-          }
-          .meta-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin-bottom: 30px;
-          }
-          .meta-section h3 {
-            font-size: 14px;
-            color: #777;
-            text-transform: uppercase;
-            margin-bottom: 8px;
-            border-bottom: 1px solid #eee;
-            padding-bottom: 4px;
-          }
-          .meta-section p {
-            margin: 4px 0;
-            font-size: 14px;
-            line-height: 1.4;
-          }
-          table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 30px;
-          }
-          th {
-            background: #f8f8f8;
-            padding: 12px;
-            font-size: 12px;
-            text-transform: uppercase;
-            color: #555;
-            border-bottom: 2px solid #eee;
-          }
-          .totals-table {
-            width: 300px;
-            margin-left: auto;
-            margin-top: 20px;
-          }
-          .totals-table td {
-            padding: 8px 12px;
-            font-size: 14px;
-          }
-          .totals-table tr.grand-total td {
-            font-size: 16px;
-            font-weight: bold;
-            color: #008755;
-            border-top: 2px solid #eee;
-          }
-          .footer {
-            text-align: center;
-            font-size: 12px;
-            color: #999;
-            margin-top: 50px;
-            border-top: 1px solid #eee;
-            padding-top: 20px;
-          }
-          @media print {
-            body { padding: 0; }
-            .invoice-box { border: none; box-shadow: none; padding: 0; }
-            .no-print { display: none; }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="invoice-box">
+    const pagesHtmlList = itemChunks.map((chunk, pageIndex) => {
+      const isFirstPage = pageIndex === 0;
+      const isLastPage = pageIndex === itemChunks.length - 1;
+
+      // Render items for this chunk
+      const chunkItemsHtmlList = chunk.map((it: any) => {
+        const qty = Number(it.quantity ?? 1);
+        const totalVal = Number(it.total ?? it.unit_price * qty);
+        const unitVal = totalVal / qty;
+        return `
+          <tr>
+            <td style="padding: 12px; border-bottom: 1px solid #eee;">
+              <div style="font-weight: bold; color: #000;">${it.title || it.product_title}</div>
+              <div style="font-size: 11px; color: #000;">SKU: ${it.variant?.sku || 'N/A'}</div>
+            </td>
+            <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: center; color: #000;">${fmt(unitVal, currency)}</td>
+            <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: center; color: #000;">${qty}</td>
+            <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right; font-weight: bold; color: #000;">${fmt(totalVal, currency)}</td>
+          </tr>
+        `;
+      });
+
+      // Pad with empty rows to ensure exactly 5 rows in this page
+      while (chunkItemsHtmlList.length < 5) {
+        chunkItemsHtmlList.push(`
+          <tr>
+            <td style="padding: 12px; border-bottom: 1px solid #eee;">
+              <div style="font-weight: bold; color: transparent;">&nbsp;</div>
+              <div style="font-size: 11px; color: transparent;">&nbsp;</div>
+            </td>
+            <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: center; color: transparent;">&nbsp;</td>
+            <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: center; color: transparent;">&nbsp;</td>
+            <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right; font-weight: bold; color: transparent;">&nbsp;</td>
+          </tr>
+        `);
+      }
+
+      const chunkItemsHtml = chunkItemsHtmlList.join('');
+
+      let topHtml = '';
+      if (isFirstPage) {
+        topHtml = `
           <div class="header">
             <div>
+              ${logoUrl ? `<img src="${logoUrl}" alt="Al Jaber Gallery" style="max-height: 60px; margin-bottom: 10px; display: block;" />` : ''}
               <div class="logo">Dubai Police Store</div>
-              <div style="font-size: 12px; color: #666; margin-top: 4px;">Dubai, United Arab Emirates</div>
+              <div style="font-size: 12px; color: #000; margin-top: 4px;">Dubai</div>
+              <div style="font-size: 12px; font-weight: bold; color: #000; margin-top: 2px;">AL JABER GALLERY LLC</div>
+              <div style="font-size: 12px; color: #000; margin-top: 2px;">P O Box: 1940</div>
+              <div style="font-size: 12px; color: #000; margin-top: 2px;">United Arab Emirates</div>
             </div>
             <div>
               <div class="title">INVOICE</div>
-              <div style="font-size: 14px; text-align: right; color: #555; margin-top: 5px;">
+              <div style="font-size: 14px; text-align: right; color: #000; margin-top: 5px;">
                 <strong>Invoice ID:</strong> ${friendlyOrderNumber}
               </div>
-              <div style="font-size: 14px; text-align: right; color: #555; margin-top: 3px;">
+              <div style="font-size: 14px; text-align: right; color: #000; margin-top: 3px;">
+                <strong>TRN:</strong> 100308821600003
+              </div>
+              <div style="font-size: 14px; text-align: right; color: #000; margin-top: 3px;">
                 <strong>Date:</strong> ${fmtDate(order.created_at)}
               </div>
             </div>
@@ -632,21 +570,27 @@ const OrderDetails: React.FC<{ className?: string }> = ({
               <p>${shippingMethod}</p>
             </div>
           </div>
+        `;
+      } else {
+        topHtml = `
+          <div class="header" style="border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px;">
+            <div>
+              <div class="logo">Dubai Police Store</div>
+              <div style="font-size: 12px; color: #000; margin-top: 4px;">Dubai</div>
+            </div>
+            <div>
+              <div class="title" style="font-size: 20px;">INVOICE (Page ${pageIndex + 1})</div>
+              <div style="font-size: 12px; text-align: right; color: #000; margin-top: 5px;">
+                <strong>Invoice ID:</strong> ${friendlyOrderNumber}
+              </div>
+            </div>
+          </div>
+        `;
+      }
 
-          <table>
-            <thead>
-              <tr>
-                <th style="text-align: left;">Item Description</th>
-                <th style="text-align: center; width: 120px;">Unit Price</th>
-                <th style="text-align: center; width: 80px;">Qty</th>
-                <th style="text-align: right; width: 120px;">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${itemsHtml}
-            </tbody>
-          </table>
-
+      let bottomHtml = '';
+      if (isLastPage) {
+        bottomHtml = `
           <table class="totals-table">
             <tr>
               <td>Subtotal:</td>
@@ -668,9 +612,144 @@ const OrderDetails: React.FC<{ className?: string }> = ({
 
           <div class="footer">
             <p>Thank you for shopping with Dubai Police Official Merchandise Online Store</p>
-            <p style="font-size: 10px; margin-top: 5px;">If you have any questions, please contact support.</p>
+            <p style="font-size: 11px; margin-top: 5px; color: #000;">If you have any questions, please contact support.</p>
+            <p style="font-size: 11px; margin-top: 2px; color: #000;">mail: contact@dubaipolicestore.ae</p>
+            <p style="font-size: 11px; margin-top: 2px; color: #000;">Call/Whatsapp: +97155 600 2110</p>
           </div>
+        `;
+      }
+
+      const pageBreakStyle = !isLastPage ? 'style="page-break-after: always;"' : '';
+
+      return `
+        <div class="invoice-box" ${pageBreakStyle}>
+          ${topHtml}
+
+          <table>
+            <thead>
+              <tr>
+                <th style="text-align: left;">Item Description</th>
+                <th style="text-align: center; width: 120px;">Unit Price</th>
+                <th style="text-align: center; width: 80px;">Qty</th>
+                <th style="text-align: right; width: 120px;">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${chunkItemsHtml}
+            </tbody>
+          </table>
+
+          ${bottomHtml}
         </div>
+      `;
+    }).join('');
+
+    const invoiceHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Invoice - ${friendlyOrderNumber}</title>
+        <style>
+          body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            color: #000;
+            margin: 0;
+            padding: 40px;
+          }
+          .invoice-box {
+            max-width: 800px;
+            margin: 20px auto;
+            border: 1px solid #eee;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+            padding: 30px;
+            border-radius: 8px;
+            background: #fff;
+          }
+          .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 2px solid #000;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+          }
+          .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #000;
+          }
+          .title {
+            font-size: 28px;
+            font-weight: bold;
+            color: #000;
+            text-align: right;
+          }
+          .meta-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+          }
+          .meta-section h3 {
+            font-size: 14px;
+            color: #000;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #000;
+            padding-bottom: 4px;
+          }
+          .meta-section p {
+            margin: 4px 0;
+            font-size: 14px;
+            line-height: 1.4;
+            color: #000;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+          }
+          th {
+            background: #f8f8f8;
+            padding: 12px;
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #000;
+            border-bottom: 2px solid #000;
+          }
+          .totals-table {
+            width: 300px;
+            margin-left: auto;
+            margin-top: 20px;
+          }
+          .totals-table td {
+            padding: 8px 12px;
+            font-size: 14px;
+            color: #000;
+          }
+          .totals-table tr.grand-total td {
+            font-size: 16px;
+            font-weight: bold;
+            color: #000;
+            border-top: 2px solid #000;
+          }
+          .footer {
+            text-align: center;
+            font-size: 12px;
+            color: #000;
+            margin-top: 50px;
+            border-top: 1px solid #000;
+            padding-top: 20px;
+          }
+          @media print {
+            body { padding: 0; }
+            .invoice-box { border: none; box-shadow: none; padding: 0; margin: 0; }
+            .no-print { display: none; }
+          }
+        </style>
+      </head>
+      <body>
+        ${pagesHtmlList}
         <script>
           window.onload = function() {
             window.print();

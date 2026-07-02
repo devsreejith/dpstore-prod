@@ -1,5 +1,6 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
+import { NGeniusClient } from "../../../../../modules/ngenius-payment/ngenius-client"
 
 export async function POST(req: MedusaRequest, res: MedusaResponse) {
   const id = req.params.id
@@ -52,7 +53,6 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
         failureUrl: process.env.NGENIUS_FAILURE_URL || "http://localhost:8000/order",
         cancelUrl: process.env.NGENIUS_CANCEL_URL || "http://localhost:8000/order",
       };
-      const { NGeniusClient } = await import("../../../../../modules/ngenius-payment/ngenius-client.js");
       const ngeniusClient = new NGeniusClient(config as any, logger);
 
       const isTest = (session.data as any)?.is_test === true || (session.data as any)?.is_test === "true" || reference.startsWith("mock-");
@@ -212,6 +212,14 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
       } catch (dbErr: any) {
         console.error("[Authorize Endpoint] Failed to cancel order on payment failure:", dbErr.message);
       }
+    }
+
+    if (paymentStatus === "pending") {
+      res.status(200).json({
+        message: "Payment is pending authorization.",
+        payment_status: paymentStatus
+      });
+      return;
     }
 
     res.status(400).json({

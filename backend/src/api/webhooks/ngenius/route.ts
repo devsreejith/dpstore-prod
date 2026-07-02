@@ -109,6 +109,11 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
 
     if (dbRes.rows.length === 0) {
       logger.warn(`[N-Genius Webhook] No matching payment session found in database for reference: ${reference}`);
+      if (!headerAuthPassed) {
+        logger.error(`[N-Genius Webhook] Header verification failed and no matching session in DB. Rejecting webhook request.`);
+        res.status(401).send("Unauthorized");
+        return;
+      }
       res.status(200).json({ received: true, message: "No session found" });
       return;
     }
@@ -157,6 +162,12 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
           res.status(401).send("Unauthorized");
           return;
         }
+      }
+    } else {
+      if (!headerAuthPassed) {
+        logger.error(`[N-Genius Webhook] Header verification failed for test reference: ${reference}. Rejecting webhook request.`);
+        res.status(401).send("Unauthorized");
+        return;
       }
     }
 
