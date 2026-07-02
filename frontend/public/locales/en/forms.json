@@ -47,7 +47,7 @@
   "state-required": "Emirate is required",
   "postcode-required": "Post box number is required",
   "postcode-invalid": "Post box number must contain digits only",
-  "phone-invalid": "Phone number must contain digits only",
+  "phone-invalid": "Please enter a valid phone number",
   "placeholder-search": "Search Here",
   "placeholder-name": "Enter Your Name",
   "placeholder-email": "Enter Your Email",

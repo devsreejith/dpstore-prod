@@ -454,7 +454,7 @@ export const CartProvider: React.FC = (props) => {
 
   const totalUniqueItems = items.length;
   const isEmpty = totalUniqueItems === 0;
-  const total = typeof cart?.total === "number" ? cart.total : items.reduce((sum: number, it: any) => sum + (it.itemTotal || 0), 0);
+  const total = typeof cart?.subtotal === "number" ? cart.subtotal : items.reduce((sum: number, it: any) => sum + (it.itemTotal || 0), 0);
 
   const addItemToCart = React.useCallback(
     async (item: Item, quantity: number) => {

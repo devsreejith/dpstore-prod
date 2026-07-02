@@ -290,7 +290,7 @@
   "error-email-required": "Email is required",
   "error-email-invalid": "Please enter a valid email address",
   "error-phone-required": "Phone number is required",
-  "error-phone-invalid": "Please enter a valid phone number (6 to 15 digits)",
+  "error-phone-invalid": "Please enter a valid phone number",
   "error-first-name-required": "First name is required",
   "error-first-name-invalid": "First name can only contain letters, spaces, and dots",
   "error-last-name-required": "Last name is required",

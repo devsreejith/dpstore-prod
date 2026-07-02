@@ -96,6 +96,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
   const [shippingOptionId, setShippingOptionId] = useState<string>('');
   const [formError, setFormError] = useState<string | null>(null);
   const [showAddAddress, setShowAddAddress] = useState(false);
+  const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
   const [selectedAddressId, setSelectedAddressId] = useState<string>('');
   const [selectedPaymentProvider, setSelectedPaymentProvider] = useState<'pp_system_default' | 'pp_ngenius_ngenius'>('pp_ngenius_ngenius');
 
@@ -225,6 +226,45 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
     },
   });
 
+  const updateAddressMutation = useMutation({
+    mutationFn: async (input: AddressInput & { id: string }) => {
+      const payload: any = {
+        first_name: String(input.first_name || '').trim() || undefined,
+        last_name: String(input.last_name || '').trim() || undefined,
+        address_1: String(input.address_1 || '').trim(),
+        address_2: String(input.address_2 || '').trim() || undefined,
+        city: String(input.city || '').trim() || undefined,
+        province: String(input.province || '').trim() || undefined,
+        postal_code: String(input.postal_code || '').trim() || undefined,
+        country_code: String(input.country_code || 'ae').trim().toLowerCase(),
+        phone: String(input.phone || '').trim() || undefined,
+        company: input.address_type || 'Home',
+      };
+      if (!payload.address_1) throw new Error('Address is required');
+      const { data } = await http.post(`/store/customers/me/addresses/${input.id}`, payload);
+      return data;
+    },
+    onSuccess: async (data: any) => {
+      const maybeAddress =
+        data?.address ??
+        data?.customer_address ??
+        data?.customer?.addresses?.find((a: any) => String(a.id) === String(editingAddressId)) ??
+        null;
+      if (maybeAddress) {
+        const id = String(maybeAddress?.id ?? '').trim();
+        if (id) {
+          setSelectedAddressId(id);
+          setSelectedAddress(maybeAddress);
+        }
+        applyAddressToForm(maybeAddress);
+      }
+      resetNewAddress({ country_code: 'ae', address_type: 'Home', apartment: '', building: '', floor: '', landmark: '', lat: '', lng: '' } as any);
+      setShowAddAddress(false);
+      setEditingAddressId(null);
+      await queryClient.invalidateQueries({ queryKey: ['store.customer.addresses.checkout'] });
+    },
+  });
+
   const deleteAddressMutation = useMutation({
     mutationFn: async (id: string) => {
       await http.delete(`/store/customers/me/addresses/${id}`);
@@ -248,10 +288,18 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
       lat: input.lat,
       lng: input.lng,
     });
-    createAddressMutation.mutate({
-      ...input,
-      address_2,
-    });
+    if (editingAddressId) {
+      updateAddressMutation.mutate({
+        ...input,
+        address_2,
+        id: editingAddressId,
+      });
+    } else {
+      createAddressMutation.mutate({
+        ...input,
+        address_2,
+      });
+    }
   };
 
   const shippingOptionsQuery = useQuery({
@@ -429,11 +477,19 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
           {isAuthorized && (
             <div className="flex items-center justify-between pb-2">
               <h2 className="text-sm md:text-base font-bold text-[#008755] uppercase tracking-wider font-body">
-                {showAddAddress ? t("text-add-new-address") : t("text-delivery-address")}
+                {showAddAddress ? (editingAddressId ? t("text-edit-address") : t("text-add-new-address")) : t("text-delivery-address")}
               </h2>
               <button
                 type="button"
-                onClick={() => setShowAddAddress(!showAddAddress)}
+                onClick={() => {
+                  if (showAddAddress) {
+                    setEditingAddressId(null);
+                  } else {
+                    resetNewAddress({ country_code: 'ae', address_type: 'Home', apartment: '', building: '', floor: '', landmark: '', lat: '', lng: '' } as any);
+                    setShowModalMapPicker(true);
+                  }
+                  setShowAddAddress(!showAddAddress);
+                }}
                 className="text-xs md:text-sm font-bold text-[#008755] hover:underline transition font-body"
               >
                 {showAddAddress ? t("text-back-to-address-list") : t("text-add-new-address-btn")}
@@ -1094,15 +1150,15 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
                     <Button
                       type="submit"
                       className="h-11 px-6 bg-[#005844] hover:bg-[#008755] text-white font-semibold font-body rounded transition duration-150 flex items-center gap-2 cursor-pointer text-xs md:text-sm uppercase tracking-wide"
-                      loading={createAddressMutation.isPending}
-                      disabled={createAddressMutation.isPending}
+                      loading={createAddressMutation.isPending || updateAddressMutation.isPending}
+                      disabled={createAddressMutation.isPending || updateAddressMutation.isPending}
                     >
                       <IoSaveOutline className="text-base" />
                       <span>{t('text-save-address')}</span>
                     </Button>
                     <button
                       type="button"
-                      onClick={() => setShowAddAddress(false)}
+                      onClick={() => { setShowAddAddress(false); setEditingAddressId(null); }}
                       className="h-11 px-6 bg-white border border-gray-200 text-[#005844] hover:bg-gray-50 hover:border-[#008755] font-semibold font-body rounded transition duration-150 flex items-center justify-center gap-2 cursor-pointer text-xs md:text-sm uppercase tracking-wide"
                     >
                       <IoCloseOutline className="text-lg" />
@@ -1138,77 +1194,104 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
                         checked ? 'border-[#008755] bg-white shadow-sm' : 'border-gray-200 bg-white hover:bg-gray-50/20'
                       }`}
                     >
-                      <div className="flex items-start gap-3">
-                        {/* Radio circle */}
-                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-1 transition ${
-                          checked ? 'border-[#008755] bg-[#008755]' : 'border-gray-300'
-                        }`}>
-                          {checked && (
-                            <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                            </svg>
-                          )}
-                        </div>
-                        {/* Content */}
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2 mb-1.5">
-                            <span className="text-[10px] bg-[#E8F5E9] text-[#008755] px-2 py-1 rounded md:rounded-md font-bold uppercase tracking-wide border border-[#008755]/20 flex items-center gap-1 w-fit">
-                              {(a?.company || '').toLowerCase() === 'office' ? (
-                                <IoBriefcaseOutline className="text-xs" />
-                              ) : (
-                                <IoHomeOutline className="text-xs" />
-                              )}
-                              {a?.company || t('text-home-label')}
-                            </span>
-                            {a?.is_default_shipping && (
-                              <span className="text-[10px] bg-gray-100 text-gray-600 px-2 py-1 rounded font-semibold flex items-center gap-1">
-                                <IoHomeOutline className="text-xs" /> {t('text-default-address')}
-                              </span>
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-start gap-3 min-w-0 flex-1">
+                          {/* Radio circle */}
+                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-1 transition ${
+                            checked ? 'border-[#008755] bg-[#008755]' : 'border-gray-300'
+                          }`}>
+                            {checked && (
+                              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                              </svg>
                             )}
                           </div>
-                          <h4 className="text-sm font-bold text-heading font-body">{name || t('text-delivery-address')}</h4>
-                          <div className="flex items-start gap-1.5 mt-1.5">
-                            <IoLocationOutline className="text-sm text-gray-400 mt-0.5 flex-shrink-0" />
-                            <span className="text-xs text-black font-medium leading-relaxed">{line || '-'}</span>
-                          </div>
-                          {a?.phone && (
-                            <div className="flex items-center gap-1.5 mt-1.5">
-                              <svg className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                              </svg>
-                              <span className="text-xs text-black font-medium">{String(a.phone)}</span>
+                          {/* Content */}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 mb-1.5">
+                              <span className="text-[10px] bg-[#E8F5E9] text-[#008755] px-2 py-1 rounded md:rounded-md font-bold uppercase tracking-wide border border-[#008755]/20 flex items-center gap-1 w-fit">
+                                {(a?.company || '').toLowerCase() === 'office' ? (
+                                  <IoBriefcaseOutline className="text-xs" />
+                                ) : (
+                                  <IoHomeOutline className="text-xs" />
+                                )}
+                                {a?.company || t('text-home-label')}
+                              </span>
+                              {a?.is_default_shipping && (
+                                <span className="text-[10px] bg-gray-100 text-gray-600 px-2 py-1 rounded font-semibold flex items-center gap-1">
+                                  <IoHomeOutline className="text-xs" /> {t('text-default-address')}
+                                </span>
+                              )}
                             </div>
-                          )}
+                            <h4 className="text-sm font-bold text-heading font-body">{name || t('text-delivery-address')}</h4>
+                            <div className="flex items-start gap-1.5 mt-1.5">
+                              <IoLocationOutline className="text-sm text-gray-400 mt-0.5 flex-shrink-0" />
+                              <span className="text-xs text-black font-medium leading-relaxed">{line || '-'}</span>
+                            </div>
+                            {a?.phone && (
+                              <div className="flex items-center gap-1.5 mt-1.5">
+                                <svg className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                </svg>
+                                <span className="text-xs text-black font-medium">{String(a.phone)}</span>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                      {/* Bottom actions */}
-                      <div className="flex items-center justify-end gap-3 mt-3 pt-3 border-t border-gray-100">
-                        <button
-                          type="button"
-                          className="flex items-center gap-1 text-xs font-semibold text-[#005844] hover:text-[#008755] transition font-body"
-                          onClick={(e) => { e.stopPropagation(); }}
-                        >
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                          </svg>
-                          {t('text-edit-address')}
-                        </button>
-                        <span className="text-gray-300">|</span>
-                        <button
-                          type="button"
-                          className="flex items-center gap-1 text-xs font-semibold text-rose-500 hover:text-rose-700 transition font-body"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            if (!id) return;
-                            if (typeof window !== 'undefined' && !window.confirm(t('text-delete-address-confirm') || 'Delete this address?')) return;
-                            deleteAddressMutation.mutate(id);
-                          }}
-                          disabled={deleteAddressMutation.isPending}
-                        >
-                          <IoTrashOutline className="text-sm" />
-                          {t('text-delete')}
-                        </button>
+ 
+                        {/* Top-Right Actions */}
+                        <div className="flex items-center gap-2 flex-shrink-0 mt-0.5">
+                          <button
+                            type="button"
+                            className="flex items-center gap-1 text-xs font-semibold text-[#005844] hover:text-[#008755] transition font-body"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setEditingAddressId(id);
+                              const parsedExtra = parseAddress2(a?.address_2 ?? '');
+                              resetNewAddress({
+                                first_name: a?.first_name ?? '',
+                                last_name: a?.last_name ?? '',
+                                address_1: a?.address_1 ?? '',
+                                city: a?.city ?? '',
+                                province: a?.province ?? '',
+                                postal_code: a?.postal_code ?? '',
+                                country_code: a?.country_code ?? 'ae',
+                                phone: a?.phone ?? '',
+                                address_type: a?.company ?? 'Home',
+                                apartment: parsedExtra.apartment ?? '',
+                                building: parsedExtra.building ?? '',
+                                floor: parsedExtra.floor ?? '',
+                                landmark: parsedExtra.landmark ?? '',
+                                lat: parsedExtra.lat ?? '',
+                                lng: parsedExtra.lng ?? '',
+                              });
+                              setShowModalMapPicker(false);
+                              setShowAddAddress(true);
+                            }}
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                            </svg>
+                            {t('text-edit-address')}
+                          </button>
+                          <span className="text-gray-300">|</span>
+                          <button
+                            type="button"
+                            className="flex items-center gap-1 text-xs font-semibold text-rose-500 hover:text-rose-700 transition font-body"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              if (!id) return;
+                              if (typeof window !== 'undefined' && !window.confirm(t('text-delete-address-confirm') || 'Delete this address?')) return;
+                              deleteAddressMutation.mutate(id);
+                            }}
+                            disabled={deleteAddressMutation.isPending}
+                          >
+                            <IoTrashOutline className="text-sm" />
+                            {t('text-delete')}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   );
@@ -1218,16 +1301,180 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
               )}
 
 
+              {/* Billing address same as shipping address checkbox */}
+              <div className="mt-4 pt-4 border-t border-gray-100 flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="billing-same-as-shipping-auth"
+                  className="form-checkbox text-[#008755] focus:ring-[#008755] h-4.5 w-4.5 rounded border-gray-300 transition duration-150 cursor-pointer"
+                  checked={billingSameAsShipping}
+                  onChange={(e) => setBillingSameAsShipping(e.target.checked)}
+                />
+                <label htmlFor="billing-same-as-shipping-auth" className="text-sm font-semibold text-heading cursor-pointer select-none">
+                  {t('text-billing-same-as-shipping', 'Billing address same as shipping address')}
+                </label>
+              </div>
+
+              {/* Billing Address Section */}
+              {!billingSameAsShipping && (
+                <div className="mt-6 pt-6 border-t border-gray-150 space-y-4">
+                  <h3 className="text-sm font-bold text-[#005844] uppercase tracking-wider font-body">{t('text-billing-address', 'Billing Address')}</h3>
+                  {showBillingMapPicker ? (
+                    <div className="pt-2">
+                      <GoogleMapPicker
+                        initialLocation={
+                          watch('billing_lat') && watch('billing_lng')
+                            ? { lat: parseFloat(watch('billing_lat')!), lng: parseFloat(watch('billing_lng')!) }
+                            : undefined
+                        }
+                        onConfirm={(loc) => {
+                          setValue('billing_address_1', loc.address_1 || loc.formattedAddress, { shouldValidate: true, shouldDirty: true });
+                          if (loc.city) setValue('billing_city', loc.city, { shouldValidate: true, shouldDirty: true });
+                          if (loc.province) setValue('billing_state', loc.province, { shouldValidate: true, shouldDirty: true });
+                          if (loc.postalCode) setValue('billing_zipCode', loc.postalCode, { shouldValidate: true, shouldDirty: true });
+                          if (loc.lat) setValue('billing_lat', String(loc.lat));
+                          if (loc.lng) setValue('billing_lng', String(loc.lng));
+                          setShowBillingMapPicker(false);
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {watch('billing_lat') && watch('billing_lng') && (
+                        <div className="col-span-full p-3 bg-green-50 border border-green-200 text-green-800 rounded-md text-xs sm:text-sm flex items-center justify-between">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="flex-shrink-0">📍</span>
+                            <span className="truncate">Map location selected: <strong>{watch('billing_address_1')}</strong></span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setShowBillingMapPicker(true)}
+                            className="text-[#008755] font-semibold underline hover:text-[#007044] text-xs ml-2 cursor-pointer whitespace-nowrap"
+                          >
+                            Change Location
+                          </button>
+                        </div>
+                      )}
+
+                      <Input
+                        labelKey={t('text-first-name')}
+                        {...register('billing_firstName', {
+                          required: t('error-first-name-required'),
+                          pattern: {
+                            value: /^[a-zA-Z\s\.\u0600-\u06FF\u00C0-\u017F]+$/,
+                            message: t('error-first-name-invalid'),
+                          },
+                        })}
+                        errorKey={errors.billing_firstName?.message}
+                        variant="solid"
+                      />
+                      <Input
+                        labelKey={t('text-last-name')}
+                        {...register('billing_lastName', {
+                          required: t('error-last-name-required'),
+                          pattern: {
+                            value: /^[a-zA-Z\s\.\u0600-\u06FF\u00C0-\u017F]+$/,
+                            message: t('error-last-name-invalid'),
+                          },
+                        })}
+                        errorKey={errors.billing_lastName?.message}
+                        variant="solid"
+                      />
+                      <Controller
+                        name="billing_phone"
+                        control={control}
+                        rules={{
+                          required: t('error-phone-required'),
+                          validate: (value) => {
+                            if (!value) return t('error-phone-required');
+                            return isValidPhoneNumber(value) || t('error-phone-invalid');
+                          }
+                        }}
+                        render={({ field: { onChange, value } }) => (
+                          <PhoneInput
+                            labelKey="text-phone-number"
+                            value={value}
+                            onChange={onChange}
+                            errorKey={errors.billing_phone?.message}
+                            variant="solid"
+                          />
+                        )}
+                      />
+                      <Input
+                        labelKey={t('text-address-line-1')}
+                        {...register('billing_address_1', { required: t('error-address-required') })}
+                        errorKey={errors.billing_address_1?.message}
+                        variant="solid"
+                      />
+                      <Input
+                        labelKey={t('text-city')}
+                        {...register('billing_city', { required: t('error-city-required') })}
+                        errorKey={errors.billing_city?.message}
+                        variant="solid"
+                      />
+                      <div className="flex flex-col space-y-2">
+                        <label className="text-heading font-semibold text-sm leading-none cursor-pointer">{t('text-emirate')}</label>
+                        <select
+                          {...register('billing_state', { required: t('error-emirate-required') })}
+                          className="form-select py-2 px-4 w-full transition duration-150 ease-in-out border text-input text-13px lg:text-sm font-body rounded-md placeholder-body min-h-12 bg-white border-gray-300 focus:outline-none focus:border-heading h-11 md:h-12"
+                        >
+                          <option value="">{t('text-select-emirate')}</option>
+                          <option value="Abu Dhabi">Abu Dhabi</option>
+                          <option value="Dubai">Dubai</option>
+                          <option value="Sharjah">Sharjah</option>
+                          <option value="Ajman">Ajman</option>
+                          <option value="Umm Al Quwain">Umm Al Quwain</option>
+                          <option value="Ras Al Khaimah">Ras Al Khaimah</option>
+                          <option value="Fujairah">Fujairah</option>
+                        </select>
+                        {errors.billing_state && (
+                          <p className="my-2 text-13px text-brandRed">{errors.billing_state.message}</p>
+                        )}
+                      </div>
+                      <Input
+                        labelKey={t('text-postal-code')}
+                        inputMode="numeric"
+                        {...register('billing_zipCode', {
+                          required: t('error-postal-code-required'),
+                          pattern: { value: POSTAL_ONLY_REGEX, message: t('error-postal-code-invalid') },
+                        })}
+                        errorKey={errors.billing_zipCode?.message}
+                        variant="solid"
+                      />
+                      <input type="hidden" {...register('billing_lat')} />
+                      <input type="hidden" {...register('billing_lng')} />
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Continue to Payment Button */}
-              <button
-                type="button"
-                onClick={() => { if (selectedAddressId) setActiveStep(3); }}
-                disabled={!selectedAddressId}
-                className="w-full h-12 bg-[#005844] hover:bg-[#008755] text-white font-bold text-sm rounded-lg transition duration-200 flex items-center justify-center gap-2 font-body mt-3 disabled:opacity-50 tracking-wider uppercase"
-              >
-                <span>{t('text-continue-to-payment')}</span>
-                <span className="text-lg font-normal mb-0.5 inline-block transform rtl:rotate-180">→</span>
-              </button>
+              {!( !billingSameAsShipping && showBillingMapPicker ) && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!selectedAddressId) return;
+                    if (!billingSameAsShipping) {
+                      const isValidBilling = await trigger([
+                        'billing_firstName',
+                        'billing_lastName',
+                        'billing_phone',
+                        'billing_address_1',
+                        'billing_city',
+                        'billing_state',
+                        'billing_zipCode',
+                      ]);
+                      if (!isValidBilling) return;
+                    }
+                    setActiveStep(3);
+                  }}
+                  disabled={!selectedAddressId}
+                  className="w-full h-12 bg-[#005844] hover:bg-[#008755] text-white font-bold text-sm rounded-lg transition duration-200 flex items-center justify-center gap-2 font-body mt-3 disabled:opacity-50 tracking-wider uppercase"
+                >
+                  <span>{t('text-continue-to-payment')}</span>
+                  <span className="text-lg font-normal mb-0.5 inline-block transform rtl:rotate-180">→</span>
+                </button>
+              )}
             </div>
           )}
         </div>

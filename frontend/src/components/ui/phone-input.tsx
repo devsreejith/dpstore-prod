@@ -191,6 +191,9 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
     setSelectedCountry(country);
     // Strip non-digits and reformat for new country
     let rawDigits = localNumber.replace(/\D/g, "");
+    if (rawDigits.startsWith("0")) {
+      rawDigits = rawDigits.slice(1);
+    }
     const maxDigits = getCountryMaxDigits(country.code);
     if (rawDigits.length > maxDigits) {
       rawDigits = rawDigits.slice(0, maxDigits);
@@ -206,6 +209,9 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
   const handleLocalNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const inputVal = e.target.value;
     let rawDigits = inputVal.replace(/\D/g, "");
+    if (rawDigits.startsWith("0")) {
+      rawDigits = rawDigits.slice(1);
+    }
     const maxDigits = getCountryMaxDigits(selectedCountry.code);
     if (rawDigits.length > maxDigits) {
       rawDigits = rawDigits.slice(0, maxDigits);

@@ -47,7 +47,7 @@
   "state-required": "الإمارة / الولاية مطلوبة",
   "postcode-required": "الرمز البريدي مطلوب",
   "postcode-invalid": "يجب أن يحتوي الرمز البريدي على أرقام فقط",
-  "phone-invalid": "يجب أن يحتوي رقم الهاتف على أرقام فقط",
+  "phone-invalid": "يرجى إدخال رقم هاتف صحيح",
   "placeholder-search": "ابحث هنا",
   "placeholder-name": "أدخل اسمك",
   "placeholder-email": "أدخل بريدك الإلكتروني",

@@ -500,21 +500,6 @@ const OrderDetails: React.FC<{ className?: string }> = ({
         `;
       });
 
-      // Pad with empty rows to ensure exactly 5 rows in this page
-      while (chunkItemsHtmlList.length < 5) {
-        chunkItemsHtmlList.push(`
-          <tr>
-            <td style="padding: 12px; border-bottom: 1px solid #eee;">
-              <div style="font-weight: bold; color: transparent;">&nbsp;</div>
-              <div style="font-size: 11px; color: transparent;">&nbsp;</div>
-            </td>
-            <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: center; color: transparent;">&nbsp;</td>
-            <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: center; color: transparent;">&nbsp;</td>
-            <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right; font-weight: bold; color: transparent;">&nbsp;</td>
-          </tr>
-        `);
-      }
-
       const chunkItemsHtml = chunkItemsHtmlList.join('');
 
       let topHtml = '';
@@ -524,7 +509,6 @@ const OrderDetails: React.FC<{ className?: string }> = ({
             <div>
               ${logoUrl ? `<img src="${logoUrl}" alt="Al Jaber Gallery" style="max-height: 60px; margin-bottom: 10px; display: block;" />` : ''}
               <div class="logo">Dubai Police Store</div>
-              <div style="font-size: 12px; color: #000; margin-top: 4px;">Dubai</div>
               <div style="font-size: 12px; font-weight: bold; color: #000; margin-top: 2px;">AL JABER GALLERY LLC</div>
               <div style="font-size: 12px; color: #000; margin-top: 2px;">P O Box: 1940</div>
               <div style="font-size: 12px; color: #000; margin-top: 2px;">United Arab Emirates</div>
@@ -547,15 +531,14 @@ const OrderDetails: React.FC<{ className?: string }> = ({
             <div class="meta-section">
               <h3>Billed To</h3>
               <p><strong>${billingAddress.name}</strong></p>
-              ${billingAddress.lines.map(line => `<p>${line}</p>`).join('')}
-              ${billingAddress.phone ? `<p>Phone: ${billingAddress.phone}</p>` : ''}
-              <p>Email: ${order.email}</p>
+              <p>${billingAddress.lines.join(', ')}</p>
+              <p>${billingAddress.phone ? `Ph: ${billingAddress.phone} | ` : ''}Em: ${order.email}</p>
             </div>
             <div class="meta-section">
               <h3>Shipped To</h3>
               <p><strong>${shippingAddress.name}</strong></p>
-              ${shippingAddress.lines.map(line => `<p>${line}</p>`).join('')}
-              ${shippingAddress.phone ? `<p>Phone: ${shippingAddress.phone}</p>` : ''}
+              <p>${shippingAddress.lines.join(', ')}</p>
+              ${shippingAddress.phone ? `<p>Ph: ${shippingAddress.phone}</p>` : ''}
             </div>
           </div>
 
@@ -576,7 +559,6 @@ const OrderDetails: React.FC<{ className?: string }> = ({
           <div class="header" style="border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px;">
             <div>
               <div class="logo">Dubai Police Store</div>
-              <div style="font-size: 12px; color: #000; margin-top: 4px;">Dubai</div>
             </div>
             <div>
               <div class="title" style="font-size: 20px;">INVOICE (Page ${pageIndex + 1})</div>

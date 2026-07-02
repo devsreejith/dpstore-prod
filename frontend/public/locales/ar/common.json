@@ -286,7 +286,7 @@
   "error-email-required": "البريد الإلكتروني مطلوب",
   "error-email-invalid": "يرجى إدخال عنوان بريد إلكتروني صحيح",
   "error-phone-required": "رقم الهاتف مطلوب",
-  "error-phone-invalid": "يرجى إدخال رقم هاتف صحيح (6 إلى 15 رقماً)",
+  "error-phone-invalid": "يرجى إدخال رقم هاتف صحيح",
   "error-first-name-required": "الاسم الأول مطلوب",
   "error-first-name-invalid": "يمكن أن يحتوي الاسم الأول على أحرف ومسافات ونقاط فقط",
   "error-last-name-required": "اسم العائلة مطلوب",
