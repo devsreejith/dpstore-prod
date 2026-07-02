@@ -357,7 +357,9 @@ const OrdersTable: React.FC = () => {
             <div className="divide-y divide-gray-200">
               {paginatedOrders.map((order: any) => {
                 const orderStatus = getDisplayStatus(order);
-                const orderTotal = fmt(order.total, order.currency_code);
+                const subtotalAmount = Array.isArray(order?.items) ? order.items.reduce((sum: number, it: any) => sum + Number(it.total ?? it.unit_price * (it.quantity ?? 1)), 0) : 0;
+                const shippingAmount = Number(order?.shipping_total ?? 0) || 0;
+                const orderTotal = fmt(subtotalAmount + shippingAmount, order.currency_code);
 
                 const firstItem = Array.isArray(order?.items) && order.items.length > 0 ? order.items[0] : null;
                 const itemThumb = firstItem ? pickOrderItemThumb(firstItem) : '';

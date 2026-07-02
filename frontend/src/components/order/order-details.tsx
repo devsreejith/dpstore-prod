@@ -338,10 +338,10 @@ const OrderDetails: React.FC<{ className?: string }> = ({
     : 'Standard UAE Shipping';
 
   const createdAt = fmtDateTime((order as any)?.created_at);
-  const totalAmount = Number((order as any)?.total ?? 0) || 0;
   const shippingAmount = Number((order as any)?.shipping_total ?? 0) || 0;
+  const subtotalAmount = items.reduce((sum: number, it: any) => sum + Number(it.total ?? it.unit_price * (it.quantity ?? 1)), 0);
+  const totalAmount = subtotalAmount + shippingAmount;
   const taxAmount = (totalAmount / 105) * 5;
-  const subtotalAmount = totalAmount - shippingAmount; // Exact price paid
   const discountAmount = 0; // Force discount to 0 to hide it
 
   const continuePayment = async () => {

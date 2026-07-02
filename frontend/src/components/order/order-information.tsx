@@ -186,9 +186,10 @@ export default function OrderInformation() {
 
   const orderIdentifier = (id || cart_id || ref)?.toString()!;
   const { data, isLoading, refetch } = useOrderQuery(orderIdentifier, email ? String(email) : undefined);
-  const totalAmount = Number(data?.total ?? 0) || 0;
   const shippingAmount = Number(data?.shipping_total ?? 0) || 0;
-  const subtotalAmount = totalAmount - shippingAmount;
+  const subtotalAmount = Array.isArray(data?.items) ? data.items.reduce((sum: number, it: any) => sum + Number(it.total ?? it.unit_price * (it.quantity ?? 1)), 0) : 0;
+  const totalAmount = subtotalAmount + shippingAmount;
+  const taxAmount = (totalAmount / 105) * 5;
   const discountAmount = 0; // Hide all discount tags, badges, and rows
   const totalItemsCount = data?.items?.reduce((acc: number, item: any) => acc + (item.quantity ?? 0), 0) ?? 0;
 
@@ -196,6 +197,7 @@ export default function OrderInformation() {
   const subtotal = fmt(subtotalAmount, currency);
   const discount = fmt(discountAmount, currency);
   const shipping = fmt(shippingAmount, currency);
+  const vatFormatted = fmt(taxAmount, currency);
   const total = fmt(totalAmount, currency);
 
   const paymentCollectionId = useMemo(() => {
