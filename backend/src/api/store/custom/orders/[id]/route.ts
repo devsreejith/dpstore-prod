@@ -64,6 +64,14 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
     fields.push("shipping_methods.amount");
   }
 
+  // Ensure fulfillments are always loaded so fulfillment_status can be computed
+  const fulfillmentFields = ["fulfillments.id", "fulfillments.packed_at", "fulfillments.shipped_at", "fulfillments.delivered_at", "fulfillments.canceled_at"];
+  for (const ff of fulfillmentFields) {
+    if (!fields.includes(ff)) {
+      fields.push(ff);
+    }
+  }
+
   try {
     let targetOrderId = orderId;
     if (orderId.startsWith("cart_")) {

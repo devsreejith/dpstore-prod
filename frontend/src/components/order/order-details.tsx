@@ -421,7 +421,25 @@ const OrderDetails: React.FC<{ className?: string }> = ({
   };
 
   const orderStatus = String((order as any)?.status ?? '').toLowerCase();
-  const fulfillmentStatus = String((order as any)?.fulfillment_status ?? '').toLowerCase();
+
+  // Derive fulfillment status from top-level field or fallback to fulfillments array
+  let fulfillmentStatus = String((order as any)?.fulfillment_status ?? '').toLowerCase();
+  if (!fulfillmentStatus || fulfillmentStatus === 'not_fulfilled') {
+    const fulfillments = Array.isArray((order as any)?.fulfillments) ? (order as any).fulfillments : [];
+    const activeFulfillments = fulfillments.filter((f: any) => f && !f.canceled_at);
+    if (activeFulfillments.length > 0) {
+      const allDelivered = activeFulfillments.every((f: any) => f.delivered_at);
+      const anyShipped = activeFulfillments.some((f: any) => f.shipped_at);
+      if (allDelivered) {
+        fulfillmentStatus = 'delivered';
+      } else if (anyShipped) {
+        fulfillmentStatus = 'shipped';
+      } else {
+        fulfillmentStatus = 'fulfilled';
+      }
+    }
+  }
+
   const isDelivered = fulfillmentStatus === 'delivered' || orderStatus === 'completed' || orderStatus === 'delivered';
   const isShipped = ['shipped', 'partially_shipped', 'out_for_delivery', 'delivered'].includes(fulfillmentStatus) || isDelivered;
   const isOutForDelivery = ['out_for_delivery', 'delivered'].includes(fulfillmentStatus) || isDelivered;
@@ -489,13 +507,13 @@ const OrderDetails: React.FC<{ className?: string }> = ({
         const unitVal = totalVal / qty;
         return `
           <tr>
-            <td style="padding: 12px; border-bottom: 1px solid #eee;">
+            <td style="padding: 12px; border-bottom: 1px solid #ccc;">
               <div style="font-weight: bold; color: #000;">${it.title || it.product_title}</div>
               <div style="font-size: 11px; color: #000;">SKU: ${it.variant?.sku || 'N/A'}</div>
             </td>
-            <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: center; color: #000;">${fmt(unitVal, currency)}</td>
-            <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: center; color: #000;">${qty}</td>
-            <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right; font-weight: bold; color: #000;">${fmt(totalVal, currency)}</td>
+            <td style="padding: 12px; border-bottom: 1px solid #ccc; text-align: center; color: #000;">${fmt(unitVal, currency)}</td>
+            <td style="padding: 12px; border-bottom: 1px solid #ccc; text-align: center; color: #000;">${qty}</td>
+            <td style="padding: 12px; border-bottom: 1px solid #ccc; text-align: right; font-weight: bold; color: #000;">${fmt(totalVal, currency)}</td>
           </tr>
         `;
       });
@@ -510,8 +528,7 @@ const OrderDetails: React.FC<{ className?: string }> = ({
               ${logoUrl ? `<img src="${logoUrl}" alt="Al Jaber Gallery" style="max-height: 60px; margin-bottom: 10px; display: block;" />` : ''}
               <div class="logo">Dubai Police Store</div>
               <div style="font-size: 12px; font-weight: bold; color: #000; margin-top: 2px;">AL JABER GALLERY LLC</div>
-              <div style="font-size: 12px; color: #000; margin-top: 2px;">P O Box: 1940</div>
-              <div style="font-size: 12px; color: #000; margin-top: 2px;">United Arab Emirates</div>
+              <div style="font-size: 12px; color: #000; margin-top: 2px;">P O Box: 1940, United Arab Emirates, Dubai</div>
             </div>
             <div>
               <div class="title">INVOICE</div>
@@ -595,8 +612,7 @@ const OrderDetails: React.FC<{ className?: string }> = ({
           <div class="footer">
             <p>Thank you for shopping with Dubai Police Official Merchandise Online Store</p>
             <p style="font-size: 11px; margin-top: 5px; color: #000;">If you have any questions, please contact support.</p>
-            <p style="font-size: 11px; margin-top: 2px; color: #000;">mail: contact@dubaipolicestore.ae</p>
-            <p style="font-size: 11px; margin-top: 2px; color: #000;">Call/Whatsapp: +97155 600 2110</p>
+            <p style="font-size: 11px; margin-top: 2px; color: #000;">Mail: contact@dubaipolicestore.ae &nbsp;|&nbsp; Call/Whatsapp: +97155 600 2110</p>
           </div>
         `;
       }
@@ -630,8 +646,11 @@ const OrderDetails: React.FC<{ className?: string }> = ({
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Invoice - ${friendlyOrderNumber}</title>
+        <title> </title>
         <style>
+          @page {
+            margin: 15mm 10mm 15mm 10mm;
+          }
           body {
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
             color: #000;
@@ -646,6 +665,8 @@ const OrderDetails: React.FC<{ className?: string }> = ({
             padding: 30px;
             border-radius: 8px;
             background: #fff;
+            position: relative;
+            min-height: calc(100vh - 80px);
           }
           .header {
             display: flex;
@@ -677,7 +698,7 @@ const OrderDetails: React.FC<{ className?: string }> = ({
             color: #000;
             text-transform: uppercase;
             margin-bottom: 8px;
-            border-bottom: 1px solid #000;
+            border-bottom: 1px solid #ccc;
             padding-bottom: 4px;
           }
           .meta-section p {
@@ -697,7 +718,7 @@ const OrderDetails: React.FC<{ className?: string }> = ({
             font-size: 12px;
             text-transform: uppercase;
             color: #000;
-            border-bottom: 2px solid #000;
+            border-bottom: 1px solid #ccc;
           }
           .totals-table {
             width: 300px;
@@ -713,19 +734,22 @@ const OrderDetails: React.FC<{ className?: string }> = ({
             font-size: 16px;
             font-weight: bold;
             color: #000;
-            border-top: 2px solid #000;
+            border-top: 1px solid #ccc;
           }
           .footer {
             text-align: center;
             font-size: 12px;
             color: #000;
-            margin-top: 50px;
-            border-top: 1px solid #000;
+            border-top: 1px solid #ccc;
             padding-top: 20px;
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
           }
           @media print {
             body { padding: 0; }
-            .invoice-box { border: none; box-shadow: none; padding: 0; margin: 0; }
+            .invoice-box { border: none; box-shadow: none; padding: 0; margin: 0; min-height: 100vh; }
             .no-print { display: none; }
           }
         </style>

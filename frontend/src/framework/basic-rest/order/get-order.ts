@@ -7,7 +7,8 @@ const orderFields = "id,display_id,created_at,email,total,subtotal,tax_total,shi
   "shipping_methods.name,shipping_methods.price," +
   "items.id,items.title,items.quantity,items.unit_price,items.total,items.subtotal,items.thumbnail,items.variant.id,items.variant.sku,items.variant.product.thumbnail,items.variant.product.images.url," +
   "payment_collections.id,payment_collections.status,payment_collections.captured_amount,payment_collections.amount,payment_collections.authorized_amount,payment_collections.payment_sessions.id,payment_collections.payment_sessions.provider_id,payment_collections.payment_sessions.status,payment_collections.payment_sessions.data," +
-  "payment_collections.payments.id,payment_collections.payments.provider_id,payment_collections.payments.data";
+  "payment_collections.payments.id,payment_collections.payments.provider_id,payment_collections.payments.data," +
+  "fulfillments.id,fulfillments.packed_at,fulfillments.shipped_at,fulfillments.delivered_at,fulfillments.canceled_at";
 
 export const fetchOrder = async (_id: string, email?: string) => {
   try {
